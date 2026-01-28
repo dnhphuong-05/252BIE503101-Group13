@@ -1,0 +1,72 @@
+[
+  {
+    "id": "testimonial001",
+    "name": "Nguyễn Thu Hà",
+    "avatar": "assets/images/customers/customer1.jpg",
+    "rating": 5,
+    "date": "2026-01-10",
+    "productId": "SP001",
+    "productName": "Áo Nhật Bình Hoa Văn Phượng",
+    "comment": "Áo đẹp lắm, chất lượng tuyệt vời! Thêu tay rất tinh xảo. Mặc vào rất sang trọng. Shop tư vấn nhiệt tình, giao hàng nhanh.",
+    "images": ["assets/images/reviews/review1-1.jpg", "assets/images/reviews/review1-2.jpg"]
+  },
+  {
+    "id": "testimonial002",
+    "name": "Trần Minh Anh",
+    "avatar": "assets/images/customers/customer2.jpg",
+    "rating": 5,
+    "date": "2026-01-08",
+    "productId": "SP003",
+    "productName": "Áo Tấc Gấm Vân Mây",
+    "comment": "Mình rất hài lòng với sản phẩm. Gấm mềm mại, họa tiết đẹp. Phù hợp cho dịp lễ trọng thể.",
+    "images": []
+  },
+  {
+    "id": "testimonial003",
+    "name": "Lê Thị Lan",
+    "avatar": "assets/images/customers/customer3.jpg",
+    "rating": 4,
+    "date": "2026-01-05",
+    "productId": "SP005",
+    "productName": "Áo Tứ Thân Lụa Nhuộm Chàm",
+    "comment": "Áo đẹp, nhuộm chàm tự nhiên rất thích. Tuy nhiên hơi nhỏ so với size thông thường, nên đặt lên 1 size.",
+    "images": ["assets/images/reviews/review3-1.jpg"]
+  },
+  {
+    "id": "testimonial004",
+    "name": "Phạm Văn Tuấn",
+    "avatar": "assets/images/customers/customer4.jpg",
+    "rating": 5,
+    "date": "2026-01-03",
+    "productId": "SP008",
+    "productName": "Áo Bào Lễ Nam Giới",
+    "comment": "Áo bào lễ rất trang trọng, phù hợp cho lễ cúng tổ tiên. Chất liệu gấm dày dặn, bền đẹp.",
+    "images": []
+  },
+  {
+    "id": "testimonial005",
+    "name": "Hoàng Thị Mai",
+    "avatar": "assets/images/customers/customer5.jpg",
+    "rating": 5,
+    "date": "2025-12-28",
+    "productId": "SP006",
+    "productName": "Áo Nhật Bình Thêu Rồng Vàng",
+    "comment": "Áo cực kỳ đẹp và sang! Thêu rồng vàng rất tinh xảo. Mình mặc đi dự đám cưới, ai cũng khen. Giá trị tiền!",
+    "images": [
+      "assets/images/reviews/review5-1.jpg",
+      "assets/images/reviews/review5-2.jpg",
+      "assets/images/reviews/review5-3.jpg"
+    ]
+  },
+  {
+    "id": "testimonial006",
+    "name": "Ngô Thị Hương",
+    "avatar": "assets/images/customers/customer6.jpg",
+    "rating": 4,
+    "date": "2025-12-25",
+    "productId": "SP013",
+    "productName": "Áo Tứ Thân Lụa Tơ",
+    "comment": "Áo đẹp, màu sắc tươi sáng. Chụp ảnh cưới rất ưng. Duy nhất là phải đặt trước khá lâu.",
+    "images": ["assets/images/reviews/review6-1.jpg"]
+  }
+]

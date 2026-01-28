@@ -1,0 +1,98 @@
+<div class="main-register">
+  <div>
+    <app-header></app-header>
+  </div>
+  <div class="auth-container">
+    <div class="auth-card">
+      <!-- LEFT -->
+      <div class="auth-left">
+        <div class="overlay-content">
+          <div class="logo">
+            <img src="/assets/images/brand/logo-main.png" />
+            <img src="/assets/images/brand/logo-sub.png" />
+          </div>
+
+          <div class="welcome">
+            <h1>THAM GIA VỚI CHÚNG TÔI!</h1>
+            <h2>TẠO TÀI KHOẢN MỚI</h2>
+            <p>
+              Trở thành thành viên để trải nghiệm<br />
+              các dịch vụ và uu đãi đặc biệt.
+            </p>
+
+            <div class="socials">
+              <i class="fab fa-linkedin-in"></i>
+              <i class="fab fa-facebook-f"></i>
+              <i class="fab fa-instagram"></i>
+              <i class="fab fa-twitter"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="auth-right">
+        <h2>ĐĂNG KÝ</h2>
+
+        <form (ngSubmit)="onSignUp()">
+          <div class="input-group">
+            <label>Họ và tên</label>
+            <input
+              type="text"
+              [(ngModel)]="registerData.fullName"
+              name="fullName"
+              placeholder="Nhập họ và tên"
+              required
+            />
+            <i class="far fa-user"></i>
+          </div>
+
+          <div class="input-group">
+            <label>Email</label>
+            <input
+              type="email"
+              [(ngModel)]="registerData.email"
+              name="email"
+              placeholder="Nhập email của bạn"
+              required
+            />
+            <i class="far fa-envelope"></i>
+          </div>
+
+          <div class="input-group">
+            <label>Mật khẩu</label>
+            <input
+              type="password"
+              [(ngModel)]="registerData.password"
+              name="password"
+              placeholder="Nhập mật khẩu"
+              required
+            />
+            <i class="fas fa-lock"></i>
+          </div>
+
+          <div class="input-group">
+            <label>Xác nhận mật khẩu</label>
+            <input
+              type="password"
+              [(ngModel)]="registerData.confirmPassword"
+              name="confirmPassword"
+              placeholder="Nhập lại mật khẩu"
+              required
+            />
+            <i class="fas fa-lock"></i>
+          </div>
+
+          <button type="submit">ĐĂNG KÝ</button>
+
+          <p class="signup">
+            Đã có tài khoản? <a href="#" (click)="switchToSignIn($event)">Đăng nhập ngay</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div>
+    <app-footer></app-footer>
+  </div>
+</div>

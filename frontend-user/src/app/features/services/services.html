@@ -1,0 +1,105 @@
+<div class="main">
+  <div class="page-background"></div>
+  <!-- Hero Section with Slider -->
+  <section class="hero-banner">
+    <div class="hero-image-wrapper">
+      <div class="slider-container">
+        <div
+          class="slider-track"
+          [style.transform]="'translateX(-' + currentSlideIndex * 100 + '%)'"
+        >
+          <img
+            *ngFor="let image of heroImages"
+            [src]="image"
+            alt="Cổ phục Việt Nam"
+            class="hero-image"
+          />
+        </div>
+
+        <!-- Navigation Buttons -->
+        <button class="slider-btn slider-btn-prev" (click)="prevSlide()">
+          <span>‹</span>
+        </button>
+        <button class="slider-btn slider-btn-next" (click)="nextSlide()">
+          <span>›</span>
+        </button>
+
+        <!-- Dots Indicator -->
+        <div class="slider-dots">
+          <span
+            *ngFor="let image of heroImages; let i = index"
+            class="dot"
+            [class.active]="i === currentSlideIndex"
+            (click)="goToSlide(i)"
+          >
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Decorative Divider -->
+  <section class="divider-section">
+    <div class="container">
+      <div class="decorative-divider">
+        <span class="divider-icon">服</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Grid - 4 Cards -->
+  <section class="services-section">
+    <div class="container">
+      <div class="services-grid">
+        <div class="service-card" *ngFor="let service of services; let i = index">
+          <div class="service-icon-wrapper">
+            <span class="service-number">{{ i + 1 }}</span>
+          </div>
+          <h3 class="service-title">{{ service.title }}</h3>
+          <p class="service-description">{{ service.description }}</p>
+          <button class="btn btn-service">XEM THÊM</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Welcome Section -->
+  <section class="welcome-section">
+    <div class="container">
+      <div class="welcome-content">
+        <div class="welcome-image">
+          <img src="/assets/images/brand/logo-main.png" alt="Về PHỤC" />
+        </div>
+        <div class="welcome-text">
+          <h2 class="welcome-title">Phục</h2>
+          <p class="welcome-subtitle">TRADITIONAL ATTIRE SERVICES</p>
+          <p class="welcome-description">
+            PHỤC là thương hiệu cổ phục định hướng khởi nghiệp sáng tạo, cung cấp các dịch vụ liên
+            quan đến thiết kế – may đo – cho thuê – truyền thông cổ phục Việt Nam.
+            <br /><br />
+            Chúng tôi không chỉ phục dựng trang phục, mà còn tái hiện tinh thần văn hóa thông qua
+            hình thức thẩm mỹ phù hợp với đời sống đương đại.
+          </p>
+        </div>
+        <div class="latest-news">
+          <h3 class="news-title">SERVICE CONTACT</h3>
+          <div class="news-item">
+            <p class="news-date">RENT</p>
+            <p class="news-text">
+              Dịch vụ cho thuê cổ phục:<br />
+              Inbox Fanpage PHỤC hoặc liên hệ Zalo: 09xx xxx xxx
+            </p>
+          </div>
+          <div class="news-item">
+            <p class="news-date">TAILOR</p>
+            <p class="news-text">
+              May đo & thiết kế riêng:<br />
+              Email: studio@phuc.vn<br />
+              Thời gian xử lý: 14–30 ngày
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
