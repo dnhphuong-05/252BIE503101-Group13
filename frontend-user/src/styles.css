@@ -1,0 +1,167 @@
+/* Global Styles - Áo Dài Ngũ Thân Website */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Teko:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans:wght@400;500;600;700;800;900&family=Dancing+Script:wght@400;500;600;700&family=Pacifico&family=Great+Vibes&family=Roboto+Condensed:wght@300;400;700&family=Oswald:wght@400;500;600;700&display=swap');
+
+:root {
+  --champagne-beige: #f2e5c6;
+  --sand-gold: #f2d9a0;
+  --burgundy: #75162d;
+  --dark-maroon: #560b18;
+  --deep-wine: #3b010b;
+  --white: #ffffff;
+  --text-dark: #2c2c2c;
+  --text-light: #666666;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  color: var(--text-dark);
+  line-height: 1.6;
+  overflow-x: hidden;
+  background-color: var(--champagne-beige);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+  font-weight: 400;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* Font thư pháp cho các phần đặc biệt */
+.calligraphy,
+.hero-subtitle,
+.section-subtitle {
+  font-family: 'Dancing Script', 'Pacifico', cursive;
+  font-weight: 600;
+  font-style: italic;
+  text-transform: none;
+}
+
+/* Font serif Việt hóa cho nội dung dài */
+.content-text,
+p {
+  font-family: 'Noto Serif', 'Georgia', serif;
+  line-height: 1.8;
+}
+
+h1 {
+  font-size: 3rem;
+}
+
+h2 {
+  font-size: 2.5rem;
+}
+
+h3 {
+  font-size: 2rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.btn {
+  padding: 12px 30px;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-transform: uppercase;
+}
+
+.btn-primary {
+  background-color: var(--burgundy);
+  color: var(--white);
+  border: 2px solid var(--burgundy);
+}
+
+.btn-primary:hover {
+  background-color: var(--dark-maroon);
+  color: var(--white);
+  border-color: var(--dark-maroon);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(117, 22, 45, 0.3);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--white);
+  border: 2px solid var(--white);
+}
+
+.btn-secondary:hover {
+  background-color: var(--white);
+  color: var(--burgundy);
+}
+
+.section {
+  padding: 80px 0;
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.section-title h2 {
+  color: var(--burgundy);
+  text-transform: uppercase;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.section-title p {
+  color: var(--text-light);
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  h2 {
+    font-size: 1.8rem;
+  }
+
+  .section {
+    padding: 50px 0;
+  }
+}

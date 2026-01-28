@@ -1,0 +1,108 @@
+<header class="header">
+  <!-- Top Navigation Bar -->
+  <div class="top-bar">
+    <div class="container">
+      <nav class="top-nav">
+        <ul class="nav-menu-top">
+          <li>
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+              >TRANG CHỦ</a
+            >
+          </li>
+          <li><a routerLink="/products" routerLinkActive="active">SẢN PHẨM</a></li>
+          <li><a routerLink="/about" routerLinkActive="active">GIỚI THIỆU</a></li>
+          <li><a routerLink="/services" routerLinkActive="active">DỊCH VỤ</a></li>
+          <li><a routerLink="/blog" routerLinkActive="active">BLOG</a></li>
+          <li><a routerLink="/contact" routerLinkActive="active">LIÊN HỆ</a></li>
+        </ul>
+
+        <div class="social-icons">
+          <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          <a href="#" aria-label="Pinterest"><i class="fab fa-pinterest-p"></i></a>
+        </div>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Main Header with Logo -->
+  <div class="main-header">
+    <div class="container">
+      <div class="header-content">
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <input type="text" placeholder="Tìm kiếm..." [(ngModel)]="searchQuery" />
+          <button class="search-btn" aria-label="Tìm kiếm">
+            <i class="fas fa-search"></i>
+          </button>
+        </div>
+
+        <!-- Centered Logo -->
+        <div class="logo-center">
+          <a routerLink="/">
+            <div class="logo-row">
+              <img src="/assets/images/brand/logo-main.png" alt="Áo Dài Ngũ Thân" />
+              <img src="/assets/images/brand/logo-sub.png" alt="Phục" />
+            </div>
+          </a>
+        </div>
+
+        <!-- Auth Buttons -->
+        <div class="auth-buttons">
+          <button class="btn-cart" aria-label="Giỏ hàng">
+            <i class="fas fa-shopping-bag"></i>
+            <span class="cart-count">0</span>
+          </button>
+          <button class="btn btn-login" routerLink="/login">ĐĂNG NHẬP</button>
+          <button class="btn btn-signup" routerLink="/register">ĐĂNG KÝ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Menu Toggle -->
+  <button class="mobile-toggle" (click)="toggleMenu()" [class.active]="menuOpen">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" [class.active]="menuOpen">
+    <div class="mobile-search">
+      <input type="text" placeholder="Tìm kiếm..." [(ngModel)]="searchQuery" />
+      <button class="search-btn">
+        <i class="fas fa-search"></i>
+      </button>
+    </div>
+
+    <ul>
+      <li>
+        <a
+          routerLink="/"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          (click)="toggleMenu()"
+          >TRANG CHỦ</a
+        >
+      </li>
+      <li>
+        <a routerLink="/products" routerLinkActive="active" (click)="toggleMenu()">SẢN PHẨM</a>
+      </li>
+      <li>
+        <a routerLink="/about" routerLinkActive="active" (click)="toggleMenu()">GIỚI THIỆU</a>
+      </li>
+      <li>
+        <a routerLink="/services" routerLinkActive="active" (click)="toggleMenu()">DỊCH VỤ</a>
+      </li>
+      <li><a routerLink="/blog" routerLinkActive="active" (click)="toggleMenu()">BLOG</a></li>
+      <li><a routerLink="/contact" routerLinkActive="active" (click)="toggleMenu()">LIÊN HỆ</a></li>
+    </ul>
+
+    <div class="mobile-auth">
+      <button class="btn btn-outline" routerLink="/login" (click)="toggleMenu()">ĐĂNG NHẬP</button>
+      <button class="btn btn-primary" routerLink="/register" (click)="toggleMenu()">ĐĂNG KÝ</button>
+    </div>
+  </div>
+</header>

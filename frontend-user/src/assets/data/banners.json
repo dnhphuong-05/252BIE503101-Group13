@@ -1,0 +1,32 @@
+[
+  {
+    "id": "banner001",
+    "title": "Bộ Sưu Tập Cung Đình Mới",
+    "subtitle": "Áo Nhật Bình & Áo Tấc Cao Cấp",
+    "description": "Khám phá vẻ đẹp hoàng gia với bộ sưu tập áo cổ phục cung đình triều Nguyễn",
+    "image": "assets/images/pos1.jpg",
+    "link": "/products?category=nhat-binh",
+    "buttonText": "Xem ngay",
+    "active": true
+  },
+  {
+    "id": "banner002",
+    "title": "Ưu Đãi 20% Toàn Bộ Áo Tứ Thân",
+    "subtitle": "Chỉ trong tháng 1/2026",
+    "description": "Mua ngay áo tứ thân truyền thống với giá ưu đãi đặc biệt",
+    "image": "assets/images/pos2.jpg",
+    "link": "/products?category=tu-than",
+    "buttonText": "Mua ngay",
+    "active": true
+  },
+  {
+    "id": "banner003",
+    "title": "Dịch Vụ May Đo Cao Cấp",
+    "subtitle": "Vừa vặn hoàn hảo cho từng dáng người",
+    "description": "Đội ngũ thợ may lành nghề với hơn 20 năm kinh nghiệm",
+    "image": "assets/images/pos3.jpg",
+    "link": "/services",
+    "buttonText": "Tìm hiểu thêm",
+    "active": true
+  }
+]
