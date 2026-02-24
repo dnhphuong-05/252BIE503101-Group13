@@ -8,8 +8,8 @@
       <div class="auth-left">
         <div class="overlay-content">
           <div class="logo">
-            <img src="/assets/images/brand/logo-main.png" />
-            <img src="/assets/images/brand/logo-sub.png" />
+            <img src="/assets/images/brand/logo-main.png" width="150" height="50" />
+            <img src="/assets/images/brand/logo-sub.png" width="75" height="50" />
           </div>
 
           <div class="welcome">
@@ -34,37 +34,80 @@
       <div class="auth-right">
         <h2>ĐĂNG NHẬP</h2>
 
-        <div class="input-group">
-          <label>Email</label>
-          <input
-            type="email"
-            [(ngModel)]="loginData.email"
-            name="email"
-            placeholder="Nhập email của bạn"
-          />
-          <i class="far fa-envelope"></i>
+        <form [formGroup]="loginForm" (ngSubmit)="onSignIn()">
+          <div class="input-group">
+            <label>Số điện thoại</label>
+            <input
+              type="tel"
+              formControlName="phone"
+              [class.error]="(f['phone'].touched || f['phone'].dirty) && f['phone'].errors"
+              placeholder="Nhập số điện thoại của bạn"
+              (keypress)="onlyNumbers($event)"
+              maxlength="10"
+            />
+            <i class="fas fa-phone"></i>
+            <div
+              class="error-message"
+              *ngIf="(f['phone'].touched || f['phone'].dirty) && f['phone'].errors"
+            >
+              <span *ngIf="f['phone'].errors['required']">Số điện thoại là bắt buộc</span>
+              <span *ngIf="f['phone'].errors['pattern']">
+                Số điện thoại không hợp lệ (10 số, bắt đầu 03/05/07/08/09)
+              </span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Mật khẩu</label>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              [class.error]="(f['password'].touched || f['password'].dirty) && f['password'].errors"
+              placeholder="Nhập mật khẩu"
+            />
+            <i
+              [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
+              (click)="togglePasswordVisibility()"
+              style="cursor: pointer"
+            ></i>
+            <div
+              class="error-message"
+              *ngIf="(f['password'].touched || f['password'].dirty) && f['password'].errors"
+            >
+              <span *ngIf="f['password'].errors['required']">Mật khẩu là bắt buộc</span>
+              <span *ngIf="f['password'].errors['minlength']"
+                >Mật khẩu phải có ít nhất 6 ký tự</span
+              >
+            </div>
+          </div>
+
+          <div class="options">
+            <label>
+              <input type="checkbox" formControlName="rememberMe" /> Ghi nhớ đăng nhập
+            </label>
+            <a href="#">Quên mật khẩu?</a>
+          </div>
+
+          <div class="error-message general-error" *ngIf="loginError">
+            {{ loginError }}
+          </div>
+
+          <button type="submit" [disabled]="isLoading">
+            <span *ngIf="!isLoading">ĐĂNG NHẬP</span>
+            <span *ngIf="isLoading">ĐANG ĐĂNG NHẬP...</span>
+          </button>
+        </form>
+
+        <div class="divider">
+          <span>HOẶC</span>
         </div>
 
-        <div class="input-group">
-          <label>Mật khẩu</label>
-          <input
-            type="password"
-            [(ngModel)]="loginData.password"
-            name="password"
-            placeholder="Nhập mật khẩu"
-          />
-          <i class="fas fa-lock"></i>
-        </div>
-
-        <div class="options">
-          <label
-            ><input type="checkbox" [(ngModel)]="loginData.rememberMe" name="rememberMe" /> Ghi nhớ
-            đăng nhập</label
-          >
-          <a href="#">Quên mật khẩu?</a>
-        </div>
-
-        <button (click)="onSignIn()">ĐĂNG NHẬP</button>
+        <!-- Google Sign-In button (official render) -->
+        <div
+          id="google-button-container"
+          class="google-button-container"
+          [class.disabled]="isLoading || !googleEnabled"
+        ></div>
 
         <p class="signup">
           Chưa có tài khoản? <a href="#" (click)="switchToSignUp($event)">Đăng ký ngay</a>

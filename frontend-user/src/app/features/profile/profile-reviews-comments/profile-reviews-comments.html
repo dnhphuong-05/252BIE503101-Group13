@@ -1,0 +1,379 @@
+﻿<div class="reviews-comments-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="fas fa-star-half-alt"></i>
+        Đánh giá &amp; Bình luận
+      </h1>
+      <p class="page-subtitle">
+        Theo dõi lịch sử đánh giá sản phẩm và bình luận bài viết để giữ trải nghiệm nhất quán.
+      </p>
+    </div>
+  </div>
+
+  <div class="insight-grid">
+    <div class="insight-card rating-card">
+      <div class="insight-header">
+        <span class="insight-label">Điểm đánh giá trung bình</span>
+        <div class="insight-value">
+          <span class="value">{{ reviewStats.average.toFixed(1) }}</span>
+          <span class="unit">/5</span>
+        </div>
+        <div class="rating-stars">
+          @for (star of stars; track star) {
+            <i class="fa-star" [class.fas]="star <= averageRounded" [class.far]="star > averageRounded"></i>
+          }
+        </div>
+      </div>
+      <div class="insight-footer">
+        <span><i class="fas fa-clipboard-check"></i>{{ reviewStats.total }} đánh giá</span>
+        <span><i class="fas fa-camera"></i>{{ reviewStats.photos }} ảnh minh họa</span>
+      </div>
+    </div>
+
+    <div class="insight-card comment-card">
+      <div class="insight-header">
+        <span class="insight-label">Hoạt động bình luận</span>
+        <div class="insight-value">
+          <span class="value">{{ commentStats.total }}</span>
+          <span class="unit">lượt</span>
+        </div>
+        <p class="insight-note">Tương tác cộng đồng tăng đều theo tuần.</p>
+      </div>
+      <div class="insight-footer">
+        <span><i class="fas fa-heart"></i>{{ commentStats.likes }} lượt thích</span>
+        <span><i class="fas fa-reply"></i>{{ commentStats.replies }} phản hồi</span>
+      </div>
+    </div>
+
+    <div class="insight-card highlight-card">
+      <div class="highlight-tag">
+        <i class="fas fa-award"></i>
+        Nổi bật
+      </div>
+      <h3 class="highlight-title">{{ highlight.title }}</h3>
+      <p class="highlight-text">{{ highlight.text }}</p>
+      <div class="highlight-meta">
+        <span>{{ highlight.author }}</span>
+        <span class="dot">•</span>
+        <span>{{ highlight.date }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-panel">
+    <div class="tab-list">
+      <button
+        class="tab-button"
+        type="button"
+        [class.active]="activeTab === 'reviews'"
+        (click)="setTab('reviews')"
+      >
+        <i class="fas fa-star"></i>
+        Đánh giá sản phẩm
+        <span class="count">{{ reviews.length }}</span>
+      </button>
+      <button
+        class="tab-button"
+        type="button"
+        [class.active]="activeTab === 'comments'"
+        (click)="setTab('comments')"
+      >
+        <i class="fas fa-comments"></i>
+        Bình luận bài viết
+        <span class="count">{{ comments.length }}</span>
+      </button>
+    </div>
+
+    <div class="filter-panel">
+      <div class="filter-main">
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input
+            type="text"
+            [value]="searchTerm"
+            (input)="onSearchChange($event)"
+            [placeholder]="
+              activeTab === 'reviews'
+                ? 'Tìm theo sản phẩm hoặc nội dung...'
+                : 'Tìm theo tiêu đề hoặc nội dung bình luận...'
+            "
+          />
+        </div>
+
+        @if (activeTab === 'reviews') {
+          <div class="filter-section">
+            <span class="filter-label">Đánh giá</span>
+            <div class="filter-chips">
+              @for (filter of ratingFilters; track filter.value) {
+                <button
+                  type="button"
+                  class="filter-chip"
+                  [class.active]="ratingFilter === filter.value"
+                  (click)="setRatingFilter(filter.value)"
+                >
+                  {{ filter.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'comments') {
+          <div class="filter-section">
+            <span class="filter-label">Trạng thái</span>
+            <div class="filter-chips">
+              @for (filter of commentStatusOptions; track filter.value) {
+                <button
+                  type="button"
+                  class="filter-chip"
+                  [class.active]="commentStatusFilter === filter.value"
+                  (click)="setCommentStatusFilter(filter.value)"
+                >
+                  {{ filter.label }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="filter-section">
+            <span class="filter-label">Phản hồi</span>
+            <div class="filter-chips">
+              @for (filter of commentReplyOptions; track filter.value) {
+                <button
+                  type="button"
+                  class="filter-chip"
+                  [class.active]="commentReplyFilter === filter.value"
+                  (click)="setCommentReplyFilter(filter.value)"
+                >
+                  {{ filter.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="sort-box">
+          <label>Sắp xếp</label>
+          <select (change)="onSortChange($event)">
+            <option value="recent">Mới nhất</option>
+            <option value="helpful">Hữu ích nhất</option>
+            @if (activeTab === 'reviews') {
+              <option value="rating">Điểm cao nhất</option>
+            }
+          </select>
+        </div>
+      </div>
+    </div>
+
+    @if (activeTab === 'reviews' && isLoadingReviews) {
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải đánh giá...</p>
+      </div>
+    }
+
+    @if (activeTab === 'reviews' && !isLoadingReviews && loadErrorReviews) {
+      <div class="error-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ loadErrorReviews }}</p>
+      </div>
+    }
+
+    @if (activeTab === 'comments' && isLoadingComments) {
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải bình luận...</p>
+      </div>
+    }
+
+    @if (activeTab === 'comments' && !isLoadingComments && loadErrorComments) {
+      <div class="error-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ loadErrorComments }}</p>
+      </div>
+    }
+
+    @if (activeTab === 'reviews') {
+      <div class="items-grid">
+        @for (review of filteredReviews; track review.id) {
+          <article class="item-card">
+            <div class="item-head">
+              <img class="item-thumb" [src]="review.productImage" [alt]="review.productName" />
+              <div class="item-info">
+                <h3>{{ review.productName }}</h3>
+                <div class="meta-line">
+                  <span class="meta-badge">Mã đánh giá {{ review.id }}</span>
+                </div>
+              </div>
+              <span class="status-chip" [class.pending]="review.status === 'pending'">
+                {{ getReviewStatusLabel(review.status) }}
+              </span>
+            </div>
+
+            <div class="rating-row">
+              <div class="rating-stars">
+                @for (star of stars; track star) {
+                  <i class="fa-star" [class.fas]="star <= review.rating" [class.far]="star > review.rating"></i>
+                }
+              </div>
+              <span class="rating-score">{{ review.rating }}/5</span>
+              <span class="rating-time">{{ formatDate(review.date) }}</span>
+            </div>
+
+            <p class="item-text">{{ review.comment }}</p>
+
+            @if (review.photos.length > 0) {
+              <div class="photo-row">
+                @for (photo of review.photos; track photo) {
+                  <div class="photo">
+                    <img [src]="photo" alt="Ảnh đánh giá" />
+                  </div>
+                }
+              </div>
+            }
+
+            @if (getReviewReply(review)) {
+              <div class="review-reply">
+                <div class="reply-header">
+                  <span class="reply-label">Phản hồi từ {{ getReviewReply(review)?.responder || 'Shop' }}</span>
+                  @if (getReviewReply(review)?.respondedAt) {
+                    <span class="reply-time">{{ formatDate(getReviewReply(review)?.respondedAt || '') }}</span>
+                  }
+                </div>
+                <div class="reply-content">{{ getReviewReply(review)?.content }}</div>
+              </div>
+            }
+
+            <div class="item-footer">
+              <div class="meta-actions">
+                <span class="meta-pill">
+                  <i class="fas fa-thumbs-up"></i>
+                  {{ review.helpful }} hữu ích
+                </span>
+                <span class="meta-pill">
+                  <i class="fas fa-camera"></i>
+                  {{ review.photos.length }} ảnh
+                </span>
+              </div>
+              <div class="action-buttons">
+                <a class="btn btn-small btn-primary" [routerLink]="['/products', review.productId]">
+                  Xem sản phẩm
+                </a>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    @if (activeTab === 'comments') {
+      <div class="items-grid">
+        @for (comment of filteredComments; track comment.id) {
+          <article class="item-card comment-item">
+            <div class="item-head">
+              <img class="item-thumb" [src]="comment.postImage" [alt]="comment.postTitle" />
+              <div class="item-info">
+                <h3>{{ comment.postTitle }}</h3>
+                <div class="meta-line">
+                  <span class="meta-badge">Blog · {{ comment.blogSlug || 'Bài viết' }}</span>
+                  <span>{{ formatDate(comment.date) }}</span>
+                </div>
+              </div>
+              <div class="status-stack">
+                <span
+                  class="status-chip"
+                  [class.pending]="comment.status === 'pending'"
+                  [class.spam]="comment.status === 'spam'"
+                >
+                  {{ getCommentStatusLabel(comment.status) }}
+                </span>
+                @if (!comment.hasAdminReply) {
+                  <span class="status-chip awaiting">Chưa phản hồi</span>
+                }
+              </div>
+            </div>
+
+            <div class="thread-item">
+              <div class="thread-avatar">
+                <i class="fas fa-user-circle"></i>
+              </div>
+              <div class="thread-body">
+                <div class="thread-header">
+                  <span class="thread-author">{{ comment.userName }}</span>
+                  <span class="dot">•</span>
+                  <span class="thread-time">{{ formatDate(comment.date) }}</span>
+                </div>
+                <p class="item-text">{{ comment.comment }}</p>
+              </div>
+            </div>
+
+            @if (comment.replies && comment.replies.length > 0) {
+              <div class="thread-replies">
+                @for (reply of comment.replies; track reply.comments_id || reply.id || reply._id) {
+                  <div
+                    class="thread-item reply"
+                    [class.admin]="reply.is_author_reply"
+                    [style.marginLeft.px]="reply.depth * 12"
+                  >
+                    <div class="thread-avatar">
+                      <i
+                        class="fas"
+                        [class.fa-user-shield]="reply.is_author_reply"
+                        [class.fa-user-circle]="!reply.is_author_reply"
+                      ></i>
+                    </div>
+                    <div class="thread-body">
+                      <div class="thread-header">
+                        <span class="thread-author">{{ reply.user_name }}</span>
+                        @if (reply.is_author_reply) {
+                          <span class="admin-badge">Admin</span>
+                        }
+                        <span class="dot">•</span>
+                        <span class="thread-time">{{ formatDate(reply.created_at) }}</span>
+                      </div>
+                      <p class="item-text">{{ reply.comment }}</p>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="item-footer">
+              <div class="meta-actions">
+                <span class="meta-pill">
+                  <i class="fas fa-heart"></i>
+                  {{ comment.likes }} lượt thích
+                </span>
+                <span class="meta-pill">
+                  <i class="fas fa-reply"></i>
+                  {{ comment.replies.length }} phản hồi
+                </span>
+              </div>
+              <div class="action-buttons">
+                <a class="btn btn-small btn-primary" [routerLink]="['/blog', comment.blogSlug]">
+                  Mở bài viết
+                </a>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    @if (activeTab === 'reviews' && !isLoadingReviews && !loadErrorReviews && filteredReviews.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="far fa-star"></i></div>
+        <h3>Chưa có đánh giá nào</h3>
+        <p>Hãy bắt đầu đánh giá sản phẩm để chia sẻ trải nghiệm của bạn.</p>
+      </div>
+    }
+
+    @if (activeTab === 'comments' && !isLoadingComments && !loadErrorComments && filteredComments.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon"><i class="far fa-comment-dots"></i></div>
+        <h3>Chưa có bình luận nào</h3>
+        <p>Tham gia thảo luận ở các bài viết để tăng kết nối cộng đồng.</p>
+      </div>
+    }
+  </div>
+</div>

@@ -1,186 +1,129 @@
-<!-- Blog Page -->
+﻿<!-- Blog Page -->
 <div class="blog-page">
-  <!-- Hero Section -->
   <section class="blog-hero">
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <h1 class="hero-title">TIN TỨC & BÀI VIẾT</h1>
-      <p class="hero-subtitle">Khám phá thế giới trang phục cổ truyền Việt Nam</p>
-      <div class="hero-breadcrumb">
-        <a routerLink="/">Trang chủ</a>
-        <span>/</span>
-        <span>Blog</span>
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="hero-greeting">Tạp chí cổ phục</p>
+        <h1 class="hero-name">Phong Hoa Cổ Phục</h1>
+        <p class="hero-desc">
+          {{
+            featuredBlog?.excerpt ||
+              'Khám phá câu chuyện, nghiên cứu và cảm hứng về trang phục truyền thống Việt Nam. Mỗi bài viết là một lát cắt văn hóa, từ phục dựng đến đời sống đương đại.'
+          }}
+        </p>
       </div>
     </div>
   </section>
 
-  <!-- Featured Blog -->
-  <section class="featured-section" *ngIf="featuredBlog">
+  <section class="trending-section" *ngIf="trendingTopics.length > 0">
     <div class="container">
-      <div class="featured-badge">
-        <i class="fas fa-star"></i>
-        BÀI VIẾT NỔI BẬT
+      <div class="trending-row">
+        <div class="trending-title">
+          <i class="fas fa-bolt"></i>
+          Chủ đề thịnh hành
+        </div>
+        <button class="explore-btn" type="button" (click)="resetFilters()">Khám phá tất cả</button>
       </div>
-      <div class="featured-blog">
-        <div class="featured-image">
-          <img [src]="featuredBlog.thumbnail" [alt]="featuredBlog.title" />
-          <div class="featured-category">{{ featuredBlog.category }}</div>
-        </div>
-        <div class="featured-content">
-          <div class="featured-meta">
-            <div class="author-info">
-              <img
-                [src]="featuredBlog.authorAvatar"
-                [alt]="featuredBlog.author"
-                class="author-avatar"
-              />
-              <span class="author-name">{{ featuredBlog.author }}</span>
-            </div>
-            <div class="blog-stats">
-              <span class="stat-item">
-                <i class="far fa-calendar"></i>
-                {{ formatDate(featuredBlog.date) }}
-              </span>
-              <span class="stat-item">
-                <i class="far fa-eye"></i>
-                {{ featuredBlog.views }} lượt xem
-              </span>
-              <span class="stat-item">
-                <i class="far fa-heart"></i>
-                {{ featuredBlog.likes }} lượt thích
-              </span>
-            </div>
-          </div>
-          <h2 class="featured-title">{{ featuredBlog.title }}</h2>
-          <p class="featured-excerpt">{{ featuredBlog.excerpt }}</p>
-          <div class="featured-tags">
-            <span class="tag" *ngFor="let tag of featuredBlog.tags"> #{{ tag }} </span>
-          </div>
-          <button class="btn-read-more">
-            Đọc thêm
-            <i class="fas fa-arrow-right"></i>
-          </button>
-        </div>
+      <div class="trending-pill">
+        <button
+          class="topic-chip"
+          *ngFor="let topic of trendingTopics"
+          (click)="onTopicClick(topic)"
+        >
+          <span class="topic-avatar">{{ getInitial(topic.label) }}</span>
+          <span>{{ topic.label }}</span>
+        </button>
       </div>
     </div>
   </section>
 
-  <!-- Filter and Search Section -->
-  <section class="filter-section">
+  <section class="trending-search">
     <div class="container">
-      <div class="filter-container">
-        <!-- Search Box -->
-        <div class="search-box">
-          <i class="fas fa-search"></i>
-          <input
-            type="text"
-            placeholder="Tìm kiếm bài viết..."
-            (input)="onSearch($event)"
-            [value]="searchTerm"
-          />
-        </div>
-
-        <!-- Category Filter -->
-        <div class="category-filter">
-          <button
-            *ngFor="let cat of categories"
-            class="category-btn"
-            [class.active]="selectedCategory === cat.value"
-            (click)="filterByCategory(cat.value)"
-          >
-            {{ cat.name }}
-          </button>
-        </div>
+      <div class="trending-search-header">
+        <h4 class="section-title">Bài viết nổi bật</h4>
       </div>
-    </div>
-  </section>
-
-  <!-- Blog Grid -->
-  <section class="blog-grid-section">
-    <div class="container">
-      <div class="section-header">
-        <h2 class="section-title">TẤT CẢ BÀI VIẾT</h2>
-        <p class="section-subtitle">{{ filteredBlogs.length }} bài viết</p>
-      </div>
-
-      <!-- Blog Cards Grid -->
-      <div class="blog-grid" *ngIf="filteredBlogs.length > 0">
-        <div class="blog-card" *ngFor="let blog of filteredBlogs">
-          <div class="blog-card-image">
-            <img [src]="blog.thumbnail" [alt]="blog.title" />
-            <div class="blog-card-category">{{ blog.category }}</div>
-            <div class="blog-card-overlay">
-              <button class="btn-view-blog">
-                <i class="fas fa-eye"></i>
-                Xem chi tiết
-              </button>
-            </div>
-          </div>
-          <div class="blog-card-content">
-            <div class="blog-card-meta">
-              <div class="author-small">
-                <img [src]="blog.authorAvatar" [alt]="blog.author" />
-                <span>{{ blog.author }}</span>
-              </div>
-              <span class="blog-card-date">
-                <i class="far fa-calendar"></i>
-                {{ formatDate(blog.date) }}
-              </span>
-            </div>
-            <h3 class="blog-card-title">{{ blog.title }}</h3>
-            <p class="blog-card-excerpt">{{ blog.excerpt }}</p>
-            <div class="blog-card-tags">
-              <span class="tag-small" *ngFor="let tag of blog.tags.slice(0, 3)"> #{{ tag }} </span>
-            </div>
-            <div class="blog-card-footer">
-              <div class="blog-card-stats">
-                <span class="stat">
-                  <i class="far fa-eye"></i>
-                  {{ blog.views }}
-                </span>
-                <span class="stat">
-                  <i class="far fa-heart"></i>
-                  {{ blog.likes }}
-                </span>
-              </div>
-              <button class="btn-read-article">
-                Đọc bài
-                <i class="fas fa-arrow-right"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- No Results -->
-      <div class="no-results" *ngIf="filteredBlogs.length === 0">
+      <div class="search-bar">
         <i class="fas fa-search"></i>
-        <h3>Không tìm thấy bài viết</h3>
-        <p>Vui lòng thử tìm kiếm với từ khóa khác hoặc chọn danh mục khác.</p>
-        <button class="btn-reset" (click)="filterByCategory('all')">Xem tất cả bài viết</button>
+        <input
+          type="text"
+          placeholder="Tìm kiếm bài viết..."
+          (input)="onSearch($event)"
+          [value]="searchTerm"
+        />
       </div>
     </div>
   </section>
 
-  <!-- Newsletter Section -->
-  <section class="newsletter-section">
-    <div class="container">
-      <div class="newsletter-content">
-        <div class="newsletter-icon">
-          <i class="fas fa-envelope"></i>
+  <section class="blog-body">
+    <div class="container body-grid">
+      <aside class="sidebar">
+        <div class="sidebar-card about-card">
+          <img class="about-avatar" [src]="getAuthorAvatar(featuredBlog)" alt="Author" />
+          <h3>{{ getAuthorName(featuredBlog) }}</h3>
+          <span class="about-role">Founder & Editor</span>
+          <p>Yêu cổ phục Việt Nam, chia sẻ kiến thức và câu chuyện truyền cảm hứng.</p>
+          <div class="about-social">
+            <a href="#"><i class="fab fa-twitter"></i></a>
+            <a href="#"><i class="fab fa-facebook-f"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+          </div>
         </div>
-        <div class="newsletter-text">
-          <h3>Đăng ký nhận tin</h3>
-          <p>Nhận thông báo về các bài viết mới nhất và ưu đãi đặc biệt</p>
+
+        <div class="sidebar-card tag-card" *ngIf="tagCloud.length > 0">
+          <h4>Tag Cloud</h4>
+          <div class="tag-cloud">
+            <button class="tag-chip" *ngFor="let tag of tagCloud" (click)="onTagClick(tag)">
+              #{{ tag }}
+            </button>
+          </div>
         </div>
-        <div class="newsletter-form">
-          <input type="email" placeholder="Nhập email của bạn..." />
-          <button class="btn-subscribe">
-            Đăng ký
-            <i class="fas fa-paper-plane"></i>
-          </button>
+
+        <div class="sidebar-card recent-card" *ngIf="recentBlogs.length > 0">
+          <h4>Bài viết gần đây</h4>
+          <div class="mini-post" *ngFor="let blog of recentBlogs">
+            <img [src]="blog.thumbnail || 'assets/images/pos1.jpg'" [alt]="blog.title" />
+            <div>
+              <a [routerLink]="['/blog', blog.slug]">{{ blog.title }}</a>
+              <span>{{ formatDate(blog.published_at || blog.created_at) }}</span>
+            </div>
+          </div>
         </div>
-      </div>
+      </aside>
+
+      <main class="feed">
+        <article class="feed-card" *ngFor="let blog of filteredBlogs">
+          <div class="card-media">
+            <img [src]="blog.thumbnail || 'assets/images/pos1.jpg'" [alt]="blog.title" />
+            <span class="card-category">{{ getCategoryName(blog.category_id) }}</span>
+          </div>
+          <div class="card-content">
+            <div class="card-meta">
+              <span
+                ><i class="far fa-calendar"></i
+                >{{ formatDate(blog.published_at || blog.created_at) }}</span
+              >
+              <span><i class="far fa-clock"></i>{{ getReadingTime(blog) }} phút đọc</span>
+              <span><i class="far fa-eye"></i>{{ blog.views }}</span>
+            </div>
+            <h3>{{ blog.title }}</h3>
+            <p>{{ blog.excerpt }}</p>
+            <div class="card-tags" *ngIf="blog.tags.length">
+              <span *ngFor="let tag of blog.tags | slice: 0 : 2">#{{ tag }}</span>
+            </div>
+            <div class="card-footer">
+              <div class="card-author">
+                <img [src]="getAuthorAvatar(blog)" [alt]="getAuthorName(blog)" />
+                <span>{{ getAuthorName(blog) }}</span>
+              </div>
+              <a class="read-link" [routerLink]="['/blog', blog.slug]">Đọc tiếp</a>
+            </div>
+          </div>
+        </article>
+
+        <div class="no-results" *ngIf="filteredBlogs.length === 0">
+          Không tìm thấy bài viết phù hợp.
+        </div>
+      </main>
     </div>
   </section>
 </div>

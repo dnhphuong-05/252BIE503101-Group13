@@ -1,0 +1,320 @@
+<div class="checkout-page">
+  <section class="checkout-hero">
+    <div class="container">
+      <div class="breadcrumb">
+        <a routerLink="/">Trang chủ</a>
+        <span class="sep">/</span>
+        <a routerLink="/cart">Giỏ hàng</a>
+        <span class="sep">/</span>
+        <span>Thanh toán</span>
+      </div>
+      <h1 class="hero-title">Thanh toán</h1>
+      <p class="hero-subtitle">
+        @if (isBuyNow) { Mua ngay } @else { Giỏ hàng }
+      </p>
+    </div>
+  </section>
+
+  <div class="container checkout-body">
+    @if (items.length === 0) {
+      <div class="state state-empty">
+        <i class="fas fa-receipt"></i>
+        <h3>Chưa có sản phẩm để thanh toán</h3>
+        <p>Quay lại giỏ hàng hoặc tiếp tục mua sắm.</p>
+        <div class="state-actions">
+          <button class="btn-outline" (click)="goToCart()">Về giỏ hàng</button>
+          <a routerLink="/products" class="btn-primary">Tiếp tục mua sắm</a>
+        </div>
+      </div>
+    } @else {
+      <div class="checkout-layout">
+        <div class="checkout-main">
+          <section class="checkout-block address-block">
+            <div class="block-header">
+              <h3>Địa chỉ nhận hàng</h3>
+              @if (isLoggedIn) {
+                <div class="block-actions">
+                  <button class="text-btn" type="button" (click)="openAddressModal()">
+                    Thay đổi
+                  </button>
+                  <button class="text-btn primary" type="button" (click)="openAddressForm()">
+                    Thêm địa chỉ
+                  </button>
+                </div>
+              }
+            </div>
+
+            @if (isLoggedIn) {
+              @if (selectedAddress) {
+                <div class="address-card">
+                  <div class="address-info">
+                    <div class="address-name">
+                      {{ selectedAddress.receiver_name || selectedAddress.recipientName }}
+                      <span class="dot">•</span>
+                      {{ selectedAddress.phone }}
+                    </div>
+                    <div class="address-detail">{{ formatAddress(selectedAddress) }}</div>
+                    @if (selectedAddress.is_default || selectedAddress.isDefault) {
+                      <span class="tag-default">Mặc định</span>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="address-empty">
+                  <p>Bạn chưa có địa chỉ nhận hàng.</p>
+                  <button class="btn-primary" type="button" (click)="openAddressForm()">
+                    Thêm địa chỉ
+                  </button>
+                </div>
+              }
+            } @else {
+              <div class="address-form">
+                <div class="form-grid">
+                  <div class="form-field">
+                    <label>Họ và tên *</label>
+                    <input type="text" [(ngModel)]="guestInfo.full_name" placeholder="Nhập họ tên" />
+                  </div>
+                  <div class="form-field">
+                    <label>Số điện thoại *</label>
+                    <input type="text" [(ngModel)]="guestInfo.phone" placeholder="Nhập số điện thoại" />
+                  </div>
+                  <div class="form-field">
+                    <label>Email</label>
+                    <input type="email" [(ngModel)]="guestInfo.email" placeholder="Email (không bắt buộc)" />
+                  </div>
+                  <div class="form-field">
+                    <label>Tỉnh/Thành phố *</label>
+                    <input type="text" [(ngModel)]="guestInfo.address.province" placeholder="Ví dụ: Hà Nội" />
+                  </div>
+                  <div class="form-field">
+                    <label>Quận/Huyện</label>
+                    <input type="text" [(ngModel)]="guestInfo.address.district" placeholder="Ví dụ: Hoàn Kiếm" />
+                  </div>
+                  <div class="form-field">
+                    <label>Phường/Xã *</label>
+                    <input type="text" [(ngModel)]="guestInfo.address.ward" placeholder="Ví dụ: Hàng Bạc" />
+                  </div>
+                  <div class="form-field full">
+                    <label>Địa chỉ chi tiết *</label>
+                    <input type="text" [(ngModel)]="guestInfo.address.detail" placeholder="Số nhà, tên đường..." />
+                  </div>
+                </div>
+              </div>
+            }
+          </section>
+
+          <section class="checkout-block order-block">
+            <div class="block-header">
+              <h3>Thông tin đơn hàng</h3>
+            </div>
+            <div class="order-list">
+              @for (item of items; track itemKey(item)) {
+                <div class="order-item">
+                  <div class="order-thumb">
+                    <img [src]="getImageUrl(item)" [alt]="item.product_name_snapshot" />
+                  </div>
+                  <div class="order-info">
+                    <div class="order-name">{{ item.product_name_snapshot }}</div>
+                    <div class="order-variant">{{ getVariantLabel(item) }}</div>
+                  </div>
+                  <div class="order-price">{{ item.price_snapshot | number }}đ</div>
+                  <div class="order-qty">x{{ item.quantity }}</div>
+                  <div class="order-total">{{ itemTotal(item) | number }}đ</div>
+                </div>
+              }
+            </div>
+            <div class="order-note">
+              <label>Ghi chú cho người bán</label>
+              <textarea
+                rows="3"
+                [(ngModel)]="note"
+                placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi giao..."
+              ></textarea>
+            </div>
+          </section>
+
+          <section class="checkout-block shipping-block">
+            <div class="block-header">
+              <h3>Vận chuyển</h3>
+            </div>
+            <div class="shipping-options">
+              @for (option of shippingOptions; track option.id) {
+                <label class="shipping-option">
+                  <input
+                    type="radio"
+                    name="shipping_method"
+                    [value]="option.id"
+                    [(ngModel)]="selectedShippingId"
+                  />
+                  <div class="option-body">
+                    <div class="option-title">{{ option.label }}</div>
+                    <div class="option-sub">{{ option.provider }} • {{ option.eta }}</div>
+                  </div>
+                  <div class="option-fee">{{ option.fee | number }}đ</div>
+                </label>
+              }
+            </div>
+          </section>
+
+          <section class="checkout-block payment-block">
+            <div class="block-header">
+              <h3>Thanh toán</h3>
+            </div>
+            <div class="payment-options">
+              @for (option of paymentOptions; track option.id) {
+                <label class="payment-option">
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    [value]="option.id"
+                    [(ngModel)]="paymentMethod"
+                  />
+                  <div>
+                    <div class="option-title">{{ option.label }}</div>
+                    <div class="option-sub">{{ option.description }}</div>
+                  </div>
+                </label>
+              }
+            </div>
+          </section>
+
+          <section class="checkout-block summary-block">
+            <div class="block-header">
+              <h3>Tổng tiền</h3>
+            </div>
+            <div class="summary-line">
+              <span>Tạm tính</span>
+              <strong>{{ subtotal | number }}đ</strong>
+            </div>
+            <div class="summary-line">
+              <span>Phí vận chuyển</span>
+              <strong>{{ shippingFee | number }}đ</strong>
+            </div>
+            <div class="summary-line">
+              <span>Giảm giá</span>
+              <strong>-{{ discountAmount | number }}đ</strong>
+            </div>
+            <div class="summary-total">
+              <span>Tổng thanh toán</span>
+              <strong>{{ total | number }}đ</strong>
+            </div>
+            <div class="voucher-placeholder">
+              <span>Voucher</span>
+              <button type="button" class="text-btn">Chọn voucher</button>
+            </div>
+          </section>
+
+          @if (formError) {
+            <div class="form-error">
+              <i class="fas fa-exclamation-circle"></i>
+              <span>{{ formError }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (items.length > 0) {
+    <div class="checkout-sticky">
+      <div class="container sticky-inner">
+        <div class="sticky-total">
+          <span>Tổng thanh toán</span>
+          <strong>{{ total | number }}đ</strong>
+        </div>
+        <button class="btn-primary" (click)="placeOrder()" [disabled]="isPlacingOrder">
+          @if (isPlacingOrder) { Đang xử lý... } @else { Đặt hàng }
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (showAddressModal) {
+    <div class="modal-overlay" (click)="closeAddressModal()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4>Chọn địa chỉ</h4>
+          <button type="button" class="modal-close" (click)="closeAddressModal()">×</button>
+        </div>
+        <div class="modal-body">
+          @for (addr of addresses; track addr.address_id) {
+            <label class="address-option">
+              <input
+                type="radio"
+                name="address_pick"
+                [checked]="addr.address_id === selectedAddress?.address_id"
+                (change)="selectAddress(addr)"
+              />
+              <div class="address-option-body">
+                <div class="address-name">
+                  {{ addr.receiver_name || addr.recipientName }}
+                  <span class="dot">•</span>
+                  {{ addr.phone }}
+                </div>
+                <div class="address-detail">{{ formatAddress(addr) }}</div>
+                @if (addr.is_default || addr.isDefault) {
+                  <span class="tag-default">Mặc định</span>
+                }
+              </div>
+              @if (!(addr.is_default || addr.isDefault)) {
+                <button type="button" class="text-btn" (click)="setDefaultAddress(addr)">
+                  Thiết lập mặc định
+                </button>
+              }
+            </label>
+          }
+        </div>
+        <div class="modal-actions">
+          <button class="btn-outline" type="button" (click)="closeAddressModal()">Đóng</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showAddressForm) {
+    <div class="modal-overlay" (click)="closeAddressForm()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4>Thêm địa chỉ</h4>
+          <button type="button" class="modal-close" (click)="closeAddressForm()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-field">
+              <label>Người nhận *</label>
+              <input type="text" [(ngModel)]="newAddress.receiver_name" />
+            </div>
+            <div class="form-field">
+              <label>Số điện thoại *</label>
+              <input type="text" [(ngModel)]="newAddress.phone" />
+            </div>
+            <div class="form-field">
+              <label>Tỉnh/Thành phố *</label>
+              <input type="text" [(ngModel)]="newAddress.province" />
+            </div>
+            <div class="form-field">
+              <label>Quận/Huyện</label>
+              <input type="text" [(ngModel)]="newAddress.district" />
+            </div>
+            <div class="form-field">
+              <label>Phường/Xã *</label>
+              <input type="text" [(ngModel)]="newAddress.ward" />
+            </div>
+            <div class="form-field full">
+              <label>Địa chỉ chi tiết *</label>
+              <input type="text" [(ngModel)]="newAddress.address_detail" />
+            </div>
+            <div class="form-field full">
+              <label>Ghi chú</label>
+              <input type="text" [(ngModel)]="newAddress.note" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-outline" type="button" (click)="closeAddressForm()">Hủy</button>
+          <button class="btn-primary" type="button" (click)="saveNewAddress()">Lưu địa chỉ</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

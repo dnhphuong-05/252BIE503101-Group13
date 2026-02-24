@@ -1,197 +1,247 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+﻿import { Component, OnInit } from '@angular/core';
+import { CommonModule, NgForOf, NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { BlogService, BlogPost, BlogCategory } from '../../services/blog.service';
 
-interface Blog {
-  id: string;
-  title: string;
-  category: string;
-  author: string;
-  authorAvatar: string;
-  date: string;
-  thumbnail: string;
-  excerpt: string;
-  content: string;
-  views: number;
-  likes: number;
-  tags: string[];
+interface TrendingTopic {
+  label: string;
+  type: 'category';
+  value: number;
 }
 
 @Component({
   selector: 'app-blog',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, NgIf, NgForOf, RouterLink],
   templateUrl: './blog.html',
   styleUrls: ['./blog.css'],
 })
 export class BlogComponent implements OnInit {
-  blogs: Blog[] = [];
-  featuredBlog: Blog | null = null;
-  filteredBlogs: Blog[] = [];
-  selectedCategory: string = 'all';
+  blogs: BlogPost[] = [];
+  allBlogs: BlogPost[] = [];
+  filteredBlogs: BlogPost[] = [];
+  featuredBlog: BlogPost | null = null;
+  recentBlogs: BlogPost[] = [];
+  tagCloud: string[] = [];
+  trendingTopics: TrendingTopic[] = [];
+  categories: BlogCategory[] = [];
+  selectedCategory: number | 'all' = 'all';
   searchTerm: string = '';
 
-  categories = [
-    { name: 'Tất cả', value: 'all' },
-    { name: 'Lịch sử', value: 'Lịch sử' },
-    { name: 'Hướng dẫn', value: 'Hướng dẫn' },
-    { name: 'Kiến thức', value: 'Kiến thức' },
-    { name: 'Nghệ thuật', value: 'Nghệ thuật' },
+  private categoryMap = new Map<number, string>();
+  private fallbackCategories = [
+    { id: 1, name: 'Lịch Sử Cổ Phục' },
+    { id: 2, name: 'Hướng Dẫn Mặc' },
+    { id: 3, name: 'Bảo Quản & Giặt Giũ' },
+    { id: 4, name: 'Xu Hướng & Phong Cách' },
+    { id: 5, name: 'May Đo & Cho Thuê' },
   ];
 
-  ngOnInit() {
-    // Dữ liệu mẫu - sẽ thay thế bằng API call sau
+  constructor(private blogService: BlogService) {}
+
+  ngOnInit(): void {
+    this.loadCategories();
     this.loadBlogs();
+    this.loadFeatured();
   }
 
-  loadBlogs() {
-    // Dữ liệu mẫu từ blogs.json - sau này sẽ load từ API
-    this.blogs = [
-      {
-        id: 'BLOG001',
-        title: 'Lịch sử hình thành và phát triển Áo Nhật Bình',
-        category: 'Lịch sử',
-        author: 'Nguyễn Văn A',
-        authorAvatar: 'assets/images/authors/pos1.jpg',
-        date: '2026-01-15',
-        thumbnail: 'assets/images/blogs/pos1.jpg',
-        excerpt:
-          'Tìm hiểu về nguồn gốc và sự phát triển của trang phục cung đình Áo Nhật Bình thời triều Nguyễn, một trong những kiệt tác văn hóa trang phục Việt Nam.',
-        content:
-          'Áo Nhật Bình là một trong những trang phục cung đình cao quý nhất của triều Nguyễn...',
-        views: 1250,
-        likes: 89,
-        tags: ['lịch sử', 'cung đình', 'nhật bình'],
+  loadBlogs(): void {
+    this.blogService.getPublishedPosts({ page: 1, limit: 13 }).subscribe({
+      next: (res) => {
+        const items = res?.data?.items || [];
+        this.blogs = items;
+        this.allBlogs = items;
+        this.recentBlogs = items.slice(0, 4);
+        this.buildTagCloud(items);
+        if (!this.featuredBlog && items.length > 0) {
+          this.featuredBlog = items[0];
+        }
+        this.applyFilters();
       },
-      {
-        id: 'BLOG002',
-        title: 'Hướng dẫn bảo quản áo cổ phục truyền thống',
-        category: 'Hướng dẫn',
-        author: 'Trần Thị B',
-        authorAvatar: 'assets/images/authors/pos2.jpg',
-        date: '2026-01-10',
-        thumbnail: 'assets/images/blogs/pos2.jpg',
-        excerpt:
-          'Cách bảo quản và giặt giũ áo cổ phục để giữ được chất lượng lâu dài, tránh hư hỏng và phai màu.',
-        content: 'Việc bảo quản áo cổ phục đúng cách rất quan trọng...',
-        views: 980,
-        likes: 65,
-        tags: ['bảo quản', 'hướng dẫn', 'chăm sóc'],
+      error: () => {
+        this.blogs = [];
+        this.allBlogs = [];
+        this.filteredBlogs = [];
+        this.recentBlogs = [];
+        this.tagCloud = [];
       },
-      {
-        id: 'BLOG003',
-        title: 'Phân biệt các loại áo dài cổ phục Việt Nam',
-        category: 'Kiến thức',
-        author: 'Lê Văn C',
-        authorAvatar: 'assets/images/authors/pos3.jpg',
-        date: '2026-01-05',
-        thumbnail: 'assets/images/blogs/pos3.jpg',
-        excerpt:
-          'Tổng hợp và phân biệt các loại áo cổ phục từ cung đình đến dân gian, giúp bạn hiểu rõ hơn về trang phục truyền thống.',
-        content: 'Việt Nam có nhiều loại áo cổ phục khác nhau...',
-        views: 1580,
-        likes: 124,
-        tags: ['kiến thức', 'phân loại', 'cổ phục'],
-      },
-      {
-        id: 'BLOG004',
-        title: 'Nghệ thuật thêu trên áo dài cung đình',
-        category: 'Nghệ thuật',
-        author: 'Phạm Thị D',
-        authorAvatar: 'assets/images/authors/pos4.jpg',
-        date: '2025-12-28',
-        thumbnail: 'assets/images/blogs/pos4.jpg',
-        excerpt:
-          'Khám phá vẻ đẹp tinh xảo của nghệ thuật thêu truyền thống trên những bộ áo dài cung đình thời xưa.',
-        content: 'Nghệ thuật thêu trên áo dài cung đình là một nghệ thuật đặc biệt...',
-        views: 1420,
-        likes: 98,
-        tags: ['nghệ thuật', 'thêu', 'cung đình'],
-      },
-      {
-        id: 'BLOG005',
-        title: 'Trang phục truyền thống trong lễ hội Việt Nam',
-        category: 'Lịch sử',
-        author: 'Hoàng Văn E',
-        authorAvatar: 'assets/images/authors/pos1.jpg',
-        date: '2025-12-20',
-        thumbnail: 'assets/images/blogs/pos1.jpg',
-        excerpt:
-          'Vai trò và ý nghĩa của trang phục truyền thống trong các lễ hội văn hóa Việt Nam qua các thời kỳ.',
-        content: 'Trang phục truyền thống đóng vai trò quan trọng trong các lễ hội...',
-        views: 890,
-        likes: 72,
-        tags: ['lịch sử', 'lễ hội', 'văn hóa'],
-      },
-      {
-        id: 'BLOG006',
-        title: 'Cách chọn áo cổ phục phù hợp với dáng người',
-        category: 'Hướng dẫn',
-        author: 'Đỗ Thị F',
-        authorAvatar: 'assets/images/authors/pos2.jpg',
-        date: '2025-12-15',
-        thumbnail: 'assets/images/blogs/pos2.jpg',
-        excerpt:
-          'Hướng dẫn chi tiết cách chọn lựa áo cổ phục phù hợp với từng dáng người để tôn lên vẻ đẹp tự nhiên.',
-        content: 'Việc chọn áo cổ phục phù hợp với dáng người là một nghệ thuật...',
-        views: 1120,
-        likes: 85,
-        tags: ['hướng dẫn', 'thời trang', 'dáng người'],
-      },
-    ];
-
-    // Lấy bài viết nổi bật (bài có nhiều views nhất)
-    this.featuredBlog = this.blogs.reduce((prev, current) =>
-      prev.views > current.views ? prev : current,
-    );
-
-    this.filteredBlogs = this.blogs;
+    });
   }
 
-  filterByCategory(category: string) {
-    this.selectedCategory = category;
-    this.applyFilters();
+  loadFeatured(): void {
+    this.blogService.getFeaturedPosts(1).subscribe({
+      next: (res: any) => {
+        const items = res?.data?.items || res?.data || [];
+        if (items.length > 0) {
+          this.featuredBlog = items[0];
+        }
+      },
+      error: () => {
+        // fallback handled in loadBlogs
+      },
+    });
   }
 
-  onSearch(event: Event) {
+  loadCategories(): void {
+    this.blogService.getActiveCategories({ page: 1, limit: 5 }).subscribe({
+      next: (res) => {
+        const items = res?.data?.items || [];
+        const normalized = items
+          .map((cat) => ({
+            ...cat,
+            id: this.resolveCategoryId(cat),
+          }))
+          .filter((cat) => Number.isFinite(cat.id));
+        this.categories = normalized;
+        this.categoryMap = new Map(normalized.map((cat) => [cat.id, cat.name]));
+        this.trendingTopics = normalized.slice(0, 5).map((cat) => ({
+          label: cat.name,
+          type: 'category',
+          value: cat.id,
+        }));
+      },
+      error: () => {
+        this.categories = [];
+        this.categoryMap = new Map(this.fallbackCategories.map((cat) => [cat.id, cat.name]));
+        this.trendingTopics = this.fallbackCategories.slice(0, 5).map((cat) => ({
+          label: cat.name,
+          type: 'category',
+          value: cat.id,
+        }));
+      },
+    });
+  }
+
+  buildTagCloud(items: BlogPost[]): void {
+    const counts = new Map<string, number>();
+
+    items.forEach((blog) => {
+      (blog.tags || []).forEach((tag) => {
+        const key = tag.trim();
+        if (!key) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+    });
+
+    this.tagCloud = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag]) => tag)
+      .slice(0, 10);
+  }
+
+  onTopicClick(topic: TrendingTopic): void {
+    this.selectedCategory = topic.value;
+    this.searchTerm = '';
+    this.loadBlogsByCategory(topic.value);
+  }
+
+  onSearch(event: Event): void {
     const target = event.target as HTMLInputElement;
     this.searchTerm = target.value;
     this.applyFilters();
   }
 
-  applyFilters() {
-    this.filteredBlogs = this.blogs.filter((blog) => {
-      const matchesCategory =
-        this.selectedCategory === 'all' || blog.category === this.selectedCategory;
-      const matchesSearch =
-        blog.title.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        blog.excerpt.toLowerCase().includes(this.searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
+  filterByCategory(categoryId: number | 'all'): void {
+    this.selectedCategory = categoryId;
+    if (categoryId === 'all') {
+      this.loadBlogs();
+      return;
+    }
+    this.loadBlogsByCategory(categoryId);
+  }
+
+  onTagClick(tag: string): void {
+    this.searchTerm = tag;
+    this.applyFilters();
+  }
+
+  resetFilters(): void {
+    this.selectedCategory = 'all';
+    this.searchTerm = '';
+    this.loadBlogs();
+  }
+
+  applyFilters(): void {
+    const baseList = this.allBlogs.length > 0 ? this.allBlogs : this.blogs;
+    let list = [...baseList];
+
+    if (this.selectedCategory !== 'all') {
+      const selectedId = Number(this.selectedCategory);
+      list = list.filter((blog) => Number(blog.category_id) === selectedId);
+    }
+
+    if (this.searchTerm.trim()) {
+      const term = this.searchTerm.trim().toLowerCase();
+      list = list.filter((blog) => {
+        const inText =
+          blog.title?.toLowerCase().includes(term) || blog.excerpt?.toLowerCase().includes(term);
+        const inTags = (blog.tags || []).some((tag) => tag.toLowerCase().includes(term));
+        return inText || inTags;
+      });
+    }
+
+    this.filteredBlogs = list;
+  }
+
+  loadBlogsByCategory(categoryId: number): void {
+    this.blogService.getPublishedPosts({ page: 1, limit: 13, categoryId }).subscribe({
+      next: (res) => {
+        const items = res?.data?.items || [];
+        this.blogs = items;
+        this.filteredBlogs = items;
+        this.recentBlogs = items.slice(0, 4);
+        this.buildTagCloud(items);
+        if (items.length > 0) {
+          this.featuredBlog = items[0];
+        }
+        if (this.searchTerm.trim()) {
+          this.applyFilters();
+        }
+      },
+      error: () => {
+        this.blogs = [];
+        this.filteredBlogs = [];
+        this.recentBlogs = [];
+        this.tagCloud = [];
+      },
     });
+  }
+
+  getInitial(text: string): string {
+    return text ? text.charAt(0).toUpperCase() : '?';
+  }
+
+  getCategoryName(categoryId: number | string): string {
+    const resolvedId = Number(categoryId);
+    return this.categoryMap.get(resolvedId) || 'Chuyên mục';
+  }
+
+  private resolveCategoryId(category: BlogCategory): number {
+    const rawId = (category as BlogCategory & { category_id?: number }).category_id ?? category.id;
+    return Number(rawId);
+  }
+
+  getAuthorName(blog: BlogPost | null | undefined): string {
+    return blog?.author?.name || 'Jonathan Doe';
+  }
+
+  getAuthorAvatar(blog: BlogPost | null | undefined): string {
+    const name = encodeURIComponent(blog?.author?.name || 'User');
+    return (
+      blog?.author?.avatar ||
+      `https://ui-avatars.com/api/?name=${name}&background=75162D&color=F2D9A0`
+    );
+  }
+
+  getReadingTime(blog: BlogPost): number {
+    if (blog.reading_time && blog.reading_time > 0) {
+      return blog.reading_time;
+    }
+    const length = (blog.content || blog.excerpt || '').length;
+    return Math.max(2, Math.ceil(length / 600));
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return this.blogService.formatDate(dateString);
   }
-
-  // Method sẽ được sử dụng khi kết nối API
-  /*
-  async loadBlogsFromAPI() {
-    try {
-      const response = await fetch('http://your-api-url/blogs');
-      this.blogs = await response.json();
-      this.filteredBlogs = this.blogs;
-      if (this.blogs.length > 0) {
-        this.featuredBlog = this.blogs[0];
-      }
-    } catch (error) {
-      console.error('Error loading blogs:', error);
-    }
-  }
-  */
 }

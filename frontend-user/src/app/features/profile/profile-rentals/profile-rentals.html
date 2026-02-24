@@ -1,0 +1,293 @@
+﻿<div class="rentals-page">
+  <div class="page-header">
+    <div>
+      <span class="page-eyebrow">Hồ sơ thuê</span>
+      <h1 class="page-title">Đơn hàng thuê của tôi</h1>
+      <p class="page-subtitle">Quản lý và theo dõi tình trạng đơn thuê</p>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    @for (tab of tabs; track tab.id) {
+      <button
+        [class.active]="activeTab === tab.id"
+        (click)="switchTab(tab.id)"
+        class="tab-btn"
+      >
+        {{ tab.label }}
+        @if (tab.count > 0) {
+          <span class="tab-badge">{{ tab.count }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (!isLoading && !loadError) {
+    <div class="summary-strip">
+      <div class="summary-card">
+        <span class="summary-label">Tổng đơn thuê</span>
+        <strong class="summary-value">{{ totalOrders }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Đang thuê</span>
+        <strong class="summary-value">{{ ongoingCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Chờ trả</span>
+        <strong class="summary-value">{{ waitingReturnCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Tiền cọc đang giữ</span>
+        <strong class="summary-value">{{ formatCurrency(holdingDeposit) }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Dự kiến hoàn</span>
+        <strong class="summary-value">{{ formatCurrency(expectedRefund) }}</strong>
+      </div>
+    </div>
+  }
+
+  @if (!isLoading && !loadError && dueSoonCount > 0) {
+    <div class="reminder-banner">
+      <div class="reminder-icon">
+        <i class="fas fa-bell"></i>
+      </div>
+      <div class="reminder-content">
+        <strong>Nhắc trả đồ</strong>
+        <p>Có {{ dueSoonCount }} đơn thuê sắp đến hạn trả trong 1 ngày tới.</p>
+      </div>
+    </div>
+  }
+
+  <div class="orders-list">
+    @if (isLoading) {
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải đơn thuê...</p>
+      </div>
+    }
+
+    @if (!isLoading && loadError) {
+      <div class="error-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ loadError }}</p>
+      </div>
+    }
+
+    @if (!isLoading && !loadError && getFilteredOrders().length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="fas fa-calendar-times"></i>
+        </div>
+        <h3>Chưa có đơn thuê nào</h3>
+        <p>Bạn chưa có đơn thuê nào trong danh mục này</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary" routerLink="/products">
+            <i class="fas fa-search"></i>
+            Khám phá sản phẩm
+          </button>
+        </div>
+      </div>
+    }
+
+    @for (order of getFilteredOrders(); track order.id) {
+      <article class="order-card">
+      <header class="order-header">
+        <div class="order-number">
+          <span class="label">Mã đơn thuê</span>
+          <span class="value">{{ order.orderCode }}</span>
+        </div>
+        <span [ngClass]="getStatusBadgeClass(order.status)">
+          {{ getStatusLabel(order.status) }}
+        </span>
+      </header>
+
+      <div class="order-body">
+        <div class="order-col product-col">
+          <img [src]="order.image" [alt]="order.productName" class="product-image" />
+          <div class="product-details">
+            <h3 class="product-name">{{ order.productName }}</h3>
+            <div class="product-meta">
+              @if (order.size) {
+                <span>Size: {{ order.size }}</span>
+              }
+              @if (order.color) {
+                <span>Màu: {{ order.color }}</span>
+              }
+              <span>Số lượng: {{ order.quantity }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="order-col period-col">
+          <div class="period-row">
+            <span class="period-label">Nhận</span>
+            <span class="period-value">{{ formatDate(order.rentalPeriod.start) }}</span>
+          </div>
+          <div class="period-row">
+            <span class="period-label">Trả</span>
+            <span class="period-value">{{ formatDate(order.rentalPeriod.end) }}</span>
+          </div>
+          <div class="period-row">
+            <span class="period-label">Số ngày</span>
+            <span class="period-value">{{ order.rentalPeriod.days }} ngày</span>
+          </div>
+          <div class="period-row">
+            <span class="period-label">Hình thức</span>
+            <span class="period-value">
+              {{ order.deliveryMethod === 'ship' ? 'Giao tận nơi' : 'Nhận tại cửa hàng' }}
+            </span>
+          </div>
+
+          @if (getCountdownLabel(order); as countdown) {
+            <div class="countdown" [class.overdue]="isOverdue(order)">
+              <i class="fas" [ngClass]="isOverdue(order) ? 'fa-triangle-exclamation' : 'fa-clock'"></i>
+              <span>{{ countdown }}</span>
+              @if (isOverdue(order)) {
+                <small>Phí trễ hạn đang tính</small>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="order-col pricing-col">
+          <div class="price-row">
+            <span class="price-label">Tiền thuê</span>
+            <span class="price-value">{{ formatCurrency(order.rentalFee) }}</span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">Tiền cọc</span>
+            <span class="price-value">{{ formatCurrency(order.depositAmount) }}</span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">Phí vận chuyển</span>
+            <span class="price-value">{{ formatCurrency(order.shippingFee) }}</span>
+          </div>
+          <div class="price-divider"></div>
+          <div class="price-row total">
+            <span class="price-label">Thanh toán ban đầu</span>
+            <span class="price-value">{{ formatCurrency(getInitialPayment(order)) }}</span>
+          </div>
+          @if (order.status === 'closed' && getRefundAmount(order) > 0) {
+            <div class="price-row">
+              <span class="price-label">Đã hoàn cọc</span>
+              <span class="price-value">{{ formatCurrency(getRefundAmount(order)) }}</span>
+            </div>
+          }
+          @if (hasViolation(order) && getPenaltyTotal(order) > 0) {
+            <div class="price-row">
+              <span class="price-label">Phí phát sinh</span>
+              <span class="price-value">{{ formatCurrency(getPenaltyTotal(order)) }}</span>
+            </div>
+          }
+          @if (order.status !== 'closed' && hasViolation(order) && getRefundAmount(order) > 0) {
+            <div class="price-row">
+              <span class="price-label">Hoàn lại</span>
+              <span class="price-value">{{ formatCurrency(getRefundAmount(order)) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="order-actions">
+        <div class="status-notes">
+          @if (order.returnShipping?.trackingCode) {
+            <div class="status-note">
+              <span>Mã vận đơn trả:</span>
+              <strong>{{ order.returnShipping?.trackingCode }}</strong>
+            </div>
+          } @else if (order.shipping?.trackingCode) {
+            <div class="status-note">
+              <span>Mã vận đơn giao:</span>
+              <strong>{{ order.shipping?.trackingCode }}</strong>
+            </div>
+          }
+          @if (order.status === 'ongoing' && order.returnRequestedAt) {
+            <div class="status-note">Đã gửi yêu cầu trả, chờ shop tạo mã vận đơn</div>
+          }
+          @if (order.status === 'return_requested') {
+            <div class="status-note">Shop đã tạo mã vận đơn trả.</div>
+          }
+          @if (order.status === 'returning') {
+            <div class="status-note">Đơn đang trên đường trả về shop.</div>
+          }
+          @if (order.status === 'returned_received') {
+            <div class="status-note">Shop đang kiểm tra sản phẩm</div>
+          }
+          @if (order.status === 'closed') {
+            <div class="status-note">Đơn đã hoàn tất</div>
+          }
+          @if (hasViolation(order)) {
+            <div class="status-note">Có phát sinh vi phạm</div>
+          }
+          @if (hasViolation(order)) {
+            <div class="status-note">Vi phạm: {{ getViolationDisplay(order) }}</div>
+          }
+        </div>
+
+        <div class="action-buttons">
+          @if (order.status === 'booked') {
+            <button class="btn btn-danger" [disabled]="cancelingOrderId === order.id" (click)="cancelRental(order)">
+              <i class="fas fa-times"></i>
+              Huỷ đơn
+            </button>
+          }
+
+          @if (order.status === 'ongoing') {
+            <button
+              class="btn btn-primary"
+              [disabled]="!canRequestReturn(order) || requestingReturnId === order.id"
+              (click)="requestReturn(order)"
+            >
+              <i class="fas fa-undo"></i>
+              Yêu cầu trả đồ
+            </button>
+            @if (order.shipping?.trackingCode) {
+              <button class="btn btn-secondary" (click)="trackDelivery(order)">
+                <i class="fas fa-truck"></i>
+                Theo dõi vận đơn
+              </button>
+            }
+          }
+
+          @if (order.status === 'return_requested') {
+            <button
+              class="btn btn-primary"
+              [disabled]="!canConfirmReturn(order) || confirmingReturnId === order.id"
+              (click)="confirmReturnShipment(order)"
+            >
+              <i class="fas fa-check"></i>
+              Xác nhận đã gửi hàng
+            </button>
+          }
+
+          @if (order.status === 'returning' && order.returnShipping?.trackingCode) {
+            <button class="btn btn-secondary" (click)="trackReturn(order)">
+              <i class="fas fa-truck"></i>
+              Theo dõi vận đơn
+            </button>
+          }
+
+          @if (order.status === 'closed' || order.status === 'violated') {
+            <button class="btn btn-secondary" [routerLink]="['/profile/rentals', order.id]">
+              <i class="fas fa-eye"></i>
+              Xem chi tiết
+            </button>
+          }
+
+          @if (order.status === 'closed' && order.productId) {
+            <button
+              class="btn btn-primary"
+              [routerLink]="['/products', order.productId]"
+              (click)="rentAgain(order)"
+            >
+              <i class="fas fa-repeat"></i>
+              Thuê lại
+            </button>
+          }
+        </div>
+      </div>
+      </article>
+    }
+  </div>
+</div>

@@ -1,0 +1,196 @@
+<div class="basic-info-card">
+  <div class="card-header">
+    <div class="header-left">
+      <h2 class="card-title">
+        <i class="fas fa-user-circle"></i>
+        Thông tin cơ bản
+      </h2>
+      <p class="card-subtitle">Quản lý hồ sơ, giới tính và chỉ số cơ thể</p>
+    </div>
+    <button *ngIf="!isEditing" class="edit-toggle-btn" (click)="toggleEdit()">
+      <i class="fas fa-edit"></i>
+      Chỉnh sửa
+    </button>
+  </div>
+
+  <div class="card-body">
+    <!-- Read-only view -->
+    <div *ngIf="!isEditing" class="profile-view">
+      <div class="view-avatar">
+        <img [src]="getUserAvatar()" alt="Avatar" />
+        <button class="avatar-edit-btn" (click)="toggleEdit()">
+          <i class="fas fa-camera"></i>
+          Cập nhật ảnh
+        </button>
+      </div>
+      <div class="view-grid">
+        <div class="view-item">
+          <span class="view-label">Họ và tên</span>
+          <span class="view-value">{{ currentUser?.fullName || 'Chưa cập nhật' }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Giới tính</span>
+          <span class="view-value">{{
+            formatGender(currentUser?.gender || currentUser?.profile?.gender)
+          }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Ngày sinh</span>
+          <span class="view-value">{{
+            formatBirthday(currentUser?.birthday || currentUser?.profile?.birthday)
+          }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Chiều cao</span>
+          <span class="view-value">{{
+            formatNumber(currentUser?.height ?? currentUser?.profile?.height, 'cm')
+          }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Cân nặng</span>
+          <span class="view-value">{{
+            formatNumber(currentUser?.weight ?? currentUser?.profile?.weight, 'kg')
+          }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Email</span>
+          <span class="view-value">{{ currentUser?.email || 'Chưa cập nhật' }}</span>
+        </div>
+        <div class="view-item">
+          <span class="view-label">Số điện thoại</span>
+          <span class="view-value">{{ currentUser?.phone || 'Chưa cập nhật' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit mode -->
+    <form *ngIf="isEditing" [formGroup]="profileForm" (ngSubmit)="onSubmit()">
+      <!-- Avatar Upload -->
+      <div class="form-group avatar-group">
+        <label class="form-label">Ảnh đại diện</label>
+        <div class="avatar-upload-section">
+          <div class="avatar-preview">
+            <img [src]="getUserAvatar()" alt="Avatar" />
+          </div>
+          <div class="avatar-actions">
+            <label class="upload-avatar-btn">
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                (change)="onAvatarChange($event)"
+                hidden
+              />
+              <i class="fas fa-camera"></i>
+              <span>Tải ảnh mới</span>
+            </label>
+            <p class="upload-hint">JPG, PNG hoặc WEBP. Tối đa 2MB</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <!-- Full Name -->
+        <div class="form-group">
+          <label class="form-label" for="fullName">
+            Họ và tên
+            <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="fullName"
+            class="form-input"
+            formControlName="fullName"
+            placeholder="Nhập họ và tên đầy đủ"
+          />
+          <div
+            *ngIf="profileForm.get('fullName')?.invalid && profileForm.get('fullName')?.touched"
+            class="error-message"
+          >
+            <i class="fas fa-exclamation-circle"></i>
+            Vui lòng nhập họ và tên (tối thiểu 2 ký tự)
+          </div>
+        </div>
+
+        <!-- Gender -->
+        <div class="form-group">
+          <label class="form-label" for="gender">Giới tính</label>
+          <select id="gender" class="form-input" formControlName="gender">
+            <option value="">Chọn giới tính</option>
+            <option value="Nam">Nam</option>
+            <option value="Nữ">Nữ</option>
+            <option value="Khác">Khác</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="birthday">Ngày sinh</label>
+          <input type="date" id="birthday" class="form-input" formControlName="birthday" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="height">Chiều cao (cm)</label>
+          <input
+            type="number"
+            id="height"
+            class="form-input"
+            formControlName="height"
+            min="0"
+            step="0.1"
+            placeholder="Ví dụ: 165"
+          />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="weight">Cân nặng (kg)</label>
+          <input
+            type="number"
+            id="weight"
+            class="form-input"
+            formControlName="weight"
+            min="0"
+            step="0.1"
+            placeholder="Ví dụ: 52"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="phone">
+            Số điện thoại
+            <span class="info-badge">
+              <i class="fas fa-lock"></i>
+              Không thể thay đổi
+            </span>
+          </label>
+          <input type="tel" id="phone" class="form-input readonly" formControlName="phone" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">
+          Email
+          <span class="info-badge">
+            <i class="fas fa-lock"></i>
+            Không thể thay đổi
+          </span>
+        </label>
+        <input type="email" id="email" class="form-input readonly" formControlName="email" />
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-cancel" (click)="toggleEdit()">
+          <i class="fas fa-times"></i>
+          Hủy
+        </button>
+        <button type="submit" class="btn btn-save" [disabled]="profileForm.invalid">
+          <i class="fas fa-check"></i>
+          Lưu thay đổi
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,205 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Products</div>
+      <div class="page-subtitle">Quản lý toàn bộ sản phẩm đang bán/thuê/may đo</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm">Import</button>
+      <button class="btn btn-primary" [routerLink]="['/products/new']">
+        <i class="fas fa-plus"></i>
+        New product
+      </button>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-toolbar product-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Tìm kiếm sản phẩm, SKU, tag"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <button class="btn btn-ghost btn-sm">Bulk actions</button>
+        <button class="btn btn-secondary btn-sm">Publish</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Trạng thái</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (option of statusOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Danh mục</span>
+        <select
+          class="select"
+          [(ngModel)]="categoryFilter"
+          (change)="applyFilters()"
+          [disabled]="filtersLoading"
+        >
+          <option value="">Tất cả danh mục</option>
+          @for (category of categories; track category.id) {
+            <option [value]="category.id">{{ category.name }} ({{ category.count }})</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Sắp xếp</span>
+        <select class="select" [(ngModel)]="sortFilter" (change)="applyFilters()">
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">
+          Reset
+        </button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    @if (filtersError) {
+      <div class="filter-error">{{ filtersError }}</div>
+    }
+
+    @if (loadError && products.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (isLoading && products.length === 0) {
+      <div class="empty-state">Đang tải sản phẩm...</div>
+    } @else if (products.length === 0) {
+      <div class="empty-state">Không có sản phẩm phù hợp.</div>
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Status</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (product of products; track product.id) {
+            <tr>
+              <td>
+                <div class="item-cell">
+                  <img class="item-thumb" [src]="product.image" [alt]="product.name" />
+                  <div class="min-w-0">
+                    <div class="item-title">{{ product.name }}</div>
+                    <div class="item-meta">{{ product.category }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="price-stack">
+                  <div class="price-main">{{ product.price }}</div>
+                  @if (product.rentPrice) {
+                    <div class="price-sub">Thuê: {{ product.rentPrice }}</div>
+                  }
+                  @if (product.deposit) {
+                    <div class="price-sub">Cọc: {{ product.deposit }}</div>
+                  }
+                </div>
+              </td>
+              <td>{{ product.stock }}</td>
+              <td>
+                <span [class]="statusMeta[product.status].class">{{
+                  statusMeta[product.status].label
+                }}</span>
+              </td>
+              <td class="text-sm text-primary-500">{{ product.updatedAt }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" (click)="onView(product)">View</button>
+                  <button class="btn btn-secondary btn-sm" (click)="onEdit(product)">Edit</button>
+                  @if (product.status !== 'archived') {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="onArchive(product)"
+                      [disabled]="statusUpdatingIds.has(product.id)"
+                    >
+                      @if (statusUpdatingIds.has(product.id)) {
+                        Updating...
+                      } @else {
+                        Archive
+                      }
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="onRestore(product)"
+                      [disabled]="statusUpdatingIds.has(product.id)"
+                    >
+                      @if (statusUpdatingIds.has(product.id)) {
+                        Updating...
+                      } @else {
+                        Restore
+                      }
+                    </button>
+                  }
+                  @if (isSuperAdmin()) {
+                    <button
+                      class="btn btn-ghost btn-sm text-error"
+                      (click)="onDelete(product)"
+                      [disabled]="deletingIds.has(product.id)"
+                      title="Delete permanently"
+                      aria-label="Delete permanently"
+                    >
+                      @if (deletingIds.has(product.id)) {
+                        Deleting...
+                      } @else {
+                        Delete
+                      }
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">
+        Hiển thị {{ products.length }} / {{ total }} sản phẩm
+      </span>
+      @if (products.length < total) {
+        <button
+          class="btn btn-secondary btn-sm load-more-btn"
+          type="button"
+          (click)="loadMore()"
+          [disabled]="isLoading || isLoadingMore"
+        >
+          @if (isLoadingMore) {
+            <span class="spinner" aria-hidden="true"></span>
+            Đang tải...
+          } @else {
+            Tải thêm
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>

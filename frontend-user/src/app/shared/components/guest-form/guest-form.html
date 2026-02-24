@@ -1,0 +1,152 @@
+@if (show) {
+  <div class="guest-overlay" (click)="onOverlayClick()">
+    <div
+      class="guest-modal guest-modal-form"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="guest-modal-header">
+        <h3>Thông tin đặt hàng</h3>
+        <button class="guest-close" type="button" (click)="closeForm()" aria-label="Đóng">
+          &times;
+        </button>
+      </div>
+      <p class="guest-modal-text">Điền thông tin để chúng tôi xác nhận đơn hàng nhanh chóng.</p>
+
+      @if (productName) {
+        <div class="guest-summary">
+          <div class="guest-summary-title">Sản phẩm bạn đang mua</div>
+          <div class="guest-summary-item">
+            <span>{{ productName }}</span>
+            @if (quantity) {
+              <span>x{{ quantity }}</span>
+            }
+          </div>
+          <div class="guest-summary-meta">
+            @if (selectedSize) {
+              <span>Size: {{ selectedSize }}</span>
+            }
+            @if (selectedColor) {
+              <span>Màu: {{ selectedColor }}</span>
+            }
+          </div>
+        </div>
+      }
+
+      <form class="guest-form" (ngSubmit)="submitForm()">
+        <div class="guest-form-grid">
+          <div class="guest-field">
+            <label for="guestFullName">Họ và tên <span class="required">*</span></label>
+            <input
+              id="guestFullName"
+              name="guestFullName"
+              type="text"
+              placeholder="Nguyễn Văn A"
+              [(ngModel)]="guestForm.full_name"
+              [class.error]="guestErrors.full_name"
+            />
+            @if (guestErrors.full_name) {
+              <span class="guest-error">{{ guestErrors.full_name }}</span>
+            }
+          </div>
+
+          <div class="guest-field">
+            <label for="guestPhone">Số điện thoại <span class="required">*</span></label>
+            <input
+              id="guestPhone"
+              name="guestPhone"
+              type="tel"
+              placeholder="0912345678"
+              [(ngModel)]="guestForm.phone"
+              [class.error]="guestErrors.phone"
+            />
+            @if (guestErrors.phone) {
+              <span class="guest-error">{{ guestErrors.phone }}</span>
+            }
+          </div>
+
+          <div class="guest-field">
+            <label for="guestEmail">Email <span class="required">*</span></label>
+            <input
+              id="guestEmail"
+              name="guestEmail"
+              type="email"
+              placeholder="ban@email.com"
+              [(ngModel)]="guestForm.email"
+              [class.error]="guestErrors.email"
+            />
+            @if (guestErrors.email) {
+              <span class="guest-error">{{ guestErrors.email }}</span>
+            }
+          </div>
+
+          <div class="guest-field">
+            <label for="guestProvince">Tỉnh/Thành phố <span class="required">*</span></label>
+            <input
+              id="guestProvince"
+              name="guestProvince"
+              type="text"
+              placeholder="Hà Nội"
+              [(ngModel)]="guestForm.address.province"
+              [class.error]="guestErrors.address.province"
+            />
+            @if (guestErrors.address.province) {
+              <span class="guest-error">{{ guestErrors.address.province }}</span>
+            }
+          </div>
+
+          <div class="guest-field">
+            <label for="guestWard">Xã/Phường/Đặc khu <span class="required">*</span></label>
+            <input
+              id="guestWard"
+              name="guestWard"
+              type="text"
+              placeholder="Ví dụ: Phường Bến Nghé"
+              [(ngModel)]="guestForm.address.ward"
+              [class.error]="guestErrors.address.ward"
+            />
+            @if (guestErrors.address.ward) {
+              <span class="guest-error">{{ guestErrors.address.ward }}</span>
+            }
+          </div>
+
+          <div class="guest-field full">
+            <label for="guestAddressDetail">Địa chỉ chi tiết <span class="required">*</span></label>
+            <textarea
+              id="guestAddressDetail"
+              name="guestAddressDetail"
+              rows="3"
+              placeholder="Số nhà, đường, tòa nhà, tầng..."
+              [(ngModel)]="guestForm.address.detail"
+              [class.error]="guestErrors.address.detail"
+            ></textarea>
+            @if (guestErrors.address.detail) {
+              <span class="guest-error">{{ guestErrors.address.detail }}</span>
+            }
+          </div>
+        </div>
+
+        @if (guestSubmitError) {
+          <div class="guest-submit-error">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ guestSubmitError }}
+          </div>
+        }
+
+        <div class="guest-form-actions">
+          <button class="guest-btn ghost" type="button" (click)="closeForm()">Hủy</button>
+          <button class="guest-btn primary" type="submit" [disabled]="isSubmittingGuest">
+            @if (isSubmittingGuest) {
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Đang xử lý...</span>
+            } @else {
+              <i class="fas fa-check"></i>
+              <span>Xác nhận đặt hàng</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

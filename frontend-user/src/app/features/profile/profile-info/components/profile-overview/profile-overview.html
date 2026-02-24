@@ -1,0 +1,90 @@
+<div class="profile-overview">
+  <div class="overview-card">
+    <!-- Cover Background -->
+    <div class="cover-section">
+      <div class="cover-gradient"></div>
+      <div class="cover-pattern"></div>
+      <div class="cover-identity">
+        <div class="name-row">
+          <h1 class="profile-title">{{ currentUser?.fullName || 'Khách hàng' }}</h1>
+          <span class="tier-badge">{{ getMembershipTier() }}</span>
+        </div>
+        <p class="profile-subtitle">Hồ sơ thành viên & tổng quan tài khoản</p>
+      </div>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="profile-content">
+      <!-- Avatar Section -->
+      <div class="avatar-section">
+        <div class="avatar-container">
+          <img [src]="getUserAvatar()" [alt]="currentUser?.fullName" class="profile-avatar" />
+          <div class="avatar-status"></div>
+        </div>
+      </div>
+
+      <!-- Info Section -->
+      <div class="info-section">
+        <div class="contact-info">
+          <div class="contact-item">
+            <i class="fas fa-envelope"></i>
+            <span>{{ currentUser?.email || 'N/A' }}</span>
+          </div>
+          <div class="contact-item" *ngIf="currentUser?.phone">
+            <i class="fas fa-phone"></i>
+            <span>{{ currentUser?.phone }}</span>
+          </div>
+        </div>
+
+        <div class="points-row">
+          <span class="points-label">Điểm thưởng</span>
+          <span class="points-value">{{ stats.points || 0 }}</span>
+        </div>
+
+        <div class="action-row">
+          <a class="edit-btn" routerLink="/profile/info">
+            <i class="fas fa-edit"></i>
+            <span>Chỉnh sửa hồ sơ</span>
+          </a>
+          <a class="ghost-btn" routerLink="/profile/measurements">
+            <i class="fas fa-ruler"></i>
+            <span>Cập nhật số đo</span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="stats-section">
+      <a class="stat-item" routerLink="/profile/orders">
+        <div class="stat-icon">
+          <i class="fas fa-shopping-bag"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.orders || 0 }}</div>
+          <div class="stat-label">Tổng đơn</div>
+        </div>
+      </a>
+
+      <a class="stat-item" routerLink="/profile/wallet">
+        <div class="stat-icon">
+          <i class="fas fa-star"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.points || 0 }}</div>
+          <div class="stat-label">Điểm thưởng</div>
+        </div>
+      </a>
+
+      <a class="stat-item" routerLink="/profile/rentals">
+        <div class="stat-icon">
+          <i class="fas fa-calendar-check"></i>
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ stats.rentOrders || 0 }}</div>
+          <div class="stat-label">Đơn thuê</div>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>

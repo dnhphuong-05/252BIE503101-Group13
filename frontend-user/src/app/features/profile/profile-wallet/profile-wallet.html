@@ -1,0 +1,233 @@
+<div class="loyalty-page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Hồ sơ thành viên</div>
+      <h1 class="page-title">
+        <i class="fas fa-coins"></i>
+        Điểm thưởng
+      </h1>
+      <p class="page-subtitle">
+        Theo dõi điểm hiện có, tiến độ lên hạng và lịch sử giao dịch.
+      </p>
+    </div>
+    <div class="tier-pill">{{ tierName }}</div>
+  </div>
+
+  <section class="member-card">
+    <div class="member-card__left">
+      <div class="member-label">Hạng hiện tại</div>
+      <div class="member-tier">{{ tierName }}</div>
+      <div class="member-points">
+        Điểm xét hạng:
+        <strong>{{ tierPoints | number: '1.0-0' }}</strong>
+        / {{ maxTierPoints | number: '1.0-0' }} (tối đa)
+      </div>
+    </div>
+    <div class="member-card__right">
+      <div class="progress-label">
+        <ng-container *ngIf="nextTierName; else maxTier">
+          {{ tierName }} → {{ nextTierName }} cần:
+          <strong>{{ pointsToNextTier | number: '1.0-0' }}</strong> điểm
+        </ng-container>
+        <ng-template #maxTier> Bạn đang ở hạng cao nhất </ng-template>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" [style.width.%]="progressPercent"></div>
+      </div>
+      <div class="progress-meta">
+        <span *ngIf="nextTierName === 'Heritage'">Classic → Heritage: 300 điểm</span>
+        <span *ngIf="nextTierName === 'Royal'">Heritage → Royal: 1000 điểm</span>
+        <span *ngIf="!nextTierName">Giữ hạng Royal ở mức cao nhất</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="metric-grid">
+    <div class="metric-card">
+      <div class="metric-label">Điểm khả dụng</div>
+      <div class="metric-value">{{ availablePoints | number: '1.0-0' }}</div>
+      <div class="metric-note">Sẵn sàng đổi ưu đãi</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Điểm xét hạng</div>
+      <div class="metric-value">{{ tierPoints | number: '1.0-0' }}</div>
+      <div class="metric-note">Tối đa {{ maxTierPoints | number: '1.0-0' }} điểm</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">
+        Điểm đang chờ
+        <span class="info-dot" title="Sẽ được cộng khi đơn đủ điều kiện thanh toán">i</span>
+      </div>
+      <div class="metric-value">{{ pendingPoints | number: '1.0-0' }}</div>
+      <div class="metric-note">Từ các đơn chưa đủ điều kiện</div>
+    </div>
+  </section>
+
+  <section class="info-grid">
+    <div class="info-card rules-card">
+      <div class="card-header">
+        <h2>Quy tắc tích điểm</h2>
+        <span class="card-badge">Không tuyến tính</span>
+      </div>
+      <ul class="rule-list">
+        <li *ngFor="let rule of pointRules">
+          ≥ {{ rule.min | number: '1.0-0' }}đ → +{{ rule.points }} điểm
+        </li>
+      </ul>
+      <div class="rule-example">Ví dụ: Đơn 1.200.000đ → +10 điểm</div>
+    </div>
+
+    <div class="info-card conditions-card">
+      <div class="card-header">
+        <h2>Khi nào được cộng điểm</h2>
+      </div>
+      <div class="tabs">
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeConditionTab === 'buy'"
+          (click)="setConditionTab('buy')"
+        >
+          Đơn mua
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeConditionTab === 'rent'"
+          (click)="setConditionTab('rent')"
+        >
+          Đơn thuê
+        </button>
+      </div>
+      <div class="tab-panel" *ngIf="activeConditionTab === 'buy'">
+        <p>Điểm sẽ được cộng khi đơn mua của bạn:</p>
+        <ul>
+          <li>Đã <strong>hoàn tất</strong> và <strong>đã thanh toán</strong></li>
+          <li>Với COD: hệ thống tự đồng bộ khi bạn mở trang tài khoản</li>
+        </ul>
+        <div class="condition-note">
+          Nếu bạn vừa nhận hàng, điểm có thể hiển thị ở mục <strong>“Đang chờ”</strong> trong vài phút.
+        </div>
+      </div>
+      <div class="tab-panel" *ngIf="activeConditionTab === 'rent'">
+        <p>Điểm sẽ được cộng khi đơn thuê của bạn:</p>
+        <ul>
+          <li>Trạng thái <strong>Đã đóng</strong> và <strong>đã thanh toán</strong></li>
+          <li>Điểm tính trên số tiền bạn đã thanh toán ban đầu</li>
+        </ul>
+        <div class="condition-note">
+          Ví dụ: Nếu đơn thuê đã trả và shop xác nhận, điểm sẽ tự cộng theo số tiền đã thanh toán.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="history-section">
+    <div class="section-header">
+      <div>
+        <h2>Lịch sử điểm thưởng</h2>
+        <p>Giao dịch cộng/trừ/điều chỉnh điểm của bạn.</p>
+      </div>
+      <div class="filters">
+        <button type="button" class="filter-chip" [class.active]="historyFilter === 'all'" (click)="setHistoryFilter('all')">
+          Tất cả
+        </button>
+        <button type="button" class="filter-chip" [class.active]="historyFilter === 'earned'" (click)="setHistoryFilter('earned')">
+          Đã cộng
+        </button>
+        <button type="button" class="filter-chip" [class.active]="historyFilter === 'pending'" (click)="setHistoryFilter('pending')">
+          Đang chờ
+        </button>
+        <button type="button" class="filter-chip" [class.active]="historyFilter === 'adjust'" (click)="setHistoryFilter('adjust')">
+          Điều chỉnh
+        </button>
+        <button type="button" class="filter-chip" [class.active]="historyFilter === 'expired'" (click)="setHistoryFilter('expired')">
+          Hết hạn
+        </button>
+      </div>
+    </div>
+
+    <ng-container *ngIf="filteredHistoryRows.length; else emptyHistory">
+      <div class="history-table">
+        <div class="history-head">
+          <span>Ngày</span>
+          <span>Nguồn</span>
+          <span>Mã tham chiếu</span>
+          <span>Amount</span>
+          <span>Điểm</span>
+          <span>Trạng thái</span>
+          <span>Ghi chú</span>
+        </div>
+        <div class="history-row" *ngFor="let row of filteredHistoryRows">
+          <span class="cell date">{{ formatDate(row.date) }}</span>
+          <span class="cell">{{ row.sourceLabel }}</span>
+          <span class="cell ref">{{ row.refCode }}</span>
+          <span class="cell">{{ formatCurrency(row.amount) }}</span>
+          <span class="cell points">{{ formatPoints(row.points) }}</span>
+          <span class="cell">
+            <span class="status-pill" [ngClass]="row.statusTone">{{ row.statusLabel }}</span>
+          </span>
+          <span class="cell note">{{ row.note }}</span>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #emptyHistory>
+      <div class="empty-state">
+        <div class="empty-icon"><i class="fas fa-receipt"></i></div>
+        <h3>Chưa có giao dịch điểm thưởng</h3>
+        <p>Điểm sẽ hiển thị ở đây khi đơn hàng đủ điều kiện thanh toán.</p>
+        <a class="btn-primary" href="#pending-earn">Xem đơn đủ điều kiện tích điểm</a>
+      </div>
+    </ng-template>
+  </section>
+
+  <section class="pending-section" id="pending-earn">
+    <div class="section-header">
+      <div>
+        <h2>Đơn sẽ được cộng điểm</h2>
+        <p>Các đơn đã hoàn tất nhưng chưa đủ điều kiện ghi nhận điểm.</p>
+      </div>
+    </div>
+    <ng-container *ngIf="pendingEntries.length; else emptyPending">
+      <div class="pending-list">
+        <div class="pending-card" *ngFor="let entry of pendingEntries">
+          <div class="pending-main">
+            <div class="pending-title">
+              <span class="pill">{{ entry.kind === 'buy' ? 'Đơn mua' : 'Đơn thuê' }}</span>
+              <span class="code">{{ entry.orderCode }}</span>
+            </div>
+            <div class="pending-meta">
+              <span>Trạng thái: {{ getOrderStatusLabel(entry.status) }}</span>
+              <span>Thanh toán: {{ getPaymentStatusLabel(entry.paymentStatus) }}</span>
+            </div>
+          </div>
+          <div class="pending-points">
+            <div class="pending-label">Điểm dự kiến</div>
+            <div class="pending-value">+{{ entry.points }}</div>
+          </div>
+          <div class="pending-cta">
+            <span class="pending-note">{{ getPendingNote(entry) }}</span>
+            <a
+              *ngIf="entry.action === 'pay'"
+              class="btn-outline"
+              [routerLink]="['/profile/orders']"
+            >
+              {{ getPendingActionLabel(entry) }}
+            </a>
+            <span *ngIf="entry.action === 'sync'" class="sync-note">
+              {{ getPendingActionLabel(entry) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+    <ng-template #emptyPending>
+      <div class="empty-state compact">
+        <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
+        <h3>Chưa có đơn đang chờ cộng điểm</h3>
+        <p>Mọi giao dịch đủ điều kiện đã được cộng vào điểm thưởng.</p>
+      </div>
+    </ng-template>
+  </section>
+</div>

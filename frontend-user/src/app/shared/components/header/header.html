@@ -17,10 +17,27 @@
         </ul>
 
         <div class="social-icons">
+          <div class="notification-wrapper" (click)="$event.stopPropagation()">
+            <a href="#" class="icon-bell" aria-label="Thong bao" (click)="toggleNotifications($event)">
+              <i class="fas fa-bell"></i>
+              @if (unreadCount > 0) {
+                <span class="notification-badge">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+              }
+            </a>
+            <app-notification-panel
+              [show]="showNotificationPanel"
+              [isLoggedIn]="!!currentUser"
+              [notifications]="notifications"
+              [isLoading]="notificationsLoading"
+              [error]="notificationsError"
+              (register)="goToRegister()"
+              (login)="goToLogin()"
+            ></app-notification-panel>
+          </div>
           <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
-          <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
           <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
-          <a href="#" aria-label="Pinterest"><i class="fab fa-pinterest-p"></i></a>
+          <a href="#" aria-label="Youtube"><i class="fab fa-youtube"></i></a>
+          <a href="#" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
         </div>
       </nav>
     </div>
@@ -32,8 +49,13 @@
       <div class="header-content">
         <!-- Search Bar -->
         <div class="search-bar">
-          <input type="text" placeholder="Tìm kiếm..." [(ngModel)]="searchQuery" />
-          <button class="search-btn" aria-label="Tìm kiếm">
+          <input
+            type="text"
+            placeholder="Tìm kiếm..."
+            [(ngModel)]="searchQuery"
+            (keyup.enter)="onSearchSubmit()"
+          />
+          <button class="search-btn" aria-label="Tìm kiếm" (click)="onSearchSubmit()">
             <i class="fas fa-search"></i>
           </button>
         </div>
@@ -42,20 +64,80 @@
         <div class="logo-center">
           <a routerLink="/">
             <div class="logo-row">
-              <img src="/assets/images/brand/logo-main.png" alt="Áo Dài Ngũ Thân" />
-              <img src="/assets/images/brand/logo-sub.png" alt="Phục" />
+              <img
+                src="/assets/images/brand/logo-main.png"
+                alt="Áo Dài Ngũ Thân"
+                width="120"
+                height="40"
+              />
+              <img src="/assets/images/brand/logo-sub.png" alt="Phục" width="60" height="40" />
             </div>
           </a>
         </div>
 
         <!-- Auth Buttons -->
         <div class="auth-buttons">
-          <button class="btn-cart" aria-label="Giỏ hàng">
+          <button class="btn-cart" aria-label="Giỏ hàng" (click)="goToCart()">
             <i class="fas fa-shopping-bag"></i>
-            <span class="cart-count">0</span>
+            <span class="cart-count">{{ cartCount }}</span>
           </button>
-          <button class="btn btn-login" routerLink="/login">ĐĂNG NHẬP</button>
-          <button class="btn btn-signup" routerLink="/register">ĐĂNG KÝ</button>
+
+          <!-- Show when not logged in -->
+          @if (!currentUser) {
+            <button class="btn btn-login" routerLink="/login">ĐĂNG NHẬP</button>
+            <button class="btn btn-signup" routerLink="/register">ĐĂNG KÝ</button>
+          }
+
+          <!-- Show when logged in -->
+          @if (currentUser) {
+            <div class="user-menu-container">
+              <button class="user-avatar-btn" (click)="toggleUserMenu()" aria-label="User menu">
+                <img [src]="getUserAvatar()" [alt]="currentUser.fullName" class="avatar-img" />
+                <span class="user-name">{{ currentUser.fullName }}</span>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+
+              <!-- Dropdown menu -->
+              @if (showUserMenu) {
+                <div class="user-dropdown">
+                  <div class="user-info">
+                    <img
+                      [src]="getUserAvatar()"
+                      [alt]="currentUser.fullName"
+                      class="dropdown-avatar"
+                    />
+                    <div class="user-details">
+                      <p class="user-full-name">{{ currentUser.fullName }}</p>
+                      <p class="user-email">{{ currentUser.email }}</p>
+                    </div>
+                  </div>
+                  <hr />
+                  <ul class="dropdown-menu">
+                    <li>
+                      <a routerLink="/profile/overview" (click)="closeUserMenu()">
+                        <i class="fas fa-user"></i> Hồ sơ cá nhân
+                      </a>
+                    </li>
+                    <li>
+                      <a routerLink="/profile/orders" (click)="closeUserMenu()">
+                        <i class="fas fa-shopping-bag"></i> Đơn hàng của tôi
+                      </a>
+                    </li>
+                    <li>
+                      <a routerLink="/profile/wallet" (click)="closeUserMenu()">
+                        <i class="fas fa-wallet"></i> Ví & tích điểm
+                      </a>
+                    </li>
+                    <li>
+                      <button (click)="onLogout()">
+                        <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -71,8 +153,13 @@
   <!-- Mobile Menu -->
   <div class="mobile-menu" [class.active]="menuOpen">
     <div class="mobile-search">
-      <input type="text" placeholder="Tìm kiếm..." [(ngModel)]="searchQuery" />
-      <button class="search-btn">
+      <input
+        type="text"
+        placeholder="Tìm kiếm..."
+        [(ngModel)]="searchQuery"
+        (keyup.enter)="onSearchSubmit()"
+      />
+      <button class="search-btn" (click)="onSearchSubmit()">
         <i class="fas fa-search"></i>
       </button>
     </div>

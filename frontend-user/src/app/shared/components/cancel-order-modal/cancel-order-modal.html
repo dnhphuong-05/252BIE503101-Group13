@@ -1,0 +1,51 @@
+@if (show) {
+  <div class="cancel-order-overlay" (click)="onClose()">
+    <div
+      class="cancel-order-modal"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-header">
+        <div>
+          <p class="modal-eyebrow">Huỷ đơn hàng</p>
+          <h3>Bạn muốn huỷ đơn {{ orderCode || '' }}</h3>
+        </div>
+        <button class="modal-close" type="button" (click)="onClose()" aria-label="Đóng">
+          &times;
+        </button>
+      </div>
+
+      <p class="modal-subtitle">Vui lòng chọn lý do để chúng tôi phục vụ bạn tốt hơn.</p>
+
+      <div class="reason-list">
+        <label class="reason-item" *ngFor="let option of reasons">
+          <input
+            type="radio"
+            name="cancelReason"
+            [value]="option.value"
+            [(ngModel)]="selectedReason"
+          />
+          <span>{{ option.label }}</span>
+        </label>
+      </div>
+
+      <div class="custom-reason" *ngIf="selectedReason === 'other'">
+        <textarea
+          rows="3"
+          placeholder="Nhập lý do huỷ đơn..."
+          [(ngModel)]="customReason"
+        ></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" (click)="onClose()" [disabled]="loading">
+          Quay lại
+        </button>
+        <button class="btn primary" type="button" (click)="onSubmit()" [disabled]="!canSubmit">
+          {{ loading ? 'Đang huỷ...' : 'Xác nhận huỷ' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

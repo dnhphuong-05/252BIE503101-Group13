@@ -1,0 +1,65 @@
+@if (show) {
+  <div class="rental-success-overlay" (click)="closeModal()">
+    <div class="rental-success-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-icon">
+        <div class="icon-ring"></div>
+        <i class="fas fa-calendar-check"></i>
+      </div>
+
+      <div class="modal-header">
+        <h2>Đặt thuê thành công</h2>
+        <p>PHÚC đã nhận lịch thuê của bạn</p>
+      </div>
+
+      <div class="code-section">
+        <span class="code-label">Mã đơn thuê</span>
+        <div class="code-badge">
+          <span>{{ rentOrderCode }}</span>
+          <button type="button" class="copy-btn" (click)="copyOrderCode()">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <span>Ngày nhận</span>
+          <strong>{{ formatDate(startDate) }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Ngày trả</span>
+          <strong>{{ formatDate(endDate) }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Tiền thuê dự kiến</span>
+          <strong>{{ formatCurrency(rentFeeExpected) }}</strong>
+        </div>
+        <div class="summary-card">
+          <span>Cọc đã thanh toán</span>
+          <strong>{{ formatCurrency(depositPaid) }}</strong>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div>
+          <span class="status-label">Trạng thái</span>
+          <strong>{{ statusLabel }}</strong>
+        </div>
+        <div class="status-pill" [class.pending]="status === 'pending'">{{ status }}</div>
+      </div>
+
+      <div class="info-box">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <strong>Shop sẽ xác nhận trong vòng 24h</strong>
+          <p>Bạn có thể xem chi tiết lịch thuê trong hồ sơ cá nhân.</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="primary-btn" (click)="closeModal()">Hoàn tất</button>
+        <a class="ghost-btn" routerLink="/profile/rentals">Xem đơn thuê</a>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,251 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Guest Customers</div>
+      <div class="page-subtitle">
+        Quản lý khách vãng lai: tra cứu thông tin, lịch sử đơn và mời đăng ký.
+      </div>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-toolbar guest-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Tìm theo tên, SĐT, email hoặc mã guest"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Trạng thái</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (option of statusFilters; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Sắp xếp</span>
+        <select class="select" [(ngModel)]="sortBy" (change)="applyFilters()">
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Thứ tự</span>
+        <select class="select" [(ngModel)]="sortOrder" (change)="applyFilters()">
+          @for (option of sortOrders; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    @if (isLoading && guests.length === 0) {
+      <div class="empty-state">Đang tải danh sách khách vãng lai...</div>
+    } @else if (loadError && guests.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (guests.length === 0) {
+      <div class="empty-state">Chưa có khách vãng lai.</div>
+    } @else {
+      <table class="table guest-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Khách</th>
+            <th>Liên hệ</th>
+            <th>Tổng đơn</th>
+            <th>Tổng chi tiêu</th>
+            <th>Đơn gần nhất</th>
+            <th>Trạng thái</th>
+            <th>Ngày tạo</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (guest of guests; track guest.id) {
+            <tr>
+              <td>#{{ guest.id }}</td>
+              <td class="font-semibold">{{ guest.name }}</td>
+              <td>
+                <div class="contact-stack">
+                  <span>{{ guest.phone }}</span>
+                  <span class="item-meta">{{ guest.email }}</span>
+                </div>
+              </td>
+              <td>{{ guest.orderCount }}</td>
+              <td>{{ formatCurrency(guest.totalSpent) }}</td>
+              <td>{{ guest.lastOrderAt }}</td>
+              <td>
+                <span [class]="statusMeta[guest.status].class">
+                  {{ statusMeta[guest.status].label }}
+                </span>
+              </td>
+              <td>{{ guest.createdAt }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="onView(guest)">
+                    Xem
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">
+        Hiển thị {{ guests.length }} / {{ total }} khách
+      </span>
+      <div class="pagination">
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page - 1)"
+          [disabled]="page <= 1"
+        >
+          Trước
+        </button>
+        <span class="page-info">Trang {{ page }} / {{ pages }}</span>
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page + 1)"
+          [disabled]="page >= pages"
+        >
+          Sau
+        </button>
+      </div>
+    </div>
+
+    @if (detailLoading) {
+      <div class="detail-loading">Đang tải chi tiết khách...</div>
+    } @else if (selectedGuest) {
+      <div class="detail-drawer">
+        <div class="detail-header">
+          <div>
+            <div class="section-title">{{ selectedGuest!.full_name }}</div>
+            <div class="item-meta">
+              ID: {{ selectedGuest!.guest_id }} · {{ selectedGuest!.createdLabel }}
+            </div>
+          </div>
+          <span [class]="statusMeta[selectedGuest!.status].class">
+            {{ statusMeta[selectedGuest!.status].label }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div>
+            <div class="item-meta">SĐT</div>
+            <div class="font-semibold">{{ selectedGuest!.phone || '-' }}</div>
+          </div>
+          <div>
+            <div class="item-meta">Email</div>
+            <div class="font-semibold">{{ selectedGuest!.email || '-' }}</div>
+          </div>
+          <div>
+            <div class="item-meta">Đơn gần nhất</div>
+            <div class="font-semibold">{{ selectedGuest!.lastOrderLabel }}</div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Địa chỉ</div>
+          <div class="address-card">
+            {{ selectedGuest!.addressLabel || '-' }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Ghi chú</div>
+          <div class="note-card">
+            {{ selectedGuest!.notes || 'Chưa có ghi chú.' }}
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Đơn hàng gần đây</div>
+          <div class="order-grid">
+            <div class="order-panel">
+              <div class="panel-title">Đơn mua</div>
+              @if (ordersLoading) {
+                <div class="empty-state soft">Đang tải...</div>
+              } @else if (buyOrders.length === 0) {
+                <div class="empty-state soft">Chưa có đơn mua.</div>
+              } @else {
+                <div class="order-list">
+                  @for (order of buyOrders; track order.code) {
+                    <div class="order-row">
+                      <div>
+                        <div class="font-semibold">{{ order.code }}</div>
+                        <div class="item-meta">{{ order.createdAt }}</div>
+                      </div>
+                      <div class="order-meta">
+                        <span class="item-meta">{{ order.status }}</span>
+                        <span class="font-semibold">{{ formatCurrency(order.total) }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="order-panel">
+              <div class="panel-title">Đơn thuê</div>
+              @if (ordersLoading) {
+                <div class="empty-state soft">Đang tải...</div>
+              } @else if (rentOrders.length === 0) {
+                <div class="empty-state soft">Chưa có đơn thuê.</div>
+              } @else {
+                <div class="order-list">
+                  @for (order of rentOrders; track order.code) {
+                    <div class="order-row">
+                      <div>
+                        <div class="font-semibold">{{ order.code }}</div>
+                        <div class="item-meta">{{ order.createdAt }}</div>
+                      </div>
+                      <div class="order-meta">
+                        <span class="item-meta">{{ order.status }}</span>
+                        <span class="font-semibold">{{ formatCurrency(order.total) }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button class="btn btn-primary btn-sm" type="button" (click)="inviteToRegister()">
+            Mời đăng ký
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

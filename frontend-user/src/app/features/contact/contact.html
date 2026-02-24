@@ -17,7 +17,7 @@
       <!-- Left Side: Contact Information -->
       <div class="contact-info-container">
         <p class="info-label">GET IN TOUCH</p>
-        <h2 class="info-heading">Seamless Communication, Global Impact.</h2>
+        <h2 class="info-heading">Connecting Values. Spreading Culture.</h2>
         <p class="info-description">
           {{ storeInfo.description }}
         </p>
@@ -78,17 +78,14 @@
             <a [href]="storeInfo.social.facebook" target="_blank" class="social-icon">
               <i class="fab fa-facebook-f"></i>
             </a>
-            <a [href]="storeInfo.social.twitter" target="_blank" class="social-icon">
-              <i class="fab fa-dribbble"></i>
-            </a>
             <a [href]="storeInfo.social.instagram" target="_blank" class="social-icon">
               <i class="fab fa-instagram"></i>
             </a>
-            <a [href]="storeInfo.social.twitter" target="_blank" class="social-icon">
-              <i class="fab fa-linkedin-in"></i>
-            </a>
             <a [href]="storeInfo.social.youtube" target="_blank" class="social-icon">
               <i class="fab fa-youtube"></i>
+            </a>
+            <a [href]="storeInfo.social.tiktok" target="_blank" class="social-icon">
+              <i class="fab fa-tiktok"></i>
             </a>
           </div>
         </div>
@@ -144,13 +141,19 @@
 
           <!-- Mục đích liên hệ -->
           <div class="form-group full-width">
-            <label for="purpose">Mục đích liên hệ</label>
-            <select id="purpose" name="purpose" [(ngModel)]="contactForm.purpose" required>
-              <option value="" disabled selected>Chọn mục đích liên hệ</option>
+            <label for="purpose">Mục đích liên hệ <span style="color: #75162d;">*</span></label>
+            <select 
+              id="purpose" 
+              name="purpose" 
+              [(ngModel)]="contactForm.purpose" 
+              required
+              [attr.aria-required]="true"
+              [attr.aria-label]="'Chọn mục đích liên hệ'">
+              <option value="" disabled selected hidden>Chọn mục đích liên hệ</option>
               <option value="consult">Tư vấn mua cổ phục</option>
               <option value="rent">Thuê cổ phục chụp ảnh</option>
+              <option value="buy">Mua co phuc</option>
               <option value="custom">May đo theo yêu cầu</option>
-              <option value="cooperation">Hợp tác / dự án / sự kiện</option>
             </select>
           </div>
 
@@ -161,16 +164,16 @@
               id="message"
               name="message"
               rows="4"
-              placeholder="Bạn muốn tư vấn mua, thuê, may đo hay hợp tác? Hãy cho chúng tôi biết yêu cầu cụ thể..."
+              placeholder="Ban muon tu van, thue, mua hoac may do? Hay cho chung toi biet yeu cau cu the..."
               [(ngModel)]="contactForm.message"
               required
             ></textarea>
           </div>
 
           <!-- Submit Button -->
-          <button type="submit" class="btn-submit">
+          <button type="submit" class="btn-submit" [disabled]="isSubmitting">
             <i class="fas fa-paper-plane"></i>
-            GỬI LIÊN HỆ
+            {{ isSubmitting ? 'ĐANG GỬI...' : 'GỬI LIÊN HỆ' }}
           </button>
         </form>
       </div>

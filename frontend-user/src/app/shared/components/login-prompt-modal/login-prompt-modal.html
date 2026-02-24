@@ -1,0 +1,28 @@
+@if (show) {
+  <div class="login-prompt-overlay" (click)="onClose()">
+    <div
+      class="login-prompt-modal"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="login-prompt-header">
+        <h3>{{ title }}</h3>
+        <button class="login-prompt-close" type="button" (click)="onClose()" aria-label="Đóng">
+          &times;
+        </button>
+      </div>
+
+      <p class="login-prompt-text">{{ message }}</p>
+
+      <div class="login-prompt-actions">
+        <button class="login-prompt-btn ghost" type="button" (click)="onContinueAsGuest()">
+          Không, tiếp tục
+        </button>
+        <button class="login-prompt-btn primary" type="button" (click)="onGoToLogin()">
+          Đăng nhập
+        </button>
+      </div>
+    </div>
+  </div>
+}

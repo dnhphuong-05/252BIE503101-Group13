@@ -1,0 +1,17 @@
+<div
+  class="admin-layout"
+  [class.is-collapsed]="sidebarCollapsed()"
+  [style.--sidebar-width.px]="sidebarCollapsed() ? 92 : 280"
+>
+  <app-sidebar [isCollapsed]="sidebarCollapsed()" (toggleCollapse)="toggleSidebar()" />
+
+  <div class="main-content">
+    <app-topbar (toggleSidebar)="toggleSidebar()" />
+
+    <main class="page-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<app-toast-stack />

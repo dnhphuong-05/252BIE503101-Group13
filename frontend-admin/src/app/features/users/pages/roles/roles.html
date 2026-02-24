@@ -1,0 +1,29 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Roles &amp; Permissions</div>
+      <div class="page-subtitle">Chỉ Super Admin được phép chỉnh sửa quyền</div>
+    </div>
+  </div>
+
+  <div class="roles-grid">
+    @for (role of roles; track role.role) {
+      <div class="card role-card">
+        <div class="role-header">
+          <div class="section-title">{{ role.role }}</div>
+          <span class="chip chip-accent">Core</span>
+        </div>
+        <div class="text-sm text-primary-600">{{ role.description }}</div>
+        <div class="role-perms">
+          @for (perm of role.permissions; track perm) {
+            <span class="chip chip-neutral">{{ perm }}</span>
+          }
+        </div>
+        <div class="role-actions">
+          <button class="btn btn-ghost btn-sm">View</button>
+          <button class="btn btn-secondary btn-sm">Edit</button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,31 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
-interface Product {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  discount: number;
-  thumbnail: string;
-  images: string[];
-  sizes: string[];
-  colors: string[];
-  material: string;
-  dynasty: string;
-  origin: string;
-  stock: number;
-  rating: number;
-  sold: number;
-  description: string;
-  featured?: boolean;
-  new?: boolean;
-  tags?: string[];
-}
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { ProductService, Product } from '../../services/product.service';
+import { AuthService } from '../../services/auth.service';
+import { CartService } from '../../services/cart.service';
+import { ProductModal } from '../../shared/components/product-modal/product-modal';
 
 interface Category {
-  id: string;
+  id: number;
   name: string;
   count?: number;
 }
@@ -33,345 +16,181 @@ interface Category {
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule, ProductModal],
   templateUrl: './products.html',
   styleUrl: './products.css',
 })
 export class ProductsComponent implements OnInit {
   products: Product[] = [];
-  filteredProducts: Product[] = [];
   categories: Category[] = [];
 
   // Filter states
-  selectedCategory: string = '';
+  selectedCategory: number | null = null;
   selectedColors: string[] = [];
-  selectedPrice = '9000000';
-  sortBy = 'Alphabetically A-Z';
-  itemsPerPage = 9;
+  selectedPrice = 0;
+  minPrice = 0;
+  maxPrice = 10000000;
+  sortBy = 'newest';
+  searchQuery = '';
+  itemsPerPage = 20;
   currentPage = 1;
+  totalPages = 1;
+  totalProducts = 0;
+
+  // Loading state
+  isLoading = false;
+  loadError: string | null = null;
 
   // Available filters
-  availableColors = ['Đỏ', 'Vàng', 'Xanh', 'Nâu', 'Đen', 'Trắng', 'Tím', 'Hồng'];
-  priceRange = '0-9000000';
+  availableColors: string[] = [];
+  availableSizes: string[] = [];
+  availableGenders: string[] = [];
+  selectedSizes: string[] = [];
+  selectedGender: string = '';
   sortOptions = [
-    'Alphabetically A-Z',
-    'Alphabetically Z-A',
-    'Price Low to High',
-    'Price High to Low',
-    'Newest First',
-    'Best Sellers',
+    { value: 'newest', label: 'Mới nhất' },
+    { value: 'price-asc', label: 'Giá thấp đến cao' },
+    { value: 'price-desc', label: 'Giá cao đến thấp' },
+    { value: 'name-asc', label: 'Tên A-Z' },
+    { value: 'name-desc', label: 'Tên Z-A' },
+    { value: 'popular', label: 'Phổ biến nhất' },
   ];
 
-  constructor() {}
+  showProductModal = false;
+  selectedProduct: Product | null = null;
+
+  constructor(
+    private productService: ProductService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private authService: AuthService,
+    private cartService: CartService,
+  ) {}
 
   ngOnInit() {
-    this.loadProducts();
-    this.loadCategories();
-    this.filterProducts();
+    this.loadFilters();
+    this.route.queryParams.subscribe((params) => {
+      this.searchQuery = (params['search'] || '').toString().trim();
+      this.currentPage = 1;
+      this.loadProducts();
+    });
+  }
+
+  loadFilters() {
+    this.productService.getProductFilters().subscribe({
+      next: (response) => {
+        const data = response.data;
+        this.categories = data.categories || [];
+        this.availableColors = data.colors || [];
+        this.availableSizes = data.sizes || [];
+        this.availableGenders = data.genders || [];
+        this.minPrice = data.minPrice ?? 0;
+        this.maxPrice = data.maxPrice ?? 0;
+        this.selectedPrice = this.maxPrice;
+      },
+      error: (error) => {
+        console.error('Error loading product filters:', error);
+      },
+    });
   }
 
   loadProducts() {
-    // Load from data - in real app, would call a service
-    this.products = [
-      {
-        id: 'SP001',
-        name: 'Áo Nhật Bình Hoa Văn Phượng',
-        category: 'nhat-binh',
-        price: 3500000,
-        discount: 15,
-        thumbnail: 'assets/images/products/sp001/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp001/pos1.jpg',
-          'assets/images/products/sp001/pos2.jpg',
-          'assets/images/products/sp001/pos3.jpg',
-          'assets/images/products/sp001/pos4.jpg',
-        ],
-        sizes: ['S', 'M', 'L'],
-        colors: ['Vàng', 'Đỏ son'],
-        material: 'Gấm thêu tay',
-        dynasty: 'Nguyễn',
-        origin: 'Cung đình Huế',
-        stock: 12,
-        rating: 4.9,
-        sold: 86,
-        description: 'Áo Nhật Bình dành cho nghi lễ cung đình, hoa văn phượng hoàng thêu thủ công.',
-        featured: true,
-        new: false,
-        tags: ['cao-cap', 'cung-dinh'],
-      },
-      {
-        id: 'SP002',
-        name: 'Áo Ngũ Thân Tay Chẽn Truyền Thống',
-        category: 'ngu-than-chen',
-        price: 1800000,
-        discount: 0,
-        thumbnail: 'assets/images/products/sp002/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp002/pos1.jpg',
-          'assets/images/products/sp002/pos2.jpg',
-          'assets/images/products/sp002/pos3.jpg',
-          'assets/images/products/sp002/pos4.jpg',
-        ],
-        sizes: ['M', 'L', 'XL'],
-        colors: ['Xanh lam', 'Nâu'],
-        material: 'Lụa tơ tằm',
-        dynasty: 'Nguyễn',
-        origin: 'Bắc Bộ',
-        stock: 20,
-        rating: 4.7,
-        sold: 142,
-        description: 'Áo ngũ thân tay chẽn thường dùng trong sinh hoạt và nghi lễ dân gian.',
-        featured: false,
-        new: false,
-        tags: ['truyen-thong', 'lua-tam'],
-      },
-      {
-        id: 'SP003',
-        name: 'Áo Tấc Gấm Vân Mây',
-        category: 'ao-tac',
-        price: 2500000,
-        discount: 10,
-        thumbnail: 'assets/images/products/sp003/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp003/pos1.jpg',
-          'assets/images/products/sp003/pos2.jpg',
-          'assets/images/products/sp003/pos3.jpg',
-          'assets/images/products/sp003/pos4.jpg',
-        ],
-        sizes: ['S', 'M', 'L'],
-        colors: ['Đỏ đô', 'Xanh ngọc'],
-        material: 'Gấm cao cấp',
-        dynasty: 'Nguyễn',
-        origin: 'Cung đình',
-        stock: 8,
-        rating: 4.8,
-        sold: 64,
-        description: 'Áo Tấc (ngũ thân tay rộng) dùng trong tế lễ và sự kiện truyền thống.',
-        featured: true,
-        new: false,
-        tags: ['le-phuc', 'gam'],
-      },
-      {
-        id: 'SP004',
-        name: 'Áo Giao Lĩnh Cổ Truyền',
-        category: 'giao-linh',
-        price: 1600000,
-        discount: 5,
-        thumbnail: 'assets/images/products/sp004/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp004/pos1.jpg',
-          'assets/images/products/sp004/pos2.jpg',
-          'assets/images/products/sp004/pos3.jpg',
-          'assets/images/products/sp004/pos4.jpg',
-        ],
-        sizes: ['M', 'L'],
-        colors: ['Trắng ngà', 'Xám'],
-        material: 'Vải the',
-        dynasty: 'Lý – Trần',
-        origin: 'Đại Việt',
-        stock: 15,
-        rating: 4.6,
-        sold: 91,
-        description: 'Áo giao lĩnh cổ xưa, cổ chéo đặc trưng thời Lý – Trần.',
-        featured: false,
-        new: true,
-        tags: ['co-truyen', 'ly-tran'],
-      },
-      {
-        id: 'SP005',
-        name: 'Áo Tứ Thân Lụa Nhuộm Chàm',
-        category: 'tu-than',
-        price: 1200000,
-        discount: 0,
-        thumbnail: 'assets/images/products/sp005/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp005/pos1.jpg',
-          'assets/images/products/sp005/pos2.jpg',
-          'assets/images/products/sp005/pos3.jpg',
-          'assets/images/products/sp005/pos4.jpg',
-        ],
-        sizes: ['Free'],
-        colors: ['Nâu', 'Chàm'],
-        material: 'Lụa nhuộm thủ công',
-        dynasty: 'Dân gian',
-        origin: 'Bắc Bộ',
-        stock: 25,
-        rating: 4.5,
-        sold: 180,
-        description: 'Áo tứ thân truyền thống của phụ nữ Bắc Bộ, thích hợp biểu diễn và chụp ảnh.',
-        featured: false,
-        new: false,
-        tags: ['dan-gian', 'nhuom-cham'],
-      },
-      {
-        id: 'SP006',
-        name: 'Áo Nhật Bình Thêu Rồng Vàng',
-        category: 'nhat-binh',
-        price: 4200000,
-        discount: 20,
-        thumbnail: 'assets/images/products/sp006/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp006/pos1.jpg',
-          'assets/images/products/sp006/pos2.jpg',
-          'assets/images/products/sp006/pos3.jpg',
-          'assets/images/products/sp006/pos4.jpg',
-        ],
-        sizes: ['S', 'M', 'L', 'XL'],
-        colors: ['Vàng kim', 'Đỏ thẫm'],
-        material: 'Gấm thêu rồng thủ công',
-        dynasty: 'Nguyễn',
-        origin: 'Cung đình Huế',
-        stock: 5,
-        rating: 5.0,
-        sold: 32,
-        description: 'Áo Nhật Bình cao cấp với họa tiết rồng vàng uy nghi.',
-        featured: true,
-        new: true,
-        tags: ['cao-cap', 'limited'],
-      },
-      {
-        id: 'SP007',
-        name: 'Áo Viên Lĩnh Lụa Tơ Tằm',
-        category: 'vien-linh',
-        price: 1900000,
-        discount: 0,
-        thumbnail: 'assets/images/products/sp007/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp007/pos1.jpg',
-          'assets/images/products/sp007/pos2.jpg',
-          'assets/images/products/sp007/pos3.jpg',
-          'assets/images/products/sp007/pos4.jpg',
-        ],
-        sizes: ['M', 'L'],
-        colors: ['Hồng phấn', 'Xanh nhạt'],
-        material: 'Lụa tơ tằm cao cấp',
-        dynasty: 'Nguyễn',
-        origin: 'Huế',
-        stock: 18,
-        rating: 4.7,
-        sold: 76,
-        description: 'Áo viên lĩnh thanh lịch, cổ tròn đặc trưng.',
-        featured: false,
-        new: true,
-        tags: ['thanh-lich', 'lua-tam'],
-      },
-      {
-        id: 'SP008',
-        name: 'Áo Bào Lễ Nam Giới',
-        category: 'bao-le',
-        price: 2100000,
-        discount: 10,
-        thumbnail: 'assets/images/products/sp008/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp008/pos1.jpg',
-          'assets/images/products/sp008/pos2.jpg',
-          'assets/images/products/sp008/pos3.jpg',
-          'assets/images/products/sp008/pos4.jpg',
-        ],
-        sizes: ['M', 'L', 'XL'],
-        colors: ['Đen', 'Nâu đất'],
-        material: 'Gấm dày',
-        dynasty: 'Nguyễn',
-        origin: 'Trung Bộ',
-        stock: 14,
-        rating: 4.6,
-        sold: 58,
-        description: 'Áo bào lễ nam giới dùng trong các nghi lễ tế lễ.',
-        featured: false,
-        new: false,
-        tags: ['nam-gioi', 'le-phuc'],
-      },
-      {
-        id: 'SP009',
-        name: 'Áo Đối Khâm Hoa Sen',
-        category: 'doi-kham',
-        price: 1700000,
-        discount: 5,
-        thumbnail: 'assets/images/products/sp009/thumbnail.jpg',
-        images: [
-          'assets/images/products/sp009/pos1.jpg',
-          'assets/images/products/sp009/pos2.jpg',
-          'assets/images/products/sp009/pos3.jpg',
-          'assets/images/products/sp009/pos4.jpg',
-        ],
-        sizes: ['S', 'M', 'L'],
-        colors: ['Trắng', 'Hồng sen'],
-        material: 'Lụa thêu',
-        dynasty: 'Dân gian',
-        origin: 'Nam Bộ',
-        stock: 22,
-        rating: 4.5,
-        sold: 95,
-        description: 'Áo đối khâm với họa tiết hoa sen đối xứng tinh tế.',
-        featured: false,
-        new: false,
-        tags: ['hoa-sen', 'dan-gian'],
-      },
-    ];
-  }
+    this.isLoading = true;
+    this.loadError = null;
 
-  loadCategories() {
-    this.categories = [
-      { id: 'nhat-binh', name: 'Áo Nhật Bình', count: 4 },
-      { id: 'ngu-than-chen', name: 'Áo Ngũ Thân Tay Chẽn', count: 3 },
-      { id: 'ao-tac', name: 'Áo Tấc', count: 2 },
-      { id: 'giao-linh', name: 'Áo Giao Lĩnh', count: 2 },
-      { id: 'vien-linh', name: 'Áo Viên Lĩnh', count: 1 },
-      { id: 'tu-than', name: 'Áo Tứ Thân', count: 3 },
-      { id: 'bao-le', name: 'Áo Bào Lễ', count: 1 },
-      { id: 'doi-kham', name: 'Áo Đối Khâm', count: 1 },
-    ];
-  }
+    const options: any = {
+      page: this.currentPage,
+      limit: this.itemsPerPage,
+      sortBy: this.getSortField(),
+      sortOrder: this.getSortOrder(),
+      search: this.searchQuery,
+      status: 'active',
+    };
 
-  filterProducts() {
-    let filtered = [...this.products];
-
-    // Filter by category
+    // Add category filter
     if (this.selectedCategory) {
-      filtered = filtered.filter((p) => p.category === this.selectedCategory);
+      options.category_id = this.selectedCategory;
     }
 
-    // Filter by color
+    // Add price filter
+    if (this.selectedPrice && this.selectedPrice < this.maxPrice) {
+      options.maxPrice = this.selectedPrice;
+    }
+
+    // Add color filter
     if (this.selectedColors.length > 0) {
-      filtered = filtered.filter((p) =>
-        p.colors.some((color) => this.selectedColors.includes(color)),
-      );
+      options.colors = this.selectedColors;
+    }
+    if (this.selectedSizes.length > 0) {
+      options.sizes = this.selectedSizes;
+    }
+    if (this.selectedGender) {
+      options.gender = this.selectedGender;
     }
 
-    // Filter by price
-    const maxPrice = parseInt(this.selectedPrice);
-    filtered = filtered.filter((p) => p.price <= maxPrice);
+    this.productService.getAllProducts(options).subscribe({
+      next: (response) => {
+        this.products = response.data.items;
+        this.totalProducts = response.data.pagination.total;
+        this.totalPages = response.data.pagination.pages;
+        this.currentPage = response.data.pagination.page;
 
-    // Sort
-    this.sortProducts(filtered);
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
 
-    this.filteredProducts = filtered;
-    this.currentPage = 1;
+        // Provide more specific error messages
+        if (error.status === 0) {
+          this.loadError =
+            'Không thể kết nối đến máy chủ. Vui lòng kiểm tra xem backend đã được khởi động chưa.';
+        } else if (error.status === 404) {
+          this.loadError = 'Không tìm thấy API endpoint. Vui lòng kiểm tra cấu hình.';
+        } else if (error.status >= 500) {
+          this.loadError = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+        } else {
+          this.loadError =
+            error.error?.message || 'Không thể tải danh sách sản phẩm. Vui lòng thử lại sau.';
+        }
+
+        this.isLoading = false;
+      },
+    });
   }
 
-  sortProducts(products: Product[]) {
+  // Filter metadata now comes from database (via /products/filters)
+
+  getSortField(): string {
     switch (this.sortBy) {
-      case 'Alphabetically A-Z':
-        products.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'Alphabetically Z-A':
-        products.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case 'Price Low to High':
-        products.sort((a, b) => a.price - b.price);
-        break;
-      case 'Price High to Low':
-        products.sort((a, b) => b.price - a.price);
-        break;
-      case 'Newest First':
-        products.sort((a, b) => (b.new ? 1 : 0) - (a.new ? 1 : 0));
-        break;
-      case 'Best Sellers':
-        products.sort((a, b) => b.sold - a.sold);
-        break;
+      case 'price-asc':
+      case 'price-desc':
+        return 'price_buy';
+      case 'name-asc':
+      case 'name-desc':
+        return 'name';
+      case 'popular':
+        return 'sold_count';
+      case 'newest':
+      default:
+        return 'created_at';
     }
   }
 
+  getSortOrder(): 'asc' | 'desc' {
+    switch (this.sortBy) {
+      case 'price-asc':
+      case 'name-asc':
+        return 'asc';
+      case 'price-desc':
+      case 'name-desc':
+      case 'popular':
+      case 'newest':
+      default:
+        return 'desc';
+    }
+  }
+
+  // Filter methods
   toggleColor(color: string) {
     const index = this.selectedColors.indexOf(color);
     if (index > -1) {
@@ -379,65 +198,194 @@ export class ProductsComponent implements OnInit {
     } else {
       this.selectedColors.push(color);
     }
-    this.filterProducts();
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
-  selectCategory(categoryId: string) {
-    this.selectedCategory = this.selectedCategory === categoryId ? '' : categoryId;
-    this.filterProducts();
+  toggleSize(size: string) {
+    const index = this.selectedSizes.indexOf(size);
+    if (index > -1) {
+      this.selectedSizes.splice(index, 1);
+    } else {
+      this.selectedSizes.push(size);
+    }
+    this.currentPage = 1;
+    this.loadProducts();
+  }
+
+  selectGender(gender: string) {
+    if (this.selectedGender === gender) {
+      this.selectedGender = '';
+    } else {
+      this.selectedGender = gender;
+    }
+    this.currentPage = 1;
+    this.loadProducts();
+  }
+
+  selectCategory(categoryId: number) {
+    if (this.selectedCategory === categoryId) {
+      this.selectedCategory = null;
+    } else {
+      this.selectedCategory = categoryId;
+    }
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
   onPriceChange() {
-    this.filterProducts();
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
   onSortChange() {
-    this.filterProducts();
-  }
-
-  getDiscountedPrice(price: number, discount: number): number {
-    return price - (price * discount) / 100;
-  }
-
-  getPaginatedProducts() {
-    const start = (this.currentPage - 1) * this.itemsPerPage;
-    const end = start + this.itemsPerPage;
-    return this.filteredProducts.slice(start, end);
-  }
-
-  getTotalPages(): number {
-    return Math.ceil(this.filteredProducts.length / this.itemsPerPage);
-  }
-
-  goToPage(page: number) {
-    if (page >= 1 && page <= this.getTotalPages()) {
-      this.currentPage = page;
-      window.scrollTo(0, 0);
-    }
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
   resetFilters() {
-    this.selectedCategory = '';
+    this.selectedCategory = null;
     this.selectedColors = [];
-    this.selectedPrice = '9000000';
-    this.sortBy = 'Alphabetically A-Z';
-    this.filterProducts();
+    this.selectedSizes = [];
+    this.selectedGender = '';
+    this.selectedPrice = this.maxPrice;
+    this.searchQuery = '';
+    this.sortBy = 'newest';
+    this.currentPage = 1;
+    this.loadProducts();
   }
 
-  getColorValue(colorName: string): string {
-    const colorMap: { [key: string]: string } = {
-      Đỏ: '#d32f2f',
-      Vàng: '#f2d9a0',
-      Xanh: '#1976d2',
-      Nâu: '#795548',
-      Đen: '#212121',
-      Trắng: '#f5f5f5',
-      Tím: '#7b1fa2',
-      Hồng: '#e91e63',
-    };
-    return colorMap[colorName] || '#cccccc';
+  // Utility methods
+  getFinalPrice(product: Product): number {
+    return this.productService.getFinalPrice(product);
   }
 
-  // For Math object access in template
-  Math = Math;
+  getDiscountPercentage(product: Product): number {
+    return this.productService.getDiscountPercentage(product);
+  }
+
+  isInStock(product: Product): boolean {
+    return this.productService.isInStock(product);
+  }
+
+  getImageUrl(product: Product): string {
+    if (product.images && product.images.length > 0) {
+      const firstImage = product.images[0];
+      return typeof firstImage === 'string'
+        ? firstImage
+        : (firstImage as any).url || 'assets/images/placeholder.jpg';
+    }
+    return 'assets/images/placeholder.jpg';
+  }
+
+  getCategoryName(category: string): string {
+    return this.productService.getCategoryDisplayName(category);
+  }
+
+  // Pagination
+  getStartIndex(): number {
+    return (this.currentPage - 1) * this.itemsPerPage + 1;
+  }
+
+  getEndIndex(): number {
+    return Math.min(this.currentPage * this.itemsPerPage, this.totalProducts);
+  }
+
+  getTotalPages(): number {
+    return this.totalPages;
+  }
+
+  goToPage(page: number) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+      this.loadProducts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage < this.totalPages) {
+      this.goToPage(this.currentPage + 1);
+    }
+  }
+
+  previousPage() {
+    if (this.currentPage > 1) {
+      this.goToPage(this.currentPage - 1);
+    }
+  }
+
+  getPageNumbers(): number[] {
+    const total = this.getTotalPages();
+    const pages: number[] = [];
+    const maxVisible = 5;
+
+    if (total <= maxVisible) {
+      for (let i = 1; i <= total; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (this.currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push(-1);
+        pages.push(total);
+      } else if (this.currentPage >= total - 2) {
+        pages.push(1);
+        pages.push(-1);
+        for (let i = total - 3; i <= total; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push(-1);
+        for (let i = this.currentPage - 1; i <= this.currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push(-1);
+        pages.push(total);
+      }
+    }
+    return pages;
+  }
+
+  // Navigate to product detail
+  viewProductDetail(productId: string | number) {
+    this.router.navigate(['/products', productId.toString()]);
+  }
+
+  openProductModal(product: Product, event?: Event) {
+    event?.stopPropagation();
+
+    if (!this.authService.isLoggedIn()) {
+      this.router.navigate(['/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    this.selectedProduct = product;
+    this.showProductModal = true;
+  }
+
+  closeProductModal() {
+    this.showProductModal = false;
+    this.selectedProduct = null;
+  }
+
+  handleModalAdd(payload: {
+    product: Product;
+    quantity: number;
+    size?: string | null;
+    color?: string | null;
+  }) {
+    this.cartService
+      .addItem(payload.product.product_id, payload.quantity, payload.size, payload.color)
+      .subscribe({
+        next: () => {
+          this.showProductModal = false;
+          this.selectedProduct = null;
+          alert('Đã thêm vào giỏ hàng.');
+        },
+        error: (err) => {
+          console.error('Add to cart failed:', err);
+          alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+        },
+      });
+  }
 }

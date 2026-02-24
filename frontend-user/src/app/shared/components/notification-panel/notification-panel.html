@@ -1,0 +1,64 @@
+@if (show) {
+  <div class="notification-panel" role="dialog" aria-label="Thông báo">
+    <span class="panel-arrow" aria-hidden="true"></span>
+
+    <div class="panel-header">
+      <i class="fas fa-bell"></i>
+      <span>{{ title }}</span>
+    </div>
+
+    <div class="panel-body">
+      @if (!isLoggedIn) {
+        <div class="empty-illustration" aria-hidden="true">
+          <span class="heart heart-1"></span>
+          <span class="heart heart-2"></span>
+          <span class="heart heart-3"></span>
+
+          <div class="avatar">
+            <div class="face">
+              <span class="eye eye-left"></span>
+              <span class="eye eye-right"></span>
+              <span class="mouth"></span>
+            </div>
+          </div>
+        </div>
+
+        <p class="empty-text">{{ emptyMessage }}</p>
+      } @else {
+        @if (isLoading) {
+          <p class="empty-text">Đang tải thông báo...</p>
+        } @else if (error) {
+          <p class="empty-text">{{ error }}</p>
+        } @else if (!notifications.length) {
+          <p class="empty-text">Chưa có thông báo nào.</p>
+        } @else {
+          <div class="notification-scroll">
+            <div class="notification-list">
+              <a
+                class="notification-item"
+                [class.unread]="!item.is_read"
+                *ngFor="let item of notifications"
+                [routerLink]="item.link || '/profile/orders'"
+              >
+                <div class="notification-title">
+                  <span>{{ item.title }}</span>
+                  <span class="notification-time">
+                    {{ item.created_at | date: 'short' }}
+                  </span>
+                </div>
+                <p class="notification-message">{{ item.message }}</p>
+              </a>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+    @if (!isLoggedIn) {
+      <div class="panel-actions">
+        <button type="button" class="action-btn" (click)="onRegister()">Đăng ký</button>
+        <button type="button" class="action-btn primary" (click)="onLogin()">Đăng nhập</button>
+      </div>
+    }
+  </div>
+}

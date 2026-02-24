@@ -1,0 +1,336 @@
+<div class="rental-checkout">
+  <header class="checkout-header">
+    <div>
+      <p class="checkout-eyebrow">Thuê ngay</p>
+      <h1 class="checkout-title">Đặt lịch thuê nhanh</h1>
+      <p class="checkout-subtitle">
+        Xác nhận thời gian, địa chỉ và khoản thanh toán hôm nay một cách rõ ràng.
+      </p>
+    </div>
+    <div class="header-pill">
+      <span>Thanh toán hôm nay: {{ formatCurrency(totalDueToday) }}</span>
+    </div>
+  </header>
+
+  <div class="checkout-grid">
+    <aside class="summary-panel">
+      <div class="summary-card">
+        <div class="summary-media">
+          <img [src]="product.thumbnail" [alt]="product.name" />
+          <span class="stock-pill" [class.out]="!product.inStock">
+            {{ product.inStock ? 'Còn hàng' : 'Hết hàng' }}
+          </span>
+        </div>
+        <div class="summary-body">
+          <h2 class="summary-name">{{ product.name }}</h2>
+          <div class="summary-variant">
+            <div>
+              <span class="meta-label">Màu</span>
+              <span class="meta-value">{{ product.color }}</span>
+            </div>
+            <div>
+              <span class="meta-label">Size</span>
+              <span class="meta-value">{{ product.size }}</span>
+            </div>
+            <div>
+              <span class="meta-label">Số lượng</span>
+              <span class="meta-value">{{ product.quantity }}</span>
+            </div>
+          </div>
+          <div class="summary-price">
+            <div>
+              <span class="meta-label">Giá thuê</span>
+              <span class="price-value">{{ formatCurrency(product.rentPricePerDay) }}/ngày</span>
+            </div>
+            <div>
+              <span class="meta-label">Cọc thuê</span>
+              <span class="price-value">{{ formatCurrency(product.depositAmount) }}</span>
+            </div>
+          </div>
+          <button class="ghost-btn" type="button" [routerLink]="['/products', product.id]">
+            Đổi lựa chọn
+          </button>
+        </div>
+      </div>
+
+      <div class="summary-note">
+        <h3>Điểm cần lưu ý</h3>
+        <div class="note-item">Bạn chỉ trả tiền cọc hôm nay, tiền thuê sẽ trừ khi trả đồ.</div>
+        <div class="note-item">Nếu nhận tại shop, phí ship sẽ bằng 0đ.</div>
+        <div class="note-item">Đơn thuê sẽ được xác nhận trong 24h.</div>
+      </div>
+    </aside>
+
+    <section class="form-panel">
+      <div class="checkout-block">
+        <div class="block-header">
+          <h3>1. Thời gian thuê</h3>
+          <span class="block-hint">Bắt buộc</span>
+        </div>
+        <div class="date-grid">
+          <label class="input-group">
+            <span>Ngày nhận *</span>
+            <input type="date" [(ngModel)]="startDate" [min]="minStartDate" />
+          </label>
+          <label class="input-group">
+            <span>Ngày trả *</span>
+            <input type="date" [(ngModel)]="endDate" [min]="minEndDate" [max]="maxEndDate" />
+          </label>
+        </div>
+        <div class="rental-summary">
+          <div>
+            <span class="summary-label">Giá thuê</span>
+            <strong>{{ formatCurrency(product.rentPricePerDay) }}/ngày</strong>
+          </div>
+          <div>
+            <span class="summary-label">Số ngày thuê</span>
+            <strong>{{ rentalDays }} ngày</strong>
+          </div>
+          <div>
+            <span class="summary-label">Tiền thuê tạm tính</span>
+            <strong>{{ formatCurrency(rentFeeExpected) }}</strong>
+          </div>
+        </div>
+        @if (!isPeriodValid) {
+          <div class="form-alert">{{ periodMessage }}</div>
+        }
+      </div>
+
+      <div class="checkout-block">
+        <div class="block-header">
+          <h3>2. Nhận hàng</h3>
+          <span class="block-hint">Chọn 1 phương án</span>
+        </div>
+        <div class="delivery-options">
+          <label class="option-card" [class.active]="deliveryMethod === 'ship'">
+            <input type="radio" name="deliveryMethod" value="ship" [(ngModel)]="deliveryMethod" />
+            <div class="option-body">
+              <div class="option-title">Giao tận nơi</div>
+              <p class="option-desc">
+                {{ isLoggedIn
+                  ? 'Nhận tại địa chỉ mặc định trong hồ sơ.'
+                  : 'Nhập địa chỉ ở mục “Thông tin khách thuê”.' }}
+              </p>
+              @if (isLoggedIn) {
+                <div class="address-box">
+                  <div class="address-title">Địa chỉ mặc định</div>
+                  <div class="address-main">
+                    {{ defaultAddress.receiver }}
+                    @if (defaultAddress.phone) {
+                      • {{ defaultAddress.phone }}
+                    }
+                  </div>
+                  <div class="address-detail">{{ defaultAddress.address }}</div>
+                  <div class="address-actions">
+                    <button type="button" class="link-btn" (click)="openAddressList()">Thay đổi</button>
+                    <button type="button" class="link-btn" (click)="addAddress()">Thêm địa chỉ</button>
+                  </div>
+                </div>
+                @if (!selectedAddress) {
+                  <div class="form-alert subtle">Vui lòng thêm địa chỉ giao hàng trước khi đặt thuê.</div>
+                }
+              } @else {
+                <div class="guest-hint">
+                  Bạn chưa đăng nhập. Vui lòng điền địa chỉ ở mục “Thông tin khách thuê”.
+                </div>
+              }
+              <div class="ship-fee">Phí giao hàng: {{ formatCurrency(shippingFeeShip) }}</div>
+            </div>
+          </label>
+
+          <label class="option-card" [class.active]="deliveryMethod === 'pickup'">
+            <input
+              type="radio"
+              name="deliveryMethod"
+              value="pickup"
+              [(ngModel)]="deliveryMethod"
+            />
+            <div class="option-body">
+              <div class="option-title">Nhận tại cửa hàng</div>
+              <p class="option-desc">Bạn sẽ đến nhận tại shop, không tính phí ship.</p>
+              <div class="store-box">
+                <div class="store-name">{{ storeInfo.name }}</div>
+                <div class="store-detail">{{ storeInfo.address }}</div>
+                <div class="store-hours">Giờ mở cửa: {{ storeInfo.hours }}</div>
+              </div>
+              <div class="ship-fee">Phí giao hàng: 0đ</div>
+            </div>
+          </label>
+        </div>
+
+        @if (!isLoggedIn) {
+          <div class="guest-card">
+            <div class="guest-title">Thông tin khách thuê</div>
+            <p class="guest-desc">
+              Thông tin này dùng để xác nhận đơn và tạo hồ sơ khách hàng.
+            </p>
+            <div class="guest-grid">
+              <label class="input-group">
+                <span>Họ và tên *</span>
+                <input type="text" [(ngModel)]="guestForm.full_name" placeholder="Nguyễn Văn A" />
+              </label>
+              <label class="input-group">
+                <span>Số điện thoại *</span>
+                <input type="tel" [(ngModel)]="guestForm.phone" placeholder="09xxxxxxxx" />
+              </label>
+              <label class="input-group">
+                <span>Email</span>
+                <input type="email" [(ngModel)]="guestForm.email" placeholder="email@domain.com" />
+              </label>
+            </div>
+            <div class="guest-grid">
+              <label class="input-group">
+                <span>Tỉnh/Thành *</span>
+                <input type="text" [(ngModel)]="guestForm.address.province" placeholder="TP. Hồ Chí Minh" />
+              </label>
+              <label class="input-group">
+                <span>Quận/Huyện</span>
+                <input type="text" [(ngModel)]="guestForm.address.district" placeholder="Quận 1" />
+              </label>
+              <label class="input-group">
+                <span>Phường/Xã *</span>
+                <input type="text" [(ngModel)]="guestForm.address.ward" placeholder="Phường Bến Nghé" />
+              </label>
+            </div>
+            <label class="input-group full-width">
+              <span>Địa chỉ cụ thể *</span>
+              <input type="text" [(ngModel)]="guestForm.address.detail" placeholder="Số nhà, tên đường" />
+            </label>
+            <div class="guest-note" *ngIf="deliveryMethod === 'pickup'">
+              Bạn chọn nhận tại cửa hàng, địa chỉ này chỉ dùng để liên hệ.
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="checkout-block">
+        <div class="block-header">
+          <h3>3. Chi phí & cách tính</h3>
+          <span class="block-hint">Rõ ràng trước khi đặt</span>
+        </div>
+        <div class="cost-breakdown">
+          <div class="break-row">
+            <span>Tiền thuê ({{ formatCurrency(product.rentPricePerDay) }} × {{ rentalDays }} ngày)</span>
+            <strong>{{ formatCurrency(rentFeeExpected) }}</strong>
+          </div>
+          <div class="break-row">
+            <span>Tiền cọc</span>
+            <strong>{{ formatCurrency(depositRequired) }}</strong>
+          </div>
+          <div class="break-row">
+            <span>Phí giao hàng</span>
+            <strong>{{ formatCurrency(shippingFee) }}</strong>
+          </div>
+          <div class="break-row">
+            <span>Phí phát sinh dự kiến</span>
+            <strong>0đ</strong>
+          </div>
+        </div>
+
+        <div class="due-today">
+          <div>
+            <div class="due-title">Thanh toán ngay hôm nay</div>
+            <div class="due-note">Cọc: {{ formatCurrency(depositRequired) }} • Ship:
+              {{ formatCurrency(shippingFee) }}</div>
+          </div>
+          <div class="due-amount">{{ formatCurrency(totalDueToday) }}</div>
+        </div>
+
+        <div class="note-box">
+          <h4>Ghi chú cách tính & hoàn cọc</h4>
+          <p>Bạn thanh toán tiền cọc khi đặt thuê.</p>
+          <p>Khi trả đồ, shop sẽ trừ tiền thuê vào tiền cọc.</p>
+          <p>Hoàn lại = Cọc − Tiền thuê − Phí phát sinh (nếu có).</p>
+          <p>Nếu có phí phát sinh vượt cọc, bạn thanh toán phần chênh lệch khi trả đồ.</p>
+        </div>
+
+        <div class="example-box">
+          <div class="example-title">Ví dụ</div>
+          <div>Thuê 2 ngày: {{ formatCurrency(product.rentPricePerDay) }} × 2 =
+            {{ formatCurrency(product.rentPricePerDay * 2) }}</div>
+          <div>Cọc: {{ formatCurrency(depositRequired) }}</div>
+          <div>
+            Khi trả đồ đúng hạn, shop hoàn lại:
+            {{ formatCurrency(depositRequired - product.rentPricePerDay * 2) }}
+          </div>
+        </div>
+      </div>
+
+      <div class="checkout-block">
+        <div class="block-header">
+          <h3>4. Phương thức thanh toán</h3>
+          <span class="block-hint">Bạn đang thanh toán: Cọc thuê</span>
+        </div>
+        <div class="payment-options">
+          @for (option of paymentOptions; track option.id) {
+            <label class="payment-card" [class.active]="paymentMethod === option.id">
+              <input type="radio" name="paymentMethod" [value]="option.id" [(ngModel)]="paymentMethod" />
+              <div>
+                <div class="payment-title">{{ option.label }}</div>
+                <div class="payment-desc">{{ option.description }}</div>
+              </div>
+              @if (option.recommended) {
+                <span class="recommend-tag">Khuyến nghị</span>
+              }
+            </label>
+          }
+        </div>
+      </div>
+
+      <div class="checkout-block confirm-block">
+        <div class="block-header">
+          <h3>5. Xác nhận đặt thuê</h3>
+        </div>
+        <label class="terms-check">
+          <input type="checkbox" [(ngModel)]="agreeTerms" />
+          <span>Tôi đã đọc và đồng ý điều khoản thuê & hoàn cọc.</span>
+          <button type="button" class="link-btn" (click)="openTerms()">Điều khoản thuê</button>
+        </label>
+        <button
+          class="primary-btn"
+          type="button"
+          [disabled]="!agreeTerms || !isPeriodValid || isSubmitting"
+          (click)="confirmRental()"
+        >
+          {{ isSubmitting ? 'Đang tạo đơn...' : 'Xác nhận đặt thuê' }}
+        </button>
+        @if (!agreeTerms) {
+          <div class="form-alert subtle">Vui lòng xác nhận điều khoản trước khi đặt thuê.</div>
+        }
+        @if (formError) {
+          <div class="form-alert">{{ formError }}</div>
+        }
+      </div>
+    </section>
+  </div>
+
+  @if (showTerms) {
+    <div class="terms-overlay" (click)="closeTerms()">
+      <div class="terms-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+        <div class="terms-header">
+          <h3>Điều khoản thuê</h3>
+          <button type="button" class="close-btn" (click)="closeTerms()">×</button>
+        </div>
+        <div class="terms-body">
+          <p>Trễ hạn: tính thêm 50% giá thuê/ngày cho mỗi ngày trả trễ.</p>
+          <p>Hư hỏng/mất: bồi thường theo mức độ thực tế, có biên bản xác nhận.</p>
+          <p>Hoàn cọc: xử lý trong 24–48h sau khi trả đồ và kiểm tra.</p>
+        </div>
+        <div class="terms-actions">
+          <button type="button" class="primary-btn" (click)="closeTerms()">Tôi đã hiểu</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <app-rental-success-modal
+    [show]="showSuccessModal"
+    [rentOrderCode]="rentOrderResult?.orderCode || ''"
+    [startDate]="rentOrderResult?.startDate || startDate"
+    [endDate]="rentOrderResult?.endDate || endDate"
+    [rentFeeExpected]="rentOrderResult?.rentFeeExpected || rentFeeExpected"
+    [depositPaid]="rentOrderResult?.depositPaid || totalDueToday"
+    [status]="rentOrderResult?.status || 'booked'"
+    (closed)="closeSuccessModal()"
+  ></app-rental-success-modal>
+</div>
