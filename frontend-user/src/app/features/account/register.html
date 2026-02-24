@@ -8,8 +8,8 @@
       <div class="auth-left">
         <div class="overlay-content">
           <div class="logo">
-            <img src="/assets/images/brand/logo-main.png" />
-            <img src="/assets/images/brand/logo-sub.png" />
+            <img src="/assets/images/brand/logo-main.png" width="150" height="50" />
+            <img src="/assets/images/brand/logo-sub.png" width="75" height="50" />
           </div>
 
           <div class="welcome">
@@ -34,56 +34,133 @@
       <div class="auth-right">
         <h2>ĐĂNG KÝ</h2>
 
-        <form (ngSubmit)="onSignUp()">
+        <form [formGroup]="registerForm" (ngSubmit)="onSignUp()">
           <div class="input-group">
             <label>Họ và tên</label>
             <input
               type="text"
-              [(ngModel)]="registerData.fullName"
-              name="fullName"
+              formControlName="fullName"
+              [class.error]="(f['fullName'].touched || f['fullName'].dirty) && f['fullName'].errors"
               placeholder="Nhập họ và tên"
-              required
             />
             <i class="far fa-user"></i>
+            <div
+              class="error-message"
+              *ngIf="(f['fullName'].touched || f['fullName'].dirty) && f['fullName'].errors"
+            >
+              <span *ngIf="f['fullName'].errors['required']">Họ tên là bắt buộc</span>
+              <span *ngIf="f['fullName'].errors['minlength']">Họ tên phải có ít nhất 3 ký tự</span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Số điện thoại</label>
+            <input
+              type="tel"
+              formControlName="phone"
+              [class.error]="(f['phone'].touched || f['phone'].dirty) && f['phone'].errors"
+              placeholder="Nhập số điện thoại"
+              (keypress)="onlyNumbers($event)"
+              maxlength="10"
+            />
+            <i class="fas fa-phone"></i>
+            <div
+              class="error-message"
+              *ngIf="(f['phone'].touched || f['phone'].dirty) && f['phone'].errors"
+            >
+              <span *ngIf="f['phone'].errors['required']">Số điện thoại là bắt buộc</span>
+              <span *ngIf="f['phone'].errors['pattern']"
+                >Số điện thoại không hợp lệ (10 số, bắt đầu 03/05/07/08/09)</span
+              >
+            </div>
           </div>
 
           <div class="input-group">
             <label>Email</label>
             <input
               type="email"
-              [(ngModel)]="registerData.email"
-              name="email"
+              formControlName="email"
+              [class.error]="(f['email'].touched || f['email'].dirty) && f['email'].errors"
               placeholder="Nhập email của bạn"
-              required
             />
             <i class="far fa-envelope"></i>
+            <div
+              class="error-message"
+              *ngIf="(f['email'].touched || f['email'].dirty) && f['email'].errors"
+            >
+              <span *ngIf="f['email'].errors['required']">Email là bắt buộc</span>
+              <span *ngIf="f['email'].errors['email']">Email không hợp lệ</span>
+            </div>
           </div>
 
           <div class="input-group">
             <label>Mật khẩu</label>
             <input
-              type="password"
-              [(ngModel)]="registerData.password"
-              name="password"
+              [type]="showPassword ? 'text' : 'password'"
+              formControlName="password"
+              [class.error]="(f['password'].touched || f['password'].dirty) && f['password'].errors"
               placeholder="Nhập mật khẩu"
-              required
             />
-            <i class="fas fa-lock"></i>
+            <i
+              [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
+              (click)="togglePasswordVisibility('password')"
+              style="cursor: pointer"
+            ></i>
+            <div
+              class="error-message"
+              *ngIf="(f['password'].touched || f['password'].dirty) && f['password'].errors"
+            >
+              <span *ngIf="f['password'].errors['required']">Mật khẩu là bắt buộc</span>
+              <span *ngIf="f['password'].errors['minlength']"
+                >Mật khẩu phải có ít nhất 6 ký tự</span
+              >
+            </div>
           </div>
 
           <div class="input-group">
             <label>Xác nhận mật khẩu</label>
             <input
-              type="password"
-              [(ngModel)]="registerData.confirmPassword"
-              name="confirmPassword"
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              formControlName="confirmPassword"
+              [class.error]="
+                (f['confirmPassword'].touched || f['confirmPassword'].dirty) &&
+                (f['confirmPassword'].errors || registerForm.errors?.['passwordMismatch'])
+              "
               placeholder="Nhập lại mật khẩu"
-              required
             />
-            <i class="fas fa-lock"></i>
+            <i
+              [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
+              (click)="togglePasswordVisibility('confirmPassword')"
+              style="cursor: pointer"
+            ></i>
+            <div
+              class="error-message"
+              *ngIf="
+                (f['confirmPassword'].touched || f['confirmPassword'].dirty) &&
+                (f['confirmPassword'].errors || registerForm.errors?.['passwordMismatch'])
+              "
+            >
+              <span *ngIf="f['confirmPassword'].errors?.['required']"
+                >Xác nhận mật khẩu là bắt buộc</span
+              >
+              <span
+                *ngIf="
+                  registerForm.errors?.['passwordMismatch'] &&
+                  !f['confirmPassword'].errors?.['required']
+                "
+                >Mật khẩu không khớp</span
+              >
+            </div>
           </div>
 
-          <button type="submit">ĐĂNG KÝ</button>
+          <div class="error-message general-error" *ngIf="registerError">
+            {{ registerError }}
+          </div>
+
+          <button type="submit" [disabled]="isLoading">
+            <span *ngIf="!isLoading">ĐĂNG KÝ</span>
+            <span *ngIf="isLoading">ĐANG ĐĂNG KÝ...</span>
+          </button>
 
           <p class="signup">
             Đã có tài khoản? <a href="#" (click)="switchToSignIn($event)">Đăng nhập ngay</a>

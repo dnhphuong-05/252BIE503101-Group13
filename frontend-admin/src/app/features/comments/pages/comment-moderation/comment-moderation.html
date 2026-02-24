@@ -1,0 +1,75 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Blog Comments</div>
+      <div class="page-subtitle">Quản lý bình luận bài viết: duyệt, đánh dấu spam hoặc phản hồi.</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="text-sm text-primary-500">Tổng bình luận</div>
+      <div class="text-2xl font-bold text-primary-900">{{ commentStore.pagination().total }}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="text-sm text-primary-500">Spam</div>
+      <div class="text-2xl font-bold text-error">{{ commentStore.spamCount() }}</div>
+    </div>
+  </div>
+
+  <div class="comment-layout">
+    <div class="comment-panel">
+      <div class="card comment-toolbar">
+        <div class="toolbar-group">
+          <div class="toolbar-search">
+            <i class="fas fa-search"></i>
+            <input
+              class="input"
+              placeholder="Tìm theo tên hoặc nội dung..."
+              [value]="searchQuery()"
+              (input)="onSearchChange($any($event.target).value)"
+            />
+          </div>
+        </div>
+        <app-comment-filters
+          [statusFilter]="commentStore.statusFilter()"
+          [replyFilter]="commentStore.replyFilter()"
+          (statusFilterChange)="onStatusFilterChange($event)"
+          (replyFilterChange)="onReplyFilterChange($event)"
+        />
+      </div>
+
+      <div class="card comments-card">
+        <app-comment-list
+          [comments]="commentStore.filteredComments()"
+          [loading]="commentStore.loading()"
+          (markAsSpam)="onMarkAsSpam($event)"
+          (delete)="onDelete($event)"
+          (reply)="onReply($event.id, $event.content)"
+        />
+
+        @if (commentStore.pagination().totalPages > 1) {
+          <div class="pagination">
+            <button
+              class="btn btn-ghost btn-sm"
+              (click)="onPageChange(commentStore.pagination().page - 1)"
+              [disabled]="commentStore.pagination().page <= 1"
+            >
+              Trước
+            </button>
+            <span class="page-info">
+              Trang {{ commentStore.pagination().page }} / {{ commentStore.pagination().totalPages }}
+            </span>
+            <button
+              class="btn btn-ghost btn-sm"
+              (click)="onPageChange(commentStore.pagination().page + 1)"
+              [disabled]="commentStore.pagination().page >= commentStore.pagination().totalPages"
+            >
+              Sau
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

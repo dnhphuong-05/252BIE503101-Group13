@@ -1,0 +1,252 @@
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loading-state,
+.empty-state {
+  padding: 48px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.comment-item {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.comment-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comment-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.comment-date {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.comment-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink);
+  padding: 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.comment-reply {
+  border-left: 3px solid var(--accent);
+  padding: 12px 14px;
+  background: #fff8f2;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.comment-reply.non-admin {
+  border-left-color: var(--border-strong);
+  background: var(--surface-2);
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.reply-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.reply-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reply-meta .dot {
+  opacity: 0.6;
+}
+
+.reply-content {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.comment-reply-form {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(139, 28, 53, 0.25);
+  background: var(--surface-2);
+}
+
+.reply-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reply-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.reply-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.reply-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border: 1px solid rgba(139, 28, 53, 0.18);
+}
+
+.comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-strong);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+.action-btn.btn-success {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgb(34, 197, 94);
+  color: rgb(34, 197, 94);
+}
+
+.action-btn.btn-success:hover {
+  background: rgb(34, 197, 94);
+  color: #fff;
+}
+
+.action-btn.btn-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgb(239, 68, 68);
+  color: rgb(239, 68, 68);
+}
+
+.action-btn.btn-error:hover {
+  background: rgb(239, 68, 68);
+  color: #fff;
+}
+
+.action-btn.btn-warning {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgb(251, 191, 36);
+  color: rgb(251, 191, 36);
+}
+
+.action-btn.btn-warning:hover {
+  background: rgb(251, 191, 36);
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .comment-actions {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,195 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Contact Inbox</div>
+      <div class="page-subtitle">Quản lý liên hệ: xem chi tiết, xử lý, phản hồi và đóng yêu cầu.</div>
+    </div>
+  </div>
+  <div class="card table-card">
+    <div class="table-toolbar contact-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Tìm theo tên hoặc số điện thoại"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Trạng thái</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (filter of statusFilters; track filter.value) {
+            <option [value]="filter.value">{{ filter.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Từ ngày</span>
+        <input class="input" type="date" [(ngModel)]="dateFrom" />
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Đến ngày</span>
+        <input class="input" type="date" [(ngModel)]="dateTo" />
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">Refresh</button>
+      </div>
+    </div>
+
+    @if (isLoading && messages.length === 0) {
+      <div class="empty-state">Đang tải danh sách liên hệ...</div>
+    } @else if (loadError && messages.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (messages.length === 0) {
+      <div class="empty-state">Chưa có liên hệ nào.</div>
+    } @else {
+      <table class="table contact-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Họ tên</th>
+            <th>SĐT</th>
+            <th>Mục đích</th>
+            <th>Nội dung</th>
+            <th>Trạng thái</th>
+            <th>Ngày gửi</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (message of messages; track message.contact_id) {
+            <tr
+              class="contact-row"
+              [class.active]="selectedMessage?.contact_id === message.contact_id"
+            >
+              <td>#{{ message.contact_id }}</td>
+              <td class="font-semibold">{{ message.full_name }}</td>
+              <td>{{ message.phone }}</td>
+              <td>{{ message.purposeLabel }}</td>
+              <td>
+                <span class="message-snippet">{{ message.message }}</span>
+              </td>
+              <td>
+                <span [class]="statusMeta[message.status]">{{ statusLabels[message.status] }}</span>
+              </td>
+              <td>{{ message.createdLabel }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="onView(message, $event)">
+                    Xem
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">
+        Hiển thị {{ messages.length }} / {{ total }} liên hệ
+      </span>
+      <div class="pagination">
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page - 1)"
+          [disabled]="page <= 1"
+        >
+          Trước
+        </button>
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page + 1)"
+          [disabled]="page >= pages"
+        >
+          Sau
+        </button>
+      </div>
+    </div>
+
+    @if (selectedMessage) {
+      <div class="detail-drawer">
+        <div class="detail-header">
+          <div>
+            <div class="section-title">{{ selectedMessage!.full_name }}</div>
+            <div class="item-meta">{{ selectedMessage!.createdLabel }}</div>
+          </div>
+          <span [class]="statusMeta[selectedMessage!.status]">
+            {{ statusLabels[selectedMessage!.status] }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div>
+            <div class="item-meta">Email</div>
+            <div class="font-semibold">{{ selectedMessage!.email }}</div>
+          </div>
+          <div>
+            <div class="item-meta">SĐT</div>
+            <div class="font-semibold">{{ selectedMessage!.phone }}</div>
+          </div>
+          <div>
+            <div class="item-meta">Mục đích</div>
+            <div class="font-semibold">{{ selectedMessage!.purposeLabel }}</div>
+          </div>
+        </div>
+
+        <div class="detail-message">{{ selectedMessage!.message }}</div>
+
+        <div class="note-box">
+          <div class="note-header">
+            <div class="note-title">Ghi chú nội bộ</div>
+            <div class="note-hint">Chỉ admin nhìn thấy ghi chú này.</div>
+          </div>
+          <textarea
+            rows="3"
+            [(ngModel)]="noteDraft"
+            placeholder="Thêm ghi chú nội bộ cho yêu cầu này..."
+          ></textarea>
+          <div class="detail-actions">
+            <button class="btn btn-secondary btn-sm" type="button" (click)="saveNote()" [disabled]="isUpdating">
+              Lưu ghi chú
+            </button>
+            <button
+              class="btn btn-primary btn-sm"
+              type="button"
+              (click)="setStatus('replied')"
+              [disabled]="
+                isUpdating ||
+                selectedMessage!.status === 'replied' ||
+                selectedMessage!.status === 'closed'
+              "
+            >
+              Đã xử lý
+            </button>
+            <button
+              class="btn btn-ghost btn-sm"
+              type="button"
+              (click)="setStatus('closed')"
+              [disabled]="isUpdating || selectedMessage!.status === 'closed'"
+            >
+              Hoàn tất
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

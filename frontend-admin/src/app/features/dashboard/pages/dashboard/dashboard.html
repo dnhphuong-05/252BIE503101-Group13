@@ -1,0 +1,207 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Dashboard</div>
+      <div class="page-subtitle">Tổng quan hoạt động hôm nay</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" [routerLink]="['/products/new']">
+        <i class="fas fa-plus"></i>
+        Create product
+      </button>
+      <button class="btn btn-primary" [routerLink]="['/blog/posts/new']">
+        <i class="fas fa-pen-to-square"></i>
+        Create blog post
+      </button>
+    </div>
+  </div>
+
+  @if (loadError) {
+    <div class="card soft">
+      <div class="text-sm text-error">{{ loadError }}</div>
+    </div>
+  }
+
+  <div class="kpi-grid">
+    @for (stat of stats; track stat.title) {
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div>
+            <div class="text-sm text-primary-500">{{ stat.title }}</div>
+            <div class="text-2xl font-bold text-primary-900">{{ stat.value }}</div>
+          </div>
+          <div class="kpi-icon" [ngStyle]="{ background: toneColor(stat.tone) }">
+            <i [class]="stat.icon"></i>
+          </div>
+        </div>
+        <div class="text-xs text-primary-500">{{ stat.change }}</div>
+      </div>
+    }
+  </div>
+
+  <div class="card report-card">
+    <div class="card-header report-header">
+      <div>
+        <div class="card-title">Báo cáo tổng quan</div>
+        <div class="report-subtitle">Tóm tắt nhanh các chỉ số quan trọng.</div>
+      </div>
+      <div class="report-actions">
+        <div class="text-xs text-primary-500">Cập nhật: {{ reportUpdatedAt }}</div>
+        @if (isSuperAdmin()) {
+          <button class="btn btn-secondary btn-sm" (click)="exportReport()" [disabled]="isLoading">
+            <i class="fas fa-file-excel"></i>
+            Xuất Excel
+          </button>
+        } @else {
+          <div class="text-xs text-primary-500">Chỉ super admin có thể xuất báo cáo</div>
+        }
+      </div>
+    </div>
+    <div class="report-grid">
+      <div class="report-panel">
+        <div class="report-title">Hoạt động chính</div>
+        <div class="report-hint">So sánh nhanh theo từng danh mục.</div>
+        <div class="bar-chart">
+          @for (bar of summaryBars; track bar.label) {
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>{{ bar.label }}</span>
+                <span>{{ formatNumber(bar.value) }}</span>
+              </div>
+              <div class="bar-track">
+                <div
+                  class="bar-fill"
+                  [style.width.%]="barPercent(bar.value)"
+                  [style.background]="toneFill(bar.tone)"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="report-panel">
+        <div class="report-title">Trạng thái liên hệ</div>
+        <div class="report-hint">Phân bố theo tiến trình xử lý.</div>
+        <div class="donut-chart" [ngStyle]="{ background: contactStatusGradient }">
+          <div class="donut-center">
+            <div class="text-xs text-primary-500">Tổng</div>
+            <div class="text-xl font-bold">{{ formatNumber(contactStatusTotal) }}</div>
+          </div>
+        </div>
+        <div class="report-legend">
+          @for (slice of contactStatusSlices; track slice.key) {
+            <div class="report-legend-item">
+              <div class="legend-label">
+                <span class="legend-dot" [style.background]="slice.color"></span>
+                <span>{{ slice.label }}</span>
+              </div>
+              <div class="legend-value">
+                {{ formatNumber(slice.value) }} ({{ slice.percent }}%)
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="report-panel">
+        <div class="report-title">Bình luận chờ duyệt</div>
+        <div class="report-hint">Tỷ lệ bình luận chưa phản hồi.</div>
+        <div class="progress-block">
+          <div class="progress-value">{{ formatNumber(pendingCommentCount) }}</div>
+          <div class="progress-total">/ {{ formatNumber(pendingCommentTotal) }}</div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="pendingCommentRate"></div>
+        </div>
+        <div class="text-xs text-primary-500">
+          Tỷ lệ chờ duyệt {{ pendingCommentRate }}%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card quick-actions">
+    <div class="card-header">
+      <div class="card-title">Quick actions</div>
+    </div>
+    <div class="quick-action-grid">
+      <a class="quick-action" [routerLink]="['/products/new']">
+        <div>
+          <div class="font-semibold">Create product</div>
+          <div class="text-xs text-primary-500">Thêm sản phẩm mới</div>
+        </div>
+        <i class="fas fa-arrow-right"></i>
+      </a>
+      <a class="quick-action" [routerLink]="['/blog/posts/new']">
+        <div>
+          <div class="font-semibold">Create blog post</div>
+          <div class="text-xs text-primary-500">Đăng bài viết mới</div>
+        </div>
+        <i class="fas fa-arrow-right"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="split-layout">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Latest contacts</div>
+        <button class="btn btn-ghost btn-sm" [routerLink]="['/contacts']">View inbox</button>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Khách hàng</th>
+            <th>Chủ đề</th>
+            <th>Trạng thái</th>
+            <th>Thời gian</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (contact of latestContacts; track contact.id) {
+            <tr>
+              <td>
+                <div class="item-cell">
+                  <div>
+                    <div class="item-title">{{ contact.name }}</div>
+                    <div class="item-meta">{{ contact.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="text-sm text-primary-700">{{ contact.subject }}</td>
+              <td>
+                <span [class]="statusMeta[contact.status]">{{ contact.status }}</span>
+              </td>
+              <td class="text-sm text-primary-500">{{ contact.time }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Newest comments</div>
+        <button class="btn btn-ghost btn-sm" [routerLink]="['/comments']">Moderate</button>
+      </div>
+      <div class="space-y-3">
+        @for (comment of latestComments; track comment.id) {
+          <div class="comment-preview">
+            <div class="comment-preview-header">
+              <div class="font-semibold">{{ comment.author }}</div>
+              <div class="text-xs text-primary-500">{{ comment.time }}</div>
+            </div>
+            <div class="text-sm text-primary-700">{{ comment.content }}</div>
+            <div class="comment-preview-meta">
+              <span class="chip chip-neutral">{{ comment.target }}</span>
+              @if (comment.rating) {
+                <span class="chip chip-warning">★ {{ comment.rating }}/5</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>

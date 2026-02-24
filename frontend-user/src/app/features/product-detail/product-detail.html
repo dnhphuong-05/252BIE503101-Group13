@@ -1,0 +1,704 @@
+﻿<div class="product-detail-container">
+  @if (isLoading) {
+    <div class="state state-loading">
+      <div class="spinner"></div>
+      <p>Đang tải thông tin sản phẩm...</p>
+    </div>
+  }
+
+  @if (loadError && !isLoading) {
+    <div class="state state-error">
+      <i class="fas fa-exclamation-circle"></i>
+      <p>{{ loadError }}</p>
+      <button class="btn outline" (click)="goBack()">Quay lại danh sách</button>
+    </div>
+  }
+
+  @if (product && !isLoading && !loadError) {
+    <div class="product-detail-content">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a [routerLink]="['/']" class="breadcrumb-link">Trang chủ</a>
+        <span class="breadcrumb-sep">/</span>
+        <a [routerLink]="['/products']" class="breadcrumb-link">Sản phẩm</a>
+        @if (product.category_name || product.categories[0]) {
+          <span class="breadcrumb-sep">/</span>
+          <span class="breadcrumb-link">{{ product.category_name || product.categories[0] }}</span>
+        }
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ product.name }}</span>
+      </nav>
+
+      <!-- Main Product Section -->
+      <section class="product-main">
+        <div class="product-layout">
+          <!-- Product Images -->
+          <div class="product-gallery">
+            <div class="gallery-main">
+              <img
+                [src]="selectedImage || getImageUrl(product.thumbnail)"
+                [alt]="product.name"
+                loading="lazy"
+              />
+            </div>
+
+            @if (product.images && product.images.length > 1) {
+              <div class="gallery-thumbs-wrap">
+                <button
+                  type="button"
+                  class="thumb-nav prev"
+                  (click)="scrollThumbs('left')"
+                  aria-label="Cuộn ảnh sang trái"
+                >
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <div
+                  class="gallery-thumbs"
+                  #thumbsScroller
+                  [class.is-dragging]="isThumbDragging"
+                  (pointerdown)="onThumbsPointerDown($event)"
+                  (pointermove)="onThumbsPointerMove($event)"
+                  (pointerup)="onThumbsPointerUp($event)"
+                  (pointercancel)="onThumbsPointerUp($event)"
+                  (pointerleave)="onThumbsPointerUp($event)"
+                >
+                  @for (image of product.images; track $index) {
+                    <button
+                      type="button"
+                      class="gallery-thumb"
+                      [class.active]="getImageUrl(image) === selectedImage"
+                      (click)="onThumbClick(getImageUrl(image))"
+                    >
+                      <img [src]="getImageUrl(image)" [alt]="getImageAlt(image) || product.name" />
+                    </button>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="thumb-nav next"
+                  (click)="scrollThumbs('right')"
+                  aria-label="Cuộn ảnh sang phải"
+                >
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            }
+          </div>
+
+          <!-- Product Info -->
+          <div class="product-info">
+            <h1 class="product-title">{{ product.name }}</h1>
+
+            <div class="product-rating">
+              <div class="stars">
+                @for (star of getStarArray(); track $index) {
+                  <i class="fas fa-star" [class.filled]="star <= getRatingAverage()"></i>
+                }
+              </div>
+              <span class="rating-text">({{ getRatingCount() }} reviews)</span>
+            </div>
+
+            <div class="product-price">
+              <div class="price-row">
+                <div class="price-group">
+                  <label class="price-label">Giá mua:</label>
+                  <div class="price-values">
+                    @if (product.price_sale && product.price_sale > 0) {
+                      <span class="price-main">
+                        {{ product.price_sale || 0 | number: '.0-0' }}đ
+                      </span>
+                      <span class="price-old">
+                        {{ product.price_buy || 0 | number: '.0-0' }}đ
+                      </span>
+                    } @else {
+                      <span class="price-main">{{ product.price_buy || 0 | number: '.0-0' }}đ</span>
+                    }
+                  </div>
+                  @if (product.price_sale && product.price_sale > 0) {
+                    <span class="price-save">Giảm {{ getDiscountPercentage() }}%</span>
+                  }
+                </div>
+                @if (product.price_rent && product.price_rent > 0) {
+                  <div class="price-group">
+                    <label class="price-label">Giá thuê:</label>
+                    <div class="price-values">
+                      <span class="price-rent">
+                        {{ product.price_rent || 0 | number: '.0-0' }}đ
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+              @if (product.deposit_amount && product.deposit_amount > 0) {
+                <div class="deposit-note">
+                  <i class="fas fa-info-circle"></i>
+                  Cọc thuê: {{ product.deposit_amount || 0 | number: '.0-0' }}đ
+                </div>
+              }
+            </div>
+
+            <div class="product-availability">
+              <label>Tình trạng:</label>
+              <span [class.in-stock]="isInStock()" [class.out-stock]="!isInStock()">
+                {{ isInStock() ? 'Còn hàng' : 'Hết hàng' }}
+              </span>
+              @if (isInStock() && product.stock_quantity) {
+                <span class="stock-count">(Còn {{ product.stock_quantity }} sản phẩm)</span>
+              }
+            </div>
+
+            <div class="product-description">
+              <p>{{ product.description }}</p>
+            </div>
+
+            <!-- Color Selection -->
+            @if (getProductColors().length > 0) {
+              <div class="product-option">
+                <label class="option-label">Màu sắc:</label>
+                <div class="color-options">
+                  @for (color of getProductColors(); track $index) {
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      [class.active]="color === selectedColor"
+                      (click)="selectColor(color)"
+                      [title]="color"
+                    >
+                      <span class="color-name">{{ color }}</span>
+                      <i class="fas fa-check check-icon"></i>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Size Selection -->
+            @if (getProductSizes().length > 0) {
+              <div class="product-option">
+                <label class="option-label">Kích thước:</label>
+                <div class="size-options">
+                  @for (size of getProductSizes(); track $index) {
+                    <button
+                      type="button"
+                      class="size-btn"
+                      [class.active]="size === selectedSize"
+                      (click)="selectSize(size)"
+                    >
+                      {{ size }}
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Quantity & Action Buttons -->
+            <div class="product-action-bar">
+              <div class="quantity-control">
+                <button
+                  class="qty-btn"
+                  (click)="decreaseQuantity()"
+                  [disabled]="quantity <= 1"
+                  aria-label="Giảm số lượng"
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  class="qty-input"
+                  [(ngModel)]="quantity"
+                  [max]="getProductStock()"
+                  min="1"
+                  readonly
+                />
+                <button
+                  class="qty-btn"
+                  (click)="increaseQuantity()"
+                  [disabled]="quantity >= getProductStock()"
+                  aria-label="Tăng số lượng"
+                >
+                  +
+                </button>
+              </div>
+
+              <button
+                class="btn-primary btn-add-cart"
+                (click)="handleBuyNow()"
+                [disabled]="!isInStock()"
+              >
+                <i class="fas fa-shopping-cart"></i>
+                <span>MUA NGAY</span>
+              </button>
+
+              @if (product.price_rent && product.price_rent > 0) {
+                <button
+                  class="btn-secondary btn-buy-now"
+                  (click)="rentNow()"
+                  [disabled]="!isInStock()"
+                >
+                  <i class="fas fa-bolt"></i>
+                  <span>THUÊ NGAY</span>
+                </button>
+              } @else {
+                <button
+                  class="btn-secondary btn-buy-now"
+                  (click)="addToCart(true)"
+                  [disabled]="!isInStock()"
+                >
+                  <i class="fas fa-cart-plus"></i>
+                  <span>THÊM VÀO GIỎ</span>
+                </button>
+              }
+
+              <button
+                class="btn-icon btn-wishlist"
+                aria-label="Thêm vào giỏ hàng"
+                (click)="addToCart(false)"
+              >
+                <i class="fas fa-shopping-bag"></i>
+              </button>
+            </div>
+
+            <!-- Meta Info -->
+            <div class="product-meta">
+              @if (product.sku) {
+                <div class="meta-item">
+                  <span class="meta-label">Mã sản phẩm:</span>
+                  <span class="meta-value">{{ product.sku }}</span>
+                </div>
+              }
+              <div class="meta-item">
+                <span class="meta-label">Danh mục:</span>
+                <span class="meta-value">{{ product.category_name || getCategoryName() }}</span>
+              </div>
+              @if (product.era) {
+                <div class="meta-item">
+                  <span class="meta-label">Triều đại:</span>
+                  <span class="meta-value">{{ product.era }}</span>
+                </div>
+              }
+              @if (product.material) {
+                <div class="meta-item">
+                  <span class="meta-label">Chất liệu:</span>
+                  <span class="meta-value">{{ product.material }}</span>
+                </div>
+              }
+              @if (product.tags && product.tags.length > 0) {
+                <div class="meta-item">
+                  <span class="meta-label">Thẻ:</span>
+                  <span class="meta-value">{{ product.tags.join(', ') }}</span>
+                </div>
+              }
+              <div class="meta-item">
+                <span class="meta-label">Chia sẻ:</span>
+                <div class="share-icons">
+                  <button class="share-icon" (click)="shareOnFacebook()" title="Chia sẻ Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                  </button>
+                  <button class="share-icon" (click)="shareOnTwitter()" title="Chia sẻ Twitter">
+                    <i class="fab fa-twitter"></i>
+                  </button>
+                  <button class="share-icon" (click)="copyLink()" title="Sao chép link">
+                    <i class="fas fa-link"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Product Details Tabs -->
+      <section class="product-tabs">
+        <div class="tabs-nav">
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'description'"
+            (click)="setActiveTab('description')"
+          >
+            MÔ TẢ
+          </button>
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'additional'"
+            (click)="setActiveTab('additional')"
+          >
+            THÔNG TIN BỔ SUNG
+          </button>
+          <button
+            class="tab-btn"
+            [class.active]="activeTab === 'reviews'"
+            (click)="setActiveTab('reviews')"
+          >
+            ĐÁNH GIÁ ({{ getRatingCount() }})
+          </button>
+        </div>
+
+        <div class="tabs-content">
+          @if (activeTab === 'description') {
+            <div class="tab-panel">
+              @if (product.short_description) {
+                <div class="short-desc">
+                  <h3>Mô tả ngắn</h3>
+                  <p>{{ product.short_description }}</p>
+                </div>
+              }
+              <div class="full-desc">
+                <h3>Mô tả chi tiết</h3>
+                <p class="description-text" [innerHTML]="product.description"></p>
+              </div>
+              @if (getFeatureList().length > 0) {
+                <div class="features-section">
+                  <h3>Đặc điểm nổi bật</h3>
+                  <ul class="feature-list">
+                    @for (feature of getFeatureList(); track $index) {
+                      <li><i class="fas fa-check-circle"></i>{{ feature }}</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+          }
+
+          @if (activeTab === 'additional') {
+            <div class="tab-panel">
+              <table class="info-table">
+                <tbody>
+                  @if (product.sku) {
+                    <tr>
+                      <th>Mã sản phẩm</th>
+                      <td>{{ product.sku }}</td>
+                    </tr>
+                  }
+                  <tr>
+                    <th>Danh mục</th>
+                    <td>{{ product.category_name || getCategoryName() }}</td>
+                  </tr>
+                  @if (product.era) {
+                    <tr>
+                      <th>Triều đại</th>
+                      <td>{{ product.era }}</td>
+                    </tr>
+                  }
+                  @if (product.material) {
+                    <tr>
+                      <th>Chất liệu</th>
+                      <td>{{ product.material }}</td>
+                    </tr>
+                  }
+                  @if (product.craftsmanship) {
+                    <tr>
+                      <th>Kỹ thuật</th>
+                      <td>{{ product.craftsmanship }}</td>
+                    </tr>
+                  }
+                  <tr>
+                    <th>Xuất xứ</th>
+                    <td>{{ product.origin || 'Việt Nam' }}</td>
+                  </tr>
+                  @if (product.gender) {
+                    <tr>
+                      <th>Giới tính</th>
+                      <td>{{ product.gender }}</td>
+                    </tr>
+                  }
+                  @if (getProductSizes().length > 0) {
+                    <tr>
+                      <th>Kích thước</th>
+                      <td>{{ getProductSizes().join(', ') }}</td>
+                    </tr>
+                  }
+                  @if (getProductColors().length > 0) {
+                    <tr>
+                      <th>Màu sắc</th>
+                      <td>{{ getProductColors().join(', ') }}</td>
+                    </tr>
+                  }
+                  <tr>
+                    <th>Tồn kho</th>
+                    <td>{{ getProductStock() }} sản phẩm</td>
+                  </tr>
+                  @if (product.tailor_available) {
+                    <tr>
+                      <th>May đo</th>
+                      <td><span class="badge-success">Có hỗ trợ may đo theo size</span></td>
+                    </tr>
+                  }
+                  @if (product.sold_count) {
+                    <tr>
+                      <th>Đã bán</th>
+                      <td>{{ product.sold_count }} sản phẩm</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          @if (activeTab === 'reviews') {
+            <div class="tab-panel reviews-panel">
+              @if (reviewTotal === 0) {
+                <div class="no-reviews">
+                  <i class="fas fa-comment-slash"></i>
+                  <p>Chưa có đánh giá nào cho sản phẩm này</p>
+                </div>
+              }
+
+              @if (reviewTotal > 0) {
+                <!-- Rating Summary -->
+                <div class="rating-summary">
+                  <div class="rating-score-box">
+                    <div class="score-number">
+                      {{ getRatingAverage().toFixed(1) }}<span>/5</span>
+                    </div>
+                    <div class="score-stars">
+                      @for (star of getStarArray(); track $index) {
+                        <i class="fas fa-star" [class.filled]="star <= getRatingAverage()"></i>
+                      }
+                    </div>
+                    <div class="score-count">{{ getRatingCount() }} lượt đánh giá</div>
+                    <button class="btn-write-review">
+                      <i class="fas fa-pen"></i>
+                      Viết đánh giá
+                    </button>
+                  </div>
+
+                  <div class="rating-by-stars">
+                    @for (star of [5, 4, 3, 2, 1]; track $index) {
+                      <div class="rating-bar-item">
+                        <span class="bar-label">{{ star }} <i class="fas fa-star"></i></span>
+                        <div class="bar-track">
+                          <div
+                            class="bar-fill"
+                            [style.width.%]="getRatingPercentage(getRatingCount(star))"
+                          ></div>
+                        </div>
+                        <span class="bar-count">{{ getRatingCount(star) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Review Filter Tabs -->
+                <div class="review-filters">
+                  <span class="filter-label">Lọc đánh giá theo</span>
+                  <div class="filter-tabs">
+                    <button class="filter-tab active" type="button">Tất cả</button>
+                    <button class="filter-tab" type="button">Có hình ảnh</button>
+                    <button class="filter-tab" type="button">Đã mua hàng</button>
+                    <button class="filter-tab" (click)="filterByRating(5)" type="button">
+                      5 sao
+                    </button>
+                    <button class="filter-tab" (click)="filterByRating(4)" type="button">
+                      4 sao
+                    </button>
+                    <button class="filter-tab" (click)="filterByRating(3)" type="button">
+                      3 sao
+                    </button>
+                    <button class="filter-tab" (click)="filterByRating(2)" type="button">
+                      2 sao
+                    </button>
+                    <button class="filter-tab" (click)="filterByRating(1)" type="button">
+                      1 sao
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Reviews List -->
+                <div class="reviews-list">
+                  @for (review of reviews; track $index) {
+                    <div class="review-item">
+                      <div class="review-user">
+                        <div class="user-avatar">
+                          <i class="fas fa-user"></i>
+                        </div>
+                      </div>
+
+                      <div class="review-content">
+                        <div class="review-top">
+                          <div class="user-name">{{ getReviewerName(review) }}</div>
+                          <div class="user-verified">
+                            @if (review.verified_purchase || review.verifiedPurchase) {
+                              <span class="verified-badge">Đã mua hàng</span>
+                            }
+                          </div>
+                        </div>
+                        <div class="review-head">
+                          <div class="review-stars">
+                            @for (star of getStarArray(); track $index) {
+                              <i class="fas fa-star" [class.filled]="star <= review.rating"></i>
+                            }
+                          </div>
+                          <span class="review-label">
+                            @if (review.rating === 5) {
+                              Tuyệt vời
+                            }
+                            @if (review.rating === 4) {
+                              Rất tốt
+                            }
+                            @if (review.rating === 3) {
+                              Bình thường
+                            }
+                            @if (review.rating === 2) {
+                              Tạm ổn
+                            }
+                            @if (review.rating === 1) {
+                              Tệ
+                            }
+                          </span>
+                        </div>
+
+                        @if (review.title) {
+                          <h4 class="review-title">{{ review.title }}</h4>
+                        }
+
+                        <p class="review-text">{{ review.comment }}</p>
+
+                        @if (getReviewImages(review).length > 0) {
+                          <div class="review-images">
+                            @for (image of getReviewImages(review); track $index) {
+                              <button
+                                type="button"
+                                class="review-image"
+                                (click)="viewReviewImage(image)"
+                                [title]="'Xem hình ảnh từ ' + getReviewerName(review)"
+                              >
+                                <img
+                                  [src]="image"
+                                  [alt]="getReviewImageAlt(review, $index)"
+                                  loading="lazy"
+                                />
+                              </button>
+                            }
+                            </div>
+                          }
+
+                        @if (getReviewReply(review); as reply) {
+                          <div class="review-reply">
+                            <div class="reply-header">
+                              <span class="reply-label">Phản hồi từ {{ reply.responder || 'Shop' }}</span>
+                              @if (reply.respondedAt) {
+                                <span class="reply-time">
+                                  {{ getTimeAgo(reply.respondedAt) }}
+                                </span>
+                              }
+                            </div>
+                            <div class="reply-content">{{ reply.content }}</div>
+                          </div>
+                        }
+
+                        <div class="review-footer">
+                          <span class="review-time">
+                            <i class="far fa-calendar"></i>
+                            {{ getTimeAgo(review.created_at || review.createdAt) }}
+                          </span>
+                          <button class="review-helpful">
+                            <i class="far fa-thumbs-up"></i>
+                            Hữu ích ({{ review.helpful_count || review.helpfulCount || 0 }})
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  }
+
+                  @if (reviewPages > 1) {
+                    <div class="pagination">
+                      <button
+                        class="page-btn"
+                        [disabled]="reviewPage === 1"
+                        (click)="onReviewPageChange(reviewPage - 1)"
+                      >
+                        <i class="fas fa-chevron-left"></i>
+                      </button>
+
+                      @for (page of [].constructor(reviewPages); track $index; let i = $index) {
+                        <button
+                          class="page-btn"
+                          [class.active]="reviewPage === i + 1"
+                          (click)="onReviewPageChange(i + 1)"
+                        >
+                          {{ i + 1 }}
+                        </button>
+                      }
+
+                      <button
+                        class="page-btn"
+                        [disabled]="reviewPage === reviewPages"
+                        (click)="onReviewPageChange(reviewPage + 1)"
+                      >
+                        <i class="fas fa-chevron-right"></i>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Related Products -->
+      @if (relatedProducts.length > 0) {
+        <section class="related-section">
+          <h2 class="section-title">Related Products</h2>
+
+          <div class="related-grid">
+            @for (item of relatedProducts.slice(0, 4); track $index) {
+              <div class="related-card" (click)="viewRelatedProduct(item.product_id)">
+                <div class="related-image">
+                  <img
+                    [src]="getImageUrl((item.images && item.images[0]) || item.thumbnail)"
+                    [alt]="item.name"
+                    loading="lazy"
+                  />
+                </div>
+                <div class="related-info">
+                  <h3 class="related-name">{{ item.name }}</h3>
+                  <div class="related-rating">
+                    @for (star of getStarArray(); track $index) {
+                      <i
+                        class="fas fa-star"
+                        [class.filled]="star <= (item.rating?.average || item.rating_average || 0)"
+                      ></i>
+                    }
+                  </div>
+                  <div class="related-price">
+                    {{ productService.getFinalPrice(item) | number }}đ
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+
+  <!-- Login Prompt Modal -->
+  <app-login-prompt-modal
+    [show]="showLoginPrompt"
+    (close)="onLoginPromptClose()"
+    (continueAsGuest)="onContinueAsGuest()"
+    (goToLogin)="onGoToLogin()"
+  ></app-login-prompt-modal>
+
+  <!-- Guest Form Component -->
+  <app-guest-form
+    [show]="showGuestForm"
+    [productName]="product?.name"
+    [quantity]="quantity"
+    [selectedSize]="selectedSize"
+    [selectedColor]="selectedColor"
+    (close)="onGuestFormClose()"
+    (submitSuccess)="onGuestFormSubmit($event)"
+  ></app-guest-form>
+
+  <!-- Order Success Modal -->
+  <app-order-success-modal
+    [show]="showSuccessModal"
+    [orderCode]="orderResult?.orderCode || ''"
+    [trackingUrl]="orderResult?.trackingUrl || ''"
+    [total]="orderResult?.total || 0"
+    [emailSent]="orderResult?.emailSent || false"
+    (close)="onOrderSuccessClose()"
+  ></app-order-success-modal>
+</div>

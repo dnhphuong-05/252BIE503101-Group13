@@ -1,0 +1,29 @@
+.roles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.role-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.role-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.role-perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.role-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}

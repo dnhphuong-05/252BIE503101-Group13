@@ -1,0 +1,123 @@
+<div class="profile-layout">
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar" [class.collapsed]="sidebarCollapsed">
+    <!-- Brand Logo -->
+    <div class="sidebar-header">
+      <div class="brand-logo">
+        <img src="assets/images/brand/logo-main.png" alt="Việt Phục Heritage" class="logo-main" />
+        <img src="assets/images/brand/logo-sub.png" alt="Sublogo" class="logo-sub" />
+      </div>
+      <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <i class="fas" [ngClass]="sidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+      </button>
+    </div>
+
+    <!-- User Quick Card -->
+    @if (currentUser) {
+      <div class="sidebar-user">
+        <img [src]="getUserAvatar()" [alt]="currentUser.fullName" class="user-avatar" />
+        <div class="user-meta">
+          <div class="user-name">{{ currentUser.fullName || 'Khách hàng' }}</div>
+          <div class="user-email">{{ currentUser.email || 'Chưa có email' }}</div>
+          <div class="user-tier" [style.background]="getMembershipColor()">
+            <i class="fas" [ngClass]="getMembershipIcon()"></i>
+            <span>{{ membershipTier }}</span>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="sidebar-user guest">
+        <div class="guest-icon">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div class="user-meta">
+          <div class="user-name">Khách truy cập</div>
+          <div class="user-email">Đăng nhập để xem hồ sơ</div>
+        </div>
+      </div>
+    }
+
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav">
+      <!-- Account Section -->
+      <div class="nav-section">
+        <div class="nav-section-title">Tài khoản</div>
+
+        <a routerLink="/profile/overview" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-chart-pie nav-icon"></i>
+          <span class="nav-text">Tổng quan</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/info" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-id-card nav-icon"></i>
+          <span class="nav-text">Thông tin cơ bản</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/addresses" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-map-marker-alt nav-icon"></i>
+          <span class="nav-text">Địa chỉ nhận hàng</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/measurements" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-ruler nav-icon"></i>
+          <span class="nav-text">Số đo (may đo)</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/reviews-comments" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-star-half-alt nav-icon"></i>
+          <span class="nav-text">Đánh giá &amp; Bình luận</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/security" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-shield-alt nav-icon"></i>
+          <span class="nav-text">Bảo mật</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/wallet" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-coins nav-icon"></i>
+          <span class="nav-text">Điểm thưởng</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+      </div>
+
+      <!-- Orders Section -->
+      <div class="nav-section">
+        <div class="nav-section-title">Đơn hàng</div>
+
+        <a routerLink="/profile/orders" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-shopping-bag nav-icon"></i>
+          <span class="nav-text">Đơn mua</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+        <a routerLink="/profile/rentals" routerLinkActive="active" class="nav-link">
+          <i class="fas fa-calendar-check nav-icon"></i>
+          <span class="nav-text">Đơn thuê</span>
+          <i class="fas fa-chevron-right nav-arrow"></i>
+        </a>
+
+      </div>
+
+      <!-- Logout -->
+      <div class="nav-section">
+        <button class="nav-link logout-link" (click)="onLogout()">
+          <i class="fas fa-sign-out-alt nav-icon"></i>
+          <span class="nav-text logout-text">Đăng xuất</span>
+        </button>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    <div class="content-container">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

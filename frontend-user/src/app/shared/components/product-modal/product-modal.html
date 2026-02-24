@@ -1,0 +1,91 @@
+@if (show && product) {
+  <div class="product-modal-overlay" (click)="onClose()">
+    <div
+      class="product-modal"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        class="product-modal-close"
+        type="button"
+        (click)="onClose()"
+        aria-label="&#x110;&#xF3;ng"
+      >
+        &times;
+      </button>
+
+      <div class="product-modal-body">
+        <div class="product-modal-media">
+          <img [src]="getMainImage()" [alt]="product.name" />
+        </div>
+
+        <div class="product-modal-info">
+          <div>
+            <div class="product-modal-category">{{ product.category_name }}</div>
+            <h3 class="product-modal-title">{{ product.name }}</h3>
+          </div>
+
+          <div class="product-modal-price">
+            <span class="price-sale">{{ getFinalPrice() | number }}&#x20AB;</span>
+            @if (hasSale()) {
+              <span class="price-old">{{ product.price_buy | number }}&#x20AB;</span>
+            }
+          </div>
+
+          <div class="product-modal-section" *ngIf="getColors().length > 0">
+            <div class="section-label">M&#xE0;u s&#x1EAF;c</div>
+            <div class="option-list">
+              <button
+                class="option-btn"
+                type="button"
+                *ngFor="let color of getColors()"
+                [class.active]="selectedColor === color"
+                (click)="selectColor(color)"
+              >
+                {{ color }}
+              </button>
+            </div>
+          </div>
+
+          <div class="product-modal-section" *ngIf="getSizes().length > 0">
+            <div class="section-label">K&#xED;ch th&#x1B0;&#x1EDB;c</div>
+            <div class="option-list">
+              <button
+                class="option-btn"
+                type="button"
+                *ngFor="let size of getSizes()"
+                [class.active]="selectedSize === size"
+                (click)="selectSize(size)"
+              >
+                {{ size }}
+              </button>
+            </div>
+          </div>
+
+          <div class="product-modal-section">
+            <div class="section-label">S&#x1ED1; l&#x1B0;&#x1EE3;ng</div>
+            <div class="qty-control">
+              <button class="qty-btn" type="button" (click)="decrease()">-</button>
+              <input class="qty-input" type="number" [value]="quantity" readonly />
+              <button class="qty-btn" type="button" (click)="increase()">+</button>
+            </div>
+          </div>
+
+          @if (errorMessage) {
+            <p class="product-modal-error">{{ errorMessage }}</p>
+          }
+
+          <div class="product-modal-actions">
+            <button class="btn-ghost" type="button" (click)="onClose()">
+              H&#x1EE7;y
+            </button>
+            <button class="btn-primary" type="button" (click)="onAdd()">
+              Th&#xEA;m v&#xE0;o gi&#x1ECF; h&#xE0;ng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

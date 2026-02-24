@@ -1,0 +1,51 @@
+@if (show) {
+  <div class="return-request-overlay" (click)="onClose()">
+    <div
+      class="return-request-modal"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-header">
+        <div>
+          <p class="modal-eyebrow">Yêu cầu hoàn trả</p>
+          <h3>Bạn muốn hoàn trả đơn {{ orderCode || '' }}</h3>
+        </div>
+        <button class="modal-close" type="button" (click)="onClose()" aria-label="Đóng">
+          &times;
+        </button>
+      </div>
+
+      <p class="modal-subtitle">Vui lòng chọn lý do để chúng tôi hỗ trợ bạn nhanh hơn.</p>
+
+      <div class="reason-list">
+        <label class="reason-item" *ngFor="let option of reasons">
+          <input
+            type="radio"
+            name="returnReason"
+            [value]="option.value"
+            [(ngModel)]="selectedReason"
+          />
+          <span>{{ option.label }}</span>
+        </label>
+      </div>
+
+      <div class="custom-reason" *ngIf="selectedReason === 'other'">
+        <textarea
+          rows="3"
+          placeholder="Nhập lý do hoàn trả..."
+          [(ngModel)]="customReason"
+        ></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" (click)="onClose()" [disabled]="loading">
+          Quay lại
+        </button>
+        <button class="btn primary" type="button" (click)="onSubmit()" [disabled]="!canSubmit">
+          {{ loading ? 'Đang gửi...' : 'Gửi yêu cầu' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

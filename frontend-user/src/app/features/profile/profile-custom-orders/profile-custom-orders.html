@@ -1,0 +1,138 @@
+﻿<div class="custom-orders-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Đơn may đo</h1>
+      <p class="page-subtitle">Theo dõi trạng thái các yêu cầu may đo theo số đo cá nhân.</p>
+    </div>
+    <button class="btn btn-primary" routerLink="/contact">
+      <i class="fas fa-plus"></i>
+      Gửi yêu cầu mới
+    </button>
+  </div>
+
+  <div class="tabs-container">
+    @for (tab of tabs; track tab.id) {
+      <button
+        [class.active]="activeTab === tab.id"
+        (click)="switchTab(tab.id)"
+        class="tab-btn"
+      >
+        {{ tab.label }}
+        @if (tab.count > 0) {
+          <span class="tab-badge">{{ tab.count }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  @if (!isLoading && !loadError) {
+  <div class="summary-strip">
+    <div class="summary-card">
+      <span class="summary-label">Tổng yêu cầu</span>
+      <strong class="summary-value">{{ totalCount }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Đang xử lý</span>
+      <strong class="summary-value">{{ processingCount }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Đã đóng</span>
+      <strong class="summary-value">{{ closedCount }}</strong>
+    </div>
+  </div>
+}
+
+  <div class="orders-list">
+    @if (isLoading) {
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Đang tải đơn may đo...</p>
+      </div>
+    }
+
+    @if (!isLoading && loadError) {
+      <div class="error-state">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>{{ loadError }}</p>
+      </div>
+    }
+
+    @if (!isLoading && !loadError && getFilteredOrders().length === 0) {
+      <div class="empty-state">
+        <i class="fas fa-ruler-combined empty-icon"></i>
+        <h3>Chưa có yêu cầu may đo</h3>
+        <p>Hãy gửi yêu cầu may đo để đội ngũ Phúc Heritage tư vấn chi tiết.</p>
+        <button class="btn btn-primary" routerLink="/services/custom-tailoring">
+          <i class="fas fa-magic"></i>
+          Gửi yêu cầu ngay
+        </button>
+      </div>
+    }
+
+    @for (order of getFilteredOrders(); track order.id) {
+      <div class="order-card">
+        <div class="order-header">
+          <div class="order-info">
+            <div class="order-number">
+              <span class="label">Mã yêu cầu:</span>
+              <span class="value">{{ order.orderNumber }}</span>
+            </div>
+            <div class="order-date">
+              <i class="fas fa-calendar"></i>
+              {{ formatDate(order.createdDate) }}
+            </div>
+          </div>
+          <div
+            class="order-status"
+            [style.background]="getStatusColor(order.status) + '15'"
+            [style.color]="getStatusColor(order.status)"
+          >
+            <i class="fas fa-circle"></i>
+            {{ getStatusLabel(order.status) }}
+          </div>
+        </div>
+
+        <div class="order-body">
+          <div class="order-message">
+            <h3 class="section-title">Nội dung yêu cầu</h3>
+            <p>{{ order.message }}</p>
+          </div>
+
+          <div class="order-meta">
+            <div class="meta-item">
+              <span class="meta-label">Khách hàng</span>
+              <span class="meta-value">{{ order.customerName }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Email</span>
+              <span class="meta-value">{{ order.email }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Số điện thoại</span>
+              <span class="meta-value">{{ order.phone }}</span>
+            </div>
+          </div>
+
+          @if (order.note) {
+            <div class="order-note">
+              <i class="fas fa-sticky-note"></i>
+              <span>{{ order.note }}</span>
+            </div>
+          }
+        </div>
+
+        <div class="order-actions">
+          <button class="btn btn-secondary" (click)="requestModification(order.id)">
+            <i class="fas fa-edit"></i>
+            Gửi bổ sung
+          </button>
+          <button class="btn btn-primary" routerLink="/services/custom-tailoring">
+            <i class="fas fa-plus"></i>
+            Gửi yêu cầu mới
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+

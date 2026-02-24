@@ -1,0 +1,79 @@
+<aside class="sidebar" [class.collapsed]="isCollapsed()">
+  <div class="sidebar-brand">
+    <div class="brand-wrap">
+      <div class="brand-logos">
+        <img
+          class="brand-main-logo"
+          src="assets/images/brand/logo-main.png"
+          alt="Viet Phuc main logo"
+        />
+        <img
+          class="brand-sub-logo"
+          src="assets/images/brand/logo-sub.png"
+          alt="Viet Phuc sub logo"
+        />
+      </div>
+    </div>
+    <button class="collapse-btn" (click)="toggleCollapse.emit()">
+      <i
+        class="fas"
+        [class.fa-angles-left]="!isCollapsed()"
+        [class.fa-angles-right]="isCollapsed()"
+      ></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav flex flex-col gap-5">
+    @for (section of visibleSections(); track section.label) {
+      <div class="sidebar-section">
+        @if (!isCollapsed()) {
+          <div class="section-label">{{ section.label }}</div>
+        }
+        @for (item of section.items; track item.label) {
+          <div>
+            <a
+              class="nav-item"
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              [title]="isCollapsed() ? item.label : ''"
+            >
+              <span class="nav-main">
+                <span class="nav-icon">
+                  <i [class]="item.icon"></i>
+                </span>
+                <span class="nav-title">{{ item.label }}</span>
+              </span>
+              @if (item.badge && !isCollapsed()) {
+                <span class="nav-badge">{{ item.badge }}</span>
+              }
+              @if (item.children?.length && !isCollapsed()) {
+                <button
+                  class="nav-toggle"
+                  type="button"
+                  (click)="
+                    toggleGroup(item.label); $event.preventDefault(); $event.stopPropagation()
+                  "
+                >
+                  <i
+                    class="fas"
+                    [class.fa-chevron-down]="isGroupOpen(item.label)"
+                    [class.fa-chevron-right]="!isGroupOpen(item.label)"
+                  ></i>
+                </button>
+              }
+            </a>
+            @if (item.children?.length && !isCollapsed() && isGroupOpen(item.label)) {
+              <div class="nav-children">
+                @for (child of item.children; track child.label) {
+                  <a class="nav-child" [routerLink]="child.route" routerLinkActive="active">
+                    {{ child.label }}
+                  </a>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </nav>
+</aside>

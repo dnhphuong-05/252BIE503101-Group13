@@ -1,0 +1,15 @@
+<div class="reply-box" (click)="$event.stopPropagation()">
+  <textarea
+    class="reply-textarea"
+    placeholder="Nhập nội dung trả lời..."
+    rows="3"
+    [(ngModel)]="replyContent"
+  ></textarea>
+  <div class="reply-actions">
+    <button class="btn btn-secondary" (click)="onCancel()">Hủy</button>
+    <button class="btn btn-primary" [disabled]="!replyContent().trim()" (click)="onSend()">
+      <i class="fas fa-paper-plane"></i>
+      Gửi
+    </button>
+  </div>
+</div>

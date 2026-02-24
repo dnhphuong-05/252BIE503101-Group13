@@ -1,0 +1,458 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Users</div>
+      <div class="page-subtitle">Quản lý tài khoản đăng ký, phân quyền và lịch sử giao dịch.</div>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-toolbar user-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Tìm theo tên, email, SĐT hoặc mã user"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Vai trò</span>
+        <select class="select" [(ngModel)]="roleFilter" (change)="applyFilters()">
+          @for (option of roleFilters; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Trạng thái</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (option of statusFilters; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    @if (isLoading && users.length === 0) {
+      <div class="empty-state">Đang tải danh sách users...</div>
+    } @else if (loadError && users.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (users.length === 0) {
+      <div class="empty-state">Chưa có tài khoản phù hợp.</div>
+    } @else {
+      <table class="table user-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Liên hệ</th>
+            <th>Đơn hàng</th>
+            <th>Vai trò</th>
+            <th>Trạng thái</th>
+            <th>Ngày tạo</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users; track user.id) {
+            <tr>
+              <td>
+                <div class="item-cell">
+                  @if (user.avatar) {
+                    <img class="user-avatar-img" [src]="user.avatar" [alt]="user.name" />
+                  } @else {
+                    <div class="user-avatar">{{ initials(user.name) }}</div>
+                  }
+                  <div class="min-w-0">
+                    <div class="item-title">{{ user.name }}</div>
+                    <div class="item-meta">ID: {{ user.user_id }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="contact-stack">
+                  <span>{{ user.phone || '-' }}</span>
+                  <span class="item-meta">{{ user.email }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="order-stack">
+                  <span class="order-pill">Mua: {{ user.buyOrderCount }}</span>
+                  <span class="order-pill">Thuê: {{ user.rentOrderCount }}</span>
+                </div>
+              </td>
+              <td>
+                <span [class]="roleMeta[user.role].class">{{ roleMeta[user.role].label }}</span>
+              </td>
+              <td>
+                <span [class]="statusMeta[user.status].class">
+                  {{ statusMeta[user.status].label }}
+                </span>
+              </td>
+              <td class="text-sm text-primary-500">{{ user.createdAt }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="onView(user)">
+                    Xem
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">
+        Hiển thị {{ users.length }} / {{ total }} users
+      </span>
+      <div class="pagination">
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page - 1)"
+          [disabled]="page <= 1"
+        >
+          Trước
+        </button>
+        <span class="page-info">Trang {{ page }} / {{ pages }}</span>
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page + 1)"
+          [disabled]="page >= pages"
+        >
+          Sau
+        </button>
+      </div>
+    </div>
+
+    @if (detailLoading) {
+      <div class="detail-loading">Đang tải chi tiết user...</div>
+    } @else if (selectedUser) {
+      <div class="detail-drawer">
+        <div class="detail-header">
+          <div class="user-hero">
+            @if (selectedUser!.profile?.avatar) {
+              <img
+                class="user-avatar-img large"
+                [src]="selectedUser!.profile?.avatar"
+                [alt]="selectedUser!.profile?.full_name || selectedUser!.email"
+              />
+            } @else {
+              <div class="user-avatar large">
+                {{ initials(selectedUser!.profile?.full_name || selectedUser!.email) }}
+              </div>
+            }
+            <div>
+              <div class="section-title">
+                {{ selectedUser!.profile?.full_name || selectedUser!.email }}
+              </div>
+              <div class="item-meta">
+                ID: {{ selectedUser!.user_id }} · {{ selectedUser!.createdLabel }}
+              </div>
+            </div>
+          </div>
+          <span [class]="statusMeta[selectedUser!.status].class">
+            {{ statusMeta[selectedUser!.status].label }}
+          </span>
+        </div>
+
+        <div class="detail-grid">
+          <div>
+            <div class="item-meta">Email</div>
+            <div class="font-semibold">{{ selectedUser!.email }}</div>
+          </div>
+          <div>
+            <div class="item-meta">SĐT</div>
+            <div class="font-semibold">{{ selectedUser!.phone || '-' }}</div>
+          </div>
+          <div>
+            <div class="item-meta">Vai trò</div>
+            @if (canManageRoles()) {
+              <select
+                class="select select-compact"
+                [(ngModel)]="roleDraft"
+                (change)="updateRole(roleDraft!)"
+                [disabled]="selectedUser!.role === 'super_admin'"
+              >
+                @for (option of roleFilters; track option.value) {
+                  @if (option.value !== 'all' && option.value !== 'super_admin') {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                }
+              </select>
+            } @else {
+              <span [class]="roleMeta[selectedUser!.role].class">
+                {{ roleMeta[selectedUser!.role].label }}
+              </span>
+            }
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Thông tin hồ sơ</div>
+          <div class="detail-grid">
+            <div>
+              <div class="item-meta">Giới tính</div>
+              <div class="font-semibold">{{ selectedUser!.profile?.gender || '-' }}</div>
+            </div>
+            <div>
+              <div class="item-meta">Ngày sinh</div>
+              <div class="font-semibold">
+                {{
+                  selectedUser!.profile?.birthday
+                    ? formatDate(selectedUser!.profile!.birthday!)
+                    : '-'
+                }}
+              </div>
+            </div>
+            <div>
+              <div class="item-meta">Size tiêu chuẩn</div>
+              <div class="font-semibold">{{ selectedUser!.profile?.size_standard || '-' }}</div>
+            </div>
+            <div>
+              <div class="item-meta">Chiều cao / cân nặng</div>
+              <div class="font-semibold">
+                {{
+                  selectedUser!.profile?.height
+                    ? selectedUser!.profile?.height + 'cm'
+                    : '-'
+                }}
+                /
+                {{
+                  selectedUser!.profile?.weight
+                    ? selectedUser!.profile?.weight + 'kg'
+                    : '-'
+                }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Địa chỉ</div>
+          @if (selectedUser!.addresses?.length) {
+            <div class="address-grid">
+              @for (address of selectedUser!.addresses; track address.address_id) {
+                <div class="address-card">
+                  <div class="address-title">
+                    <span class="font-semibold">{{ address.receiver_name }}</span>
+                    @if (address.is_default) {
+                      <span class="badge badge-info">Mặc định</span>
+                    }
+                  </div>
+                  <div class="item-meta">{{ address.phone }}</div>
+                  <div class="address-text">{{ formatAddress(address) }}</div>
+                  @if (address.note) {
+                    <div class="item-meta">Ghi chú: {{ address.note }}</div>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state soft">Chưa có địa chỉ nào.</div>
+          }
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Số đo gần nhất</div>
+          @if (selectedUser!.latest_measurement) {
+            <div class="measurement-grid">
+              <div>
+                <div class="item-meta">Ngày đo</div>
+                <div class="font-semibold">
+                  {{
+                    selectedUser!.latest_measurement!.measured_at
+                      ? formatDate(selectedUser!.latest_measurement!.measured_at!)
+                      : '-'
+                  }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Ngực / Eo / Hông</div>
+                <div class="font-semibold">
+                  {{ selectedUser!.latest_measurement!.chest ?? '-' }}/{{
+                    selectedUser!.latest_measurement!.waist ?? '-'
+                  }}/{{ selectedUser!.latest_measurement!.hip ?? '-' }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Vai / Dài tay</div>
+                <div class="font-semibold">
+                  {{ selectedUser!.latest_measurement!.shoulder ?? '-' }}/{{
+                    selectedUser!.latest_measurement!.sleeve ?? '-'
+                  }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Cổ / Dài lưng</div>
+                <div class="font-semibold">
+                  {{ selectedUser!.latest_measurement!.neck ?? '-' }}/{{
+                    selectedUser!.latest_measurement!.back_length ?? '-'
+                  }}
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="empty-state soft">Chưa có số đo nào.</div>
+          }
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Lịch sử số đo</div>
+          @if (selectedUser!.measurements?.length) {
+            <div class="measurement-list">
+              @for (measure of selectedUser!.measurements; track measure.measurement_id) {
+                <div class="measurement-row">
+                  <div>
+                    <div class="font-semibold">{{ formatDate(measure.measured_at || '') }}</div>
+                    <div class="item-meta">
+                      Ngực/Eo/Hông: {{ measure.chest ?? '-' }}/{{ measure.waist ?? '-' }}/{{
+                        measure.hip ?? '-'
+                      }}
+                    </div>
+                  </div>
+                  <div class="measurement-meta">
+                    <span class="item-meta">
+                      Vai/Tay: {{ measure.shoulder ?? '-' }}/{{ measure.sleeve ?? '-' }}
+                    </span>
+                    <span class="item-meta">
+                      Cổ/Lưng: {{ measure.neck ?? '-' }}/{{ measure.back_length ?? '-' }}
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="empty-state soft">Chưa có lịch sử số đo.</div>
+          }
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Đơn hàng gần đây</div>
+          <div class="order-grid">
+            <div class="order-panel">
+              <div class="panel-title">Đơn mua</div>
+              @if (ordersLoading) {
+                <div class="empty-state soft">Đang tải...</div>
+              } @else if (buyOrders.length === 0) {
+                <div class="empty-state soft">Chưa có đơn mua.</div>
+              } @else {
+                <div class="order-list">
+                  @for (order of buyOrders; track order.code) {
+                    <div class="order-row">
+                      <div>
+                        <div class="font-semibold">{{ order.code }}</div>
+                        <div class="item-meta">{{ order.createdAt }}</div>
+                      </div>
+                      <div class="order-meta">
+                        <span class="item-meta">{{ order.status }}</span>
+                        <span class="font-semibold">{{ formatCurrency(order.total) }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="order-panel">
+              <div class="panel-title">Đơn thuê</div>
+              @if (ordersLoading) {
+                <div class="empty-state soft">Đang tải...</div>
+              } @else if (rentOrders.length === 0) {
+                <div class="empty-state soft">Chưa có đơn thuê.</div>
+              } @else {
+                <div class="order-list">
+                  @for (order of rentOrders; track order.code) {
+                    <div class="order-row">
+                      <div>
+                        <div class="font-semibold">{{ order.code }}</div>
+                        <div class="item-meta">{{ order.createdAt }}</div>
+                      </div>
+                      <div class="order-meta">
+                        <span class="item-meta">{{ order.status }}</span>
+                        <span class="font-semibold">{{ formatCurrency(order.total) }}</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-title">Điểm tích lũy</div>
+          <div class="loyalty-summary">
+            <div>
+              <div class="item-meta">Tổng điểm</div>
+              <div class="font-semibold">{{ selectedUser!.loyalty?.total_points ?? 0 }}</div>
+            </div>
+            <div>
+              <div class="item-meta">Hạng</div>
+              <div class="font-semibold">{{ selectedUser!.loyalty?.tier || '-' }}</div>
+            </div>
+          </div>
+
+          @if (loyaltyLoading) {
+            <div class="empty-state soft">Đang tải lịch sử điểm...</div>
+          } @else if (loyaltyTransactions.length === 0) {
+            <div class="empty-state soft">Chưa có giao dịch điểm.</div>
+          } @else {
+            <div class="loyalty-list">
+              @for (txn of loyaltyTransactions; track txn.txn_id) {
+                <div class="loyalty-row">
+                  <div>
+                    <div class="font-semibold">
+                      {{
+                        txn.type === 'earn'
+                          ? 'Tích điểm'
+                          : txn.type === 'spend'
+                            ? 'Dùng điểm'
+                            : 'Điều chỉnh'
+                      }}
+                    </div>
+                    <div class="item-meta">{{ formatDateTime(txn.created_at) }}</div>
+                  </div>
+                  <div class="loyalty-meta">
+                    <span class="item-meta">{{ txn.reason || '-' }}</span>
+                    <span class="font-semibold">{{ txn.points }} pts</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="detail-actions">
+          <button class="btn btn-secondary btn-sm" type="button" (click)="toggleStatus()">
+            {{ selectedUser!.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa' }}
+          </button>
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetPassword()">
+            Reset mật khẩu
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

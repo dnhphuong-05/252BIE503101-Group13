@@ -1,0 +1,90 @@
+<div class="comment-list">
+  @if (loading()) {
+    <div class="loading-state">
+      <p>Đang tải bình luận...</p>
+    </div>
+  } @else if (comments().length === 0) {
+    <div class="empty-state">
+      <p>Không có bình luận nào</p>
+    </div>
+  } @else {
+    @for (comment of comments(); track comment.id) {
+      <div class="comment-item">
+        <div class="comment-header">
+          <div class="comment-user">
+            <div class="user-avatar">{{ comment.userName[0] }}</div>
+            <div class="user-info">
+              <div class="user-name">{{ comment.userName }}</div>
+              <div class="comment-date">{{ comment.createdAt | date: 'dd/MM/yyyy HH:mm' }}</div>
+            </div>
+          </div>
+          <div class="comment-badges">
+            @if (!hasAdminReply(comment) && comment.status !== 'spam') {
+              <span class="badge badge-warning">Chưa phản hồi</span>
+            }
+            <app-comment-status-badge [status]="comment.status" />
+          </div>
+        </div>
+
+        <div class="comment-meta">
+          <span class="chip chip-neutral">Blog · {{ comment.blogTitle || 'Bài viết' }}</span>
+        </div>
+
+        <div class="comment-content">
+          {{ comment.content }}
+        </div>
+
+        @if (comment.reply; as reply) {
+          @if (reply.content) {
+            <div class="comment-reply" [class.non-admin]="!hasAdminReply(comment)">
+              <div class="reply-header">
+                <span class="reply-label">{{ getReplyLabel(comment) }}</span>
+                <span class="reply-meta">
+                  {{
+                    reply.responderName ||
+                      (hasAdminReply(comment) ? 'Admin' : 'Thành viên')
+                  }}
+                  @if (reply.respondedAt) {
+                    <span class="dot">•</span>
+                    {{ reply.respondedAt | date: 'dd/MM/yyyy HH:mm' }}
+                  }
+                </span>
+              </div>
+              <div class="reply-content">{{ reply.content }}</div>
+            </div>
+          }
+        }
+
+        @if (comment.status !== 'spam' && !hasAdminReply(comment)) {
+          <div class="comment-reply-form">
+            <div class="reply-form-header">
+              <div>
+                <div class="reply-title">Trả lời bình luận</div>
+                <div class="reply-hint">Phản hồi sẽ hiển thị cho khách hàng.</div>
+              </div>
+              <span class="reply-badge">Chưa phản hồi</span>
+            </div>
+            <app-comment-reply-box (send)="onReply(comment.id, $event)" />
+          </div>
+        }
+
+        <div class="comment-actions">
+          @if (comment.status !== 'spam') {
+            <button
+              class="action-btn btn-warning"
+              (click)="onMarkAsSpam(comment.id)"
+            >
+              <i class="fas fa-flag"></i>
+              Spam
+            </button>
+          }
+
+          <button class="action-btn btn-error" (click)="onDelete(comment.id)">
+            <i class="fas fa-trash"></i>
+            Xóa
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

@@ -1,0 +1,31 @@
+<div class="comment-filters">
+  <div class="filter-group">
+    <label class="filter-label">Trạng thái:</label>
+    <div class="filter-tabs">
+      @for (option of statusOptions; track option.value) {
+        <button
+          class="filter-tab"
+          [class.active]="statusFilter() === option.value"
+          (click)="onStatusChange(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <label class="filter-label">Phản hồi:</label>
+    <div class="filter-tabs">
+      @for (option of replyOptions; track option.value) {
+        <button
+          class="filter-tab"
+          [class.active]="replyFilter() === option.value"
+          (click)="onReplyChange(option.value)"
+        >
+          {{ option.label }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

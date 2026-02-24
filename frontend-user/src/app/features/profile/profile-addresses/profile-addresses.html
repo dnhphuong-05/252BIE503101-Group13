@@ -1,0 +1,130 @@
+<div class="addresses-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="fas fa-map-marker-alt"></i>
+        Địa chỉ nhận hàng
+      </h1>
+      <p class="page-subtitle">Quản lý địa chỉ giao hàng và đặt mặc định.</p>
+    </div>
+    <button class="btn btn-primary" (click)="openAddForm()">
+      <i class="fas fa-plus"></i>
+      <span>Thêm địa chỉ</span>
+    </button>
+  </div>
+
+  @if (showForm) {
+  <div class="address-form">
+    <div class="form-header">
+      <h2>{{ editingAddress ? 'Cập nhật địa chỉ' : 'Thêm địa chỉ mới' }}</h2>
+      <button class="close-btn" (click)="cancelForm()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form [formGroup]="addressForm" (ngSubmit)="saveAddress()">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Người nhận *</label>
+          <input
+            class="form-input"
+            formControlName="receiver_name"
+            placeholder="Họ và tên người nhận"
+          />
+        </div>
+        <div class="form-group">
+          <label>Số điện thoại *</label>
+          <input class="form-input" formControlName="phone" placeholder="090..." />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tỉnh/Thành phố *</label>
+          <select class="form-input" formControlName="province">
+            <option value="">Chọn tỉnh/thành phố</option>
+            @for (province of provinces; track province) {
+            <option [value]="province">{{ province }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Xã/Phường/Đặc khu *</label>
+          <input class="form-input" formControlName="ward" placeholder="Nhập xã/phường/đặc khu" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Địa chỉ chi tiết *</label>
+          <input
+            class="form-input"
+            formControlName="address_detail"
+            placeholder="Số nhà, tên đường, toà nhà..."
+          />
+        </div>
+        <div class="form-group">
+          <label>Ghi chú (tuỳ chọn)</label>
+          <input class="form-input" formControlName="note" placeholder="Ví dụ: Giao giờ hành chính" />
+        </div>
+      </div>
+      <div class="form-row checkbox-row">
+        <label class="checkbox">
+          <input type="checkbox" formControlName="is_default" />
+          Đặt làm địa chỉ mặc định
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="cancelForm()">Hủy</button>
+        <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+          <i class="fas fa-check"></i>
+          <span>{{ editingAddress ? 'Lưu thay đổi' : 'Lưu địa chỉ' }}</span>
+        </button>
+      </div>
+    </form>
+  </div>
+  }
+
+  @if (!addresses.length) {
+  <div class="empty-state">
+    <div class="empty-icon"><i class="fas fa-map-marker-alt"></i></div>
+    <h3>Chưa có địa chỉ nào</h3>
+    <p>Thêm địa chỉ giao hàng để đặt mua sản phẩm nhanh chóng hơn.</p>
+  </div>
+  }
+
+  @if (addresses.length) {
+  <div class="address-grid">
+    @for (address of addresses; track address._id ?? address.address_id ?? address) {
+    <div class="address-card">
+      <div class="card-header">
+        <div class="card-title">Địa chỉ giao hàng</div>
+        @if (isDefault(address)) {
+        <span class="default-badge">Mặc định</span>
+        }
+      </div>
+      <div class="card-body">
+        <div class="receiver">{{ getRecipientName(address) }}</div>
+        <div class="phone">{{ address.phone || 'Chưa cập nhật' }}</div>
+        <div class="address-line">{{ getAddressLine(address) }}</div>
+      </div>
+      <div class="card-actions">
+        <button class="btn-link" (click)="openEdit(address)">
+          <i class="fas fa-edit"></i>
+          Sửa
+        </button>
+        <button class="btn-link danger" (click)="deleteAddress(address)">
+          <i class="fas fa-trash-alt"></i>
+          Xoá
+        </button>
+        @if (!isDefault(address)) {
+        <button class="btn-link" (click)="setDefault(address)">
+          <i class="fas fa-star"></i>
+          Đặt mặc định
+        </button>
+        }
+      </div>
+    </div>
+    }
+  </div>
+  }
+</div>

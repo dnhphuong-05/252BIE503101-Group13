@@ -1,0 +1,188 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Blog posts</div>
+      <div class="page-subtitle">Manage publishing, status, and visibility.</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm">Export</button>
+      <button class="btn btn-primary" [routerLink]="['/blog/posts/new']">
+        <i class="fas fa-plus"></i>
+        New post
+      </button>
+    </div>
+  </div>
+
+  <div class="card table-card">
+    <div class="table-toolbar blog-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Search posts, author, tags"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="applyFilters()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <button class="btn btn-ghost btn-sm">Bulk actions</button>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Status</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (option of statusOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Category</span>
+        <select
+          class="select"
+          [(ngModel)]="categoryFilter"
+          (change)="applyFilters()"
+          [disabled]="filtersLoading"
+        >
+          <option value="">All categories</option>
+          @for (category of categories; track category.id) {
+            <option [value]="category.id">{{ category.name }} ({{ category.count }})</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <span class="filter-label">Sort</span>
+        <select class="select" [(ngModel)]="sortFilter" (change)="applyFilters()">
+          @for (option of sortOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">
+          Reset
+        </button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    @if (filtersError) {
+      <div class="filter-error">{{ filtersError }}</div>
+    }
+
+    @if (loadError && posts.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (isLoading && posts.length === 0) {
+      <div class="empty-state">Loading posts...</div>
+    } @else if (posts.length === 0) {
+      <div class="empty-state">No posts found.</div>
+    } @else {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Views</th>
+            <th>Updated</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (post of posts; track post.id) {
+            <tr>
+              <td>
+                <div class="item-cell">
+                  <img class="item-thumb" [src]="post.thumbnail" [alt]="post.title" />
+                  <div class="min-w-0">
+                    <div class="item-title">{{ post.title }}</div>
+                    <div class="item-meta">#{{ post.blogId }} · {{ post.author }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span [class]="statusMeta[post.status].class">{{ statusMeta[post.status].label }}</span>
+              </td>
+              <td>{{ post.views }}</td>
+              <td class="text-sm text-primary-500">{{ post.updatedAt }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" (click)="onView(post)">View</button>
+                  <button class="btn btn-secondary btn-sm" (click)="onEdit(post)">Edit</button>
+                  @if (post.status !== 'archived') {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="onArchive(post)"
+                      [disabled]="statusUpdatingIds.has(post.id)"
+                    >
+                      @if (statusUpdatingIds.has(post.id)) {
+                        Updating...
+                      } @else {
+                        Archive
+                      }
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      (click)="onRestore(post)"
+                      [disabled]="statusUpdatingIds.has(post.id)"
+                    >
+                      @if (statusUpdatingIds.has(post.id)) {
+                        Updating...
+                      } @else {
+                        Restore
+                      }
+                    </button>
+                  }
+                  @if (isSuperAdmin()) {
+                    <button
+                      class="btn btn-ghost btn-sm text-error"
+                      (click)="onDelete(post)"
+                      [disabled]="deletingIds.has(post.id)"
+                      title="Delete permanently"
+                      aria-label="Delete permanently"
+                    >
+                      @if (deletingIds.has(post.id)) {
+                        Deleting...
+                      } @else {
+                        Delete
+                      }
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">Showing {{ posts.length }} / {{ total }} posts</span>
+      @if (posts.length < total) {
+        <button
+          class="btn btn-secondary btn-sm load-more-btn"
+          type="button"
+          (click)="loadMore()"
+          [disabled]="isLoading || isLoadingMore"
+        >
+          @if (isLoadingMore) {
+            <span class="spinner" aria-hidden="true"></span>
+            Loading...
+          } @else {
+            Load more
+          }
+        </button>
+      }
+    </div>
+  </div>
+</div>

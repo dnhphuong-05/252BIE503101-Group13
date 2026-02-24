@@ -1,0 +1,203 @@
+<div class="security-card">
+  <div class="card-header">
+    <div class="header-left">
+      <h2 class="card-title">
+        <i class="fas fa-shield-alt"></i>
+        Bảo mật & Tài khoản
+      </h2>
+      <p class="card-subtitle">Quản lý mật khẩu và bảo mật tài khoản của bạn</p>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <!-- Account Security Status -->
+    <div class="security-status">
+      <div class="status-item">
+        <div class="status-icon verified">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="status-content">
+          <h4>Email đã xác thực</h4>
+          <p>Tài khoản của bạn đã được xác thực</p>
+        </div>
+      </div>
+
+      <div class="status-item">
+        <div class="status-icon secure">
+          <i class="fas fa-lock"></i>
+        </div>
+        <div class="status-content">
+          <h4>Mật khẩu bảo mật</h4>
+          <p>Đổi mật khẩu định kỳ để bảo vệ tài khoản</p>
+        </div>
+        <button
+          *ngIf="!isChangingPassword"
+          class="change-password-btn"
+          (click)="togglePasswordChange()"
+        >
+          <i class="fas fa-key"></i>
+          Đổi mật khẩu
+        </button>
+      </div>
+    </div>
+
+    <!-- Password Change Form -->
+    <div *ngIf="isChangingPassword" class="password-change-section">
+      <div class="section-header">
+        <h3 class="section-title">Đổi mật khẩu</h3>
+        <button class="close-btn" (click)="togglePasswordChange()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="onSubmit()">
+        <!-- Current Password -->
+        <div class="form-group">
+          <label class="form-label" for="oldPassword">
+            Mật khẩu hiện tại
+            <span class="required">*</span>
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showOldPassword ? 'text' : 'password'"
+              id="oldPassword"
+              class="form-input"
+              formControlName="oldPassword"
+              placeholder="Nhập mật khẩu hiện tại"
+            />
+            <button type="button" class="toggle-password" (click)="toggleOldPassword()">
+              <i class="fas" [ngClass]="showOldPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+          </div>
+          <div
+            *ngIf="
+              passwordForm.get('oldPassword')?.invalid && passwordForm.get('oldPassword')?.touched
+            "
+            class="error-message"
+          >
+            <i class="fas fa-exclamation-circle"></i>
+            Mật khẩu phải có ít nhất 8 ký tự
+          </div>
+        </div>
+
+        <!-- New Password -->
+        <div class="form-group">
+          <label class="form-label" for="newPassword">
+            Mật khẩu mới
+            <span class="required">*</span>
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showNewPassword ? 'text' : 'password'"
+              id="newPassword"
+              class="form-input"
+              formControlName="newPassword"
+              placeholder="Nhập mật khẩu mới"
+            />
+            <button type="button" class="toggle-password" (click)="toggleNewPassword()">
+              <i class="fas" [ngClass]="showNewPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+          </div>
+
+          <!-- Password Strength Indicator -->
+          <div *ngIf="passwordForm.get('newPassword')?.value" class="password-strength">
+            <div class="strength-bar">
+              <div class="strength-fill" [ngClass]="getPasswordStrength()"></div>
+            </div>
+            <span class="strength-label" [ngClass]="getPasswordStrength()">
+              {{ getPasswordStrengthLabel() }}
+            </span>
+          </div>
+
+          <div
+            *ngIf="
+              passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched
+            "
+            class="error-message"
+          >
+            <i class="fas fa-exclamation-circle"></i>
+            Mật khẩu phải có ít nhất 8 ký tự
+          </div>
+
+          <div class="password-requirements">
+            <p class="requirements-title">Mật khẩu nên bao gồm:</p>
+            <ul class="requirements-list">
+              <li>Ít nhất 8 ký tự</li>
+              <li>Chữ hoa và chữ thường</li>
+              <li>Ít nhất một số</li>
+              <li>Ít nhất một ký tự đặc biệt</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label class="form-label" for="confirmPassword">
+            Xác nhận mật khẩu mới
+            <span class="required">*</span>
+          </label>
+          <div class="password-input-wrapper">
+            <input
+              [type]="showConfirmPassword ? 'text' : 'password'"
+              id="confirmPassword"
+              class="form-input"
+              formControlName="confirmPassword"
+              placeholder="Nhập lại mật khẩu mới"
+            />
+            <button type="button" class="toggle-password" (click)="toggleConfirmPassword()">
+              <i class="fas" [ngClass]="showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+          </div>
+          <div
+            *ngIf="
+              passwordForm.get('confirmPassword')?.hasError('passwordMismatch') &&
+              passwordForm.get('confirmPassword')?.touched
+            "
+            class="error-message"
+          >
+            <i class="fas fa-exclamation-circle"></i>
+            Mật khẩu xác nhận không khớp
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-cancel" (click)="togglePasswordChange()">
+            <i class="fas fa-times"></i>
+            Hủy
+          </button>
+          <button type="submit" class="btn btn-save" [disabled]="passwordForm.invalid">
+            <i class="fas fa-check"></i>
+            Đổi mật khẩu
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Security Tips -->
+    <div class="security-tips">
+      <h4 class="tips-title">
+        <i class="fas fa-lightbulb"></i>
+        Mẹo bảo mật
+      </h4>
+      <ul class="tips-list">
+        <li>
+          <i class="fas fa-check-circle"></i>
+          Sử dụng mật khẩu mạnh và duy nhất cho tài khoản này
+        </li>
+        <li>
+          <i class="fas fa-check-circle"></i>
+          Đổi mật khẩu định kỳ (3-6 tháng một lần)
+        </li>
+        <li>
+          <i class="fas fa-check-circle"></i>
+          Không chia sẻ mật khẩu với bất kỳ ai
+        </li>
+        <li>
+          <i class="fas fa-check-circle"></i>
+          Đăng xuất khỏi các thiết bị công cộng sau khi sử dụng
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,116 @@
+<div class="cart-page">
+  <section class="cart-hero">
+    <div class="container">
+      <div class="breadcrumb">
+        <a routerLink="/">Trang chủ</a>
+        <span class="sep">/</span>
+        <span>Giỏ hàng</span>
+      </div>
+      <h1 class="hero-title">Giỏ hàng</h1>
+      <p class="hero-subtitle">Kiểm tra sản phẩm trước khi thanh toán.</p>
+    </div>
+  </section>
+
+  <div class="container cart-body">
+    @if (!isLoggedIn) {
+      <div class="state state-auth">
+        <i class="fas fa-lock"></i>
+        <h3>Bạn cần đăng nhập để xem giỏ hàng</h3>
+        <p>Giỏ hàng được lưu theo tài khoản để đồng bộ trên nhiều thiết bị.</p>
+        <button class="btn-primary" (click)="goToLogin()">Đăng nhập</button>
+      </div>
+    } @else {
+      @if (items.length === 0) {
+        <div class="state state-empty">
+          <i class="fas fa-shopping-bag"></i>
+          <h3>Giỏ hàng đang trống</h3>
+          <p>Thêm sản phẩm bạn yêu thích để bắt đầu thanh toán.</p>
+          <a routerLink="/products" class="btn-outline">Tiếp tục mua sắm</a>
+        </div>
+      } @else {
+        <div class="cart-layout">
+          <div class="cart-list">
+            <div class="cart-header">
+              <span></span>
+              <span>Sản phẩm</span>
+              <span>Số lượng</span>
+              <span>Thành tiền</span>
+            </div>
+
+            <div class="cart-footer cart-footer-top">
+              <label class="select-all">
+                <input
+                  type="checkbox"
+                  [checked]="allSelected"
+                  (change)="toggleAll($event)"
+                />
+                <span>Chọn tất cả</span>
+              </label>
+              <span class="selected-count">
+                Đã chọn {{ selectedCount }}/{{ items.length }} sản phẩm
+              </span>
+            </div>
+
+            @for (item of items; track itemKey(item)) {
+              <div class="cart-item">
+                <div class="item-check">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(item)"
+                    (change)="toggleItem(item, $event)"
+                    aria-label="Chọn sản phẩm"
+                  />
+                </div>
+                <div class="item-main">
+                  <img [src]="getImageUrl(item)" [alt]="item.product_name_snapshot" />
+                  <div class="item-info">
+                    <a [routerLink]="['/products', item.product_id]" class="item-name">
+                      {{ item.product_name_snapshot }}
+                    </a>
+                    <div class="item-meta">
+                      <span class="meta-pill">M&#xE0;u: {{ item.color || 'Ch&#x1B0;a ch&#x1ECD;n' }}</span>
+                      <span class="meta-pill">K&#xED;ch c&#x1EE1;: {{ item.size || 'Ch&#x1B0;a ch&#x1ECD;n' }}</span>
+                    </div>
+                    <div class="item-price">{{ item.price_snapshot | number }}đ</div>
+                  </div>
+                </div>
+
+                <div class="item-qty">
+                  <button class="qty-btn" (click)="decrease(item)">-</button>
+                  <input type="number" [value]="item.quantity" readonly />
+                  <button class="qty-btn" (click)="increase(item)">+</button>
+                </div>
+
+                <div class="item-total">
+                  <span>{{ itemTotal(item) | number }}đ</span>
+                  <button class="item-remove" (click)="removeItem(item)">Xóa</button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <aside class="cart-summary">
+            <h3>Tóm tắt đơn hàng</h3>
+            <div class="summary-row">
+              <span>Tạm tính</span>
+              <strong>{{ subtotal | number }}đ</strong>
+            </div>
+            <div class="summary-row">
+              <span>Phí giao hàng</span>
+              <strong>{{ shippingFee | number }}đ</strong>
+            </div>
+            <div class="summary-total">
+              <span>Tổng cộng</span>
+              <strong>{{ total | number }}đ</strong>
+            </div>
+            <button class="btn-primary" (click)="goToCheckout()">Tiến hành thanh toán</button>
+            <button class="btn-ghost" (click)="clearCart()">Xóa giỏ hàng</button>
+          </aside>
+        </div>
+      }
+    }
+  </div>
+</div>
+
+
+

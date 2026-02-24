@@ -1,229 +1,232 @@
 <div class="products-container">
-  <!-- Header Banner Section -->
-  <div class="products-banner">
-    <div class="banner-overlay"></div>
-    <div class="banner-content">
-      <div class="breadcrumb-banner">
-        <a href="/">Home</a>
-        <span class="separator">›</span>
-        <span class="current">Sản Phẩm</span>
-      </div>
-      <div class="banner-text">
-        <p class="banner-subtitle">SHOP FROM</p>
-        <h1 class="banner-title">Áo Cổ Phục <span class="light">Collections</span></h1>
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="breadcrumb">
+          <a [routerLink]="['/']">Home</a>
+          <span class="separator">/</span>
+          <span class="current">Shop</span>
+        </div>
+        <div class="hero-eyebrow">Bộ sưu tập</div>
+        <h1 class="hero-title">Sản phẩm</h1>
+        <p class="hero-subtitle">Tất cả sản phẩm</p>
       </div>
     </div>
+  </header>
+
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p class="loading-text">Đang tải...</p>
   </div>
 
-  <div class="products-wrapper">
-    <!-- Sidebar Filters -->
+  <div *ngIf="loadError && !isLoading" class="error-container">
+    <i class="fas fa-exclamation-circle"></i>
+    <p>{{ loadError }}</p>
+    <button class="retry-btn" (click)="loadProducts()">Thử lại</button>
+  </div>
+
+  <div *ngIf="!isLoading && !loadError" class="products-content">
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h3>FILTERS</h3>
-        <button class="reset-btn" (click)="resetFilters()">RESET</button>
+      <div class="filter-group">
+        <h3 class="filter-title">Danh mục</h3>
+        <ul class="category-list">
+          <li
+            *ngFor="let cat of categories"
+            [class.active]="selectedCategory === cat.id"
+            (click)="selectCategory(cat.id)"
+          >
+            <span class="cat-name">{{ cat.name }}</span>
+            <span class="cat-count">{{ cat.count || 0 }}</span>
+          </li>
+        </ul>
       </div>
 
-      <!-- Price Filter -->
-      <div class="filter-section">
-        <h4 class="filter-title"><i class="fas fa-dollar-sign"></i> PRICE RANGE</h4>
-        <div class="price-filter">
+      <div class="filter-group">
+        <h3 class="filter-title">Giá</h3>
+        <div class="price-range">
           <input
             type="range"
-            min="0"
-            max="9000000"
+            [min]="minPrice"
+            [max]="maxPrice"
             step="100000"
             [(ngModel)]="selectedPrice"
             (change)="onPriceChange()"
             class="price-slider"
           />
-          <div class="price-display">
-            <span class="price-label">0₫ - {{ selectedPrice | number }} ₫</span>
+          <div class="price-value">
+            <span>Tối đa: {{ selectedPrice | number }}₫</span>
           </div>
         </div>
       </div>
 
-      <!-- Collections/Categories -->
-      <div class="filter-section">
-        <h4 class="filter-title"><i class="fas fa-th"></i> COLLECTIONS</h4>
-        <ul class="category-list">
-          <li *ngFor="let cat of categories">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                [checked]="selectedCategory === cat.id"
-                (change)="selectCategory(cat.id)"
-              />
-              <span class="category-name">{{ cat.name }}</span>
-              <span class="category-count">({{ cat.count }})</span>
-            </label>
-          </li>
-        </ul>
-      </div>
-
-      <!-- Color Filter -->
-      <div class="filter-section">
-        <h4 class="filter-title"><i class="fas fa-palette"></i> FILTER BY COLOR</h4>
-        <div class="color-filter">
-          <div class="color-options">
-            <label *ngFor="let color of availableColors" class="color-checkbox">
-              <input
-                type="checkbox"
-                [checked]="selectedColors.includes(color)"
-                (change)="toggleColor(color)"
-              />
-              <span class="color-box" [style.background-color]="getColorValue(color)"></span>
-              <span class="color-name">{{ color }}</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- Product Type Filter -->
-      <div class="filter-section">
-        <h4 class="filter-title"><i class="fas fa-tag"></i> FILTER BY TYPE</h4>
-        <div class="type-options">
-          <label class="checkbox-label">
-            <input type="checkbox" />
-            <span>Premium</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" />
-            <span>Luxury</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" />
-            <span>Traditional</span>
+      <div class="filter-group" *ngIf="availableColors.length > 0">
+        <h3 class="filter-title">Màu sắc</h3>
+        <div class="color-list">
+          <label *ngFor="let color of availableColors" class="color-item">
+            <input
+              type="checkbox"
+              [checked]="selectedColors.includes(color)"
+              (change)="toggleColor(color)"
+            />
+            <span class="color-label">{{ color }}</span>
           </label>
         </div>
       </div>
 
-      <!-- Best Sellers -->
-      <div class="filter-section best-sellers">
-        <h4 class="filter-title"><i class="fas fa-fire"></i> BEST SELLERS</h4>
-        <div class="seller-items">
-          <div class="seller-item" *ngFor="let product of products.slice(0, 3)">
-            <img [src]="product.thumbnail" alt="{{ product.name }}" />
-            <div class="seller-info">
-              <p class="seller-name">{{ product.name }}</p>
-              <p class="seller-price">
-                {{ getDiscountedPrice(product.price, product.discount) | number }}₫
-              </p>
-            </div>
-          </div>
+      <div class="filter-group" *ngIf="availableSizes.length > 0">
+        <h3 class="filter-title">Kích cỡ</h3>
+        <div class="size-list">
+          <label *ngFor="let size of availableSizes" class="size-item">
+            <input
+              type="checkbox"
+              [checked]="selectedSizes.includes(size)"
+              (change)="toggleSize(size)"
+            />
+            <span class="size-label">{{ size }}</span>
+          </label>
         </div>
       </div>
 
-      <!-- Tags Cloud -->
-      <div class="filter-section">
-        <h4 class="filter-title"><i class="fas fa-cloud"></i> TAGS CLOUD</h4>
-        <div class="tags-cloud">
-          <span class="tag">Cao Cấp</span>
-          <span class="tag">Cung Đình</span>
-          <span class="tag">Truyền Thống</span>
-          <span class="tag">Dân Gian</span>
-          <span class="tag">Thêu Tay</span>
-          <span class="tag">Lụa Tơ</span>
+      <div class="filter-group" *ngIf="availableGenders.length > 0">
+        <h3 class="filter-title">Giới tính</h3>
+        <div class="gender-list">
+          <button
+            type="button"
+            class="gender-pill"
+            *ngFor="let gender of availableGenders"
+            [class.active]="selectedGender === gender"
+            (click)="selectGender(gender)"
+          >
+            {{ gender }}
+          </button>
         </div>
       </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Top Bar with Sort and View -->
-      <div class="products-header">
-        <div class="view-options">
-          <button class="view-btn active" title="Grid View">
-            <i class="fas fa-th"></i>
-          </button>
-          <button class="view-btn" title="List View">
-            <i class="fas fa-list"></i>
+    <main class="products-main">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <span class="showing-text">
+            Hiển thị {{ getStartIndex() }}–{{ getEndIndex() }} trong {{ totalProducts }} sản phẩm
+          </span>
+          <button
+            *ngIf="selectedCategory || selectedColors.length || selectedSizes.length || selectedGender || (selectedPrice && selectedPrice < maxPrice) || searchQuery"
+            class="pill-btn"
+            (click)="resetFilters()"
+          >
+            Xóa lọc
           </button>
         </div>
-
-        <div class="sort-section">
-          <label>Sort by:</label>
+        <div class="toolbar-actions">
+          <span class="sort-label">Sắp xếp</span>
           <select [(ngModel)]="sortBy" (change)="onSortChange()" class="sort-select">
-            <option *ngFor="let option of sortOptions">{{ option }}</option>
-          </select>
-        </div>
-
-        <div class="items-per-page">
-          <label>Items per page:</label>
-          <select [(ngModel)]="itemsPerPage" (change)="filterProducts()" class="items-select">
-            <option [value]="6">6</option>
-            <option [value]="9">9</option>
-            <option [value]="12">12</option>
+            <option *ngFor="let opt of sortOptions" [value]="opt.value">
+              {{ opt.label }}
+            </option>
           </select>
         </div>
       </div>
 
-      <!-- Products Grid -->
-      <div class="products-grid">
-        <div class="product-card" *ngFor="let product of getPaginatedProducts()">
-          <div class="product-image-wrapper">
-            <img [src]="product.thumbnail" alt="{{ product.name }}" class="product-image" />
+      <div *ngIf="products.length === 0" class="empty-state">
+        <i class="fas fa-shopping-bag"></i>
+        <h3>Không tìm thấy sản phẩm</h3>
+        <p>Vui lòng thử điều chỉnh bộ lọc.</p>
+      </div>
+
+      <div *ngIf="products.length > 0" class="products-grid">
+        <div *ngFor="let product of products" class="product-card">
+          <div class="product-image-container" (click)="viewProductDetail(product.product_id)">
+            <img
+              [src]="getImageUrl(product)"
+              [alt]="product.name"
+              class="product-img"
+              loading="lazy"
+            />
+            <div *ngIf="getDiscountPercentage(product) > 0" class="sale-badge">
+              -{{ getDiscountPercentage(product) }}%
+            </div>
           </div>
 
-          <div class="product-info">
-            <h3 class="product-name">{{ product.name }}</h3>
+          <div class="product-details">
+            <div class="product-meta">{{ product.category_name }}</div>
+            <h3 class="product-title" (click)="viewProductDetail(product.product_id)">
+              {{ product.name }}
+            </h3>
 
-            <div class="product-pricing">
-              <span class="price">
-                {{ getDiscountedPrice(product.price, product.discount) | number }}₫
-              </span>
+            <div class="product-rating">
+              <div class="stars">
+                <i
+                  *ngFor="let star of [1, 2, 3, 4, 5]"
+                  [class]="star <= (product.rating_average || 0) ? 'fas fa-star' : 'far fa-star'"
+                ></i>
+              </div>
+            </div>
+
+            <div class="product-price-row">
+              <div class="prices">
+                <span class="new-price">{{ getFinalPrice(product) | number }}₫</span>
+                <span *ngIf="getDiscountPercentage(product) > 0" class="old-price">
+                  {{ product.price_buy | number }}₫
+                </span>
+              </div>
             </div>
 
             <div class="product-actions">
-              <button class="btn-add-to-cart">ADD TO CART</button>
-              <button class="btn-view-details">VIEW DETAILS</button>
+              <button class="buy-btn" (click)="viewProductDetail(product.product_id)">
+                Mua ngay
+              </button>
+              <button
+                class="cart-btn"
+                type="button"
+                aria-label="Thêm vào giỏ hàng"
+                  (click)="openProductModal(product, $event)"
+              >
+                <i class="fas fa-shopping-cart"></i>
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- No Products Message -->
-      <div class="no-products" *ngIf="filteredProducts.length === 0">
-        <i class="fas fa-inbox"></i>
-        <p>No products found matching your filters</p>
-        <button class="btn btn-primary" (click)="resetFilters()">RESET FILTERS</button>
-      </div>
-
-      <!-- Pagination -->
-      <div class="pagination" *ngIf="filteredProducts.length > 0">
-        <button
-          class="pagination-btn"
-          (click)="goToPage(currentPage - 1)"
-          [disabled]="currentPage === 1"
-        >
+      <div *ngIf="totalPages > 1" class="pagination">
+        <button class="page-btn" [disabled]="currentPage === 1" (click)="previousPage()">
           <i class="fas fa-chevron-left"></i>
         </button>
 
         <button
-          *ngFor="let page of [].constructor(getTotalPages()); let i = index"
-          class="pagination-btn"
-          [class.active]="currentPage === i + 1"
-          (click)="goToPage(i + 1)"
+          *ngFor="let page of getPageNumbers()"
+          [class.active]="page === currentPage"
+          [class.dots]="page === -1"
+          [disabled]="page === -1"
+          (click)="page !== -1 && goToPage(page)"
+          class="page-btn"
         >
-          {{ i + 1 }}
+          {{ page === -1 ? '...' : page }}
         </button>
 
-        <button
-          class="pagination-btn"
-          (click)="goToPage(currentPage + 1)"
-          [disabled]="currentPage === getTotalPages()"
-        >
+        <button class="page-btn" [disabled]="currentPage === totalPages" (click)="nextPage()">
           <i class="fas fa-chevron-right"></i>
         </button>
       </div>
 
-      <!-- Results Info -->
-      <div class="results-info" *ngIf="filteredProducts.length > 0">
-        <p>
-          Showing {{ (currentPage - 1) * itemsPerPage + 1 }} -
-          {{ Math.min(currentPage * itemsPerPage, filteredProducts.length) }} of
-          {{ filteredProducts.length }} products
-        </p>
-      </div>
+      <!-- Recommendations removed -->
     </main>
   </div>
+
+  <section *ngIf="!isLoading && !loadError" class="cta">
+    <div class="cta-inner">
+      <div>
+        <h3>Sẵn sàng khám phá sản phẩm mới?</h3>
+        <p>Khám phá những thiết kế mới nhất từ bộ sưu tập hiện tại.</p>
+      </div>
+      <button class="cta-btn" (click)="sortBy = 'newest'; onSortChange()">Xem mới nhất</button>
+    </div>
+  </section>
+
+  <app-product-modal
+    [show]="showProductModal"
+    [product]="selectedProduct"
+    (close)="closeProductModal()"
+    (add)="handleModalAdd($event)"
+  ></app-product-modal>
 </div>

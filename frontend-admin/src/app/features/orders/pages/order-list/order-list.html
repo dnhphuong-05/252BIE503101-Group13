@@ -1,0 +1,1586 @@
+﻿<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">
+        @if (view() === 'rent') {
+          Đơn thuê
+        } @else if (view() === 'returns') {
+          Hoàn trả &amp; hoàn tiền
+        } @else {
+          Đơn mua
+        }
+      </div>
+      <div class="page-subtitle">
+        @if (view() === 'rent') {
+          Quản lý đơn thuê, yêu cầu trả và hoàn cọc
+        } @else if (view() === 'returns') {
+          Theo dõi hoàn trả &amp; hoàn tiền
+        } @else {
+          Quản lý đơn mua và cập nhật trạng thái giao hàng
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="split-layout order-layout">
+    <div class="card table-card">
+      <div class="table-toolbar order-toolbar">
+        <div class="toolbar-group flex-1">
+          <div class="toolbar-search">
+            <i class="fas fa-search"></i>
+            <input
+              class="input"
+              placeholder="Tìm theo mã đơn, khách hàng, SĐT"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="applyFilters()"
+            />
+          </div>
+        </div>
+        <div class="toolbar-group">
+          <span class="text-sm text-primary-500">
+            @if (view() === 'rent') {
+              Tổng: {{ rentTotal }}
+            } @else if (view() === 'sales') {
+              Tổng: {{ salesTotal }}
+            } @else {
+              Tổng: {{ returnTotal }}
+            }
+          </span>
+        </div>
+      </div>
+
+      <div class="filter-grid">
+        @if (view() === 'rent') {
+          <div class="filter-field">
+            <span class="filter-label">Trạng thái thuê</span>
+            <select class="select" [(ngModel)]="rentStatusFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="booked">Đã đặt</option>
+              <option value="ongoing">Đang thuê</option>
+              <option value="return_requested">Yêu cầu trả</option>
+              <option value="returning">Đang trả</option>
+              <option value="returned">Đã nhận</option>
+              <option value="closed">Hoàn tất</option>
+              <option value="cancelled">Đã hủy</option>
+              <option value="violated">Vi phạm</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">Yêu cầu trả</span>
+            <select class="select" [(ngModel)]="rentReturnFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="requested">Có yêu cầu</option>
+              <option value="none">Không có</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">Khách hàng</span>
+            <select class="select" [(ngModel)]="rentCustomerFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="user">Khách có tài khoản</option>
+              <option value="guest">Khách vãng lai</option>
+            </select>
+          </div>
+        } @else if (view() === 'sales') {
+          <div class="filter-field">
+            <span class="filter-label">Trạng thái đơn</span>
+            <select class="select" [(ngModel)]="salesStatusFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="pending">Chờ xác nhận</option>
+              <option value="confirmed">Đã xác nhận</option>
+              <option value="processing">Đang xử lý</option>
+              <option value="shipping">Đang giao</option>
+              <option value="completed">Hoàn thành</option>
+              <option value="cancelled">Đã hủy</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">Thanh toán</span>
+            <select class="select" [(ngModel)]="salesPaymentFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="unpaid">Chưa thanh toán</option>
+              <option value="partial">Thanh toán một phần</option>
+              <option value="paid">Đã thanh toán</option>
+              <option value="failed">Thất bại</option>
+              <option value="refunded">Hoàn tiền</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">Vận chuyển</span>
+            <select class="select" [(ngModel)]="salesShippingFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="GHN">GHN</option>
+              <option value="GHTK">GHTK</option>
+              <option value="VNPost">VNPost</option>
+            </select>
+          </div>
+          <div class="filter-field">
+            <span class="filter-label">Khách hàng</span>
+            <select class="select" [(ngModel)]="salesCustomerFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="user">Khách có tài khoản</option>
+              <option value="guest">Khách vãng lai</option>
+            </select>
+          </div>
+        } @else if (view() === 'returns') {
+          <div class="filter-field">
+            <span class="filter-label">Trạng thái hoàn trả</span>
+            <select class="select" [(ngModel)]="returnStatusFilter" (ngModelChange)="applyFilters()">
+              <option value="all">Tất cả</option>
+              <option value="submitted">Đã gửi</option>
+              <option value="need_more_info">Cần bổ sung</option>
+              <option value="approved">Đã duyệt</option>
+              <option value="awaiting_return_shipment">Chờ gửi hàng</option>
+              <option value="return_in_transit">Đang hoàn trả</option>
+              <option value="received_inspecting">Đang kiểm tra</option>
+              <option value="refund_processing">Đang hoàn tiền</option>
+              <option value="refunded">Đã hoàn tiền</option>
+              <option value="closed">Đã đóng</option>
+            </select>
+          </div>
+        } @else {
+          <div class="filter-field">
+            <span class="filter-label">Trạng thái</span>
+            <select class="select" disabled>
+              <option>Chưa có dữ liệu</option>
+            </select>
+          </div>
+        }
+
+        <div class="filter-actions">
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+          <button class="btn btn-secondary btn-sm" type="button" (click)="refreshOrders()">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      @if (loadError) {
+        <div class="empty-state">{{ loadError }}</div>
+      } @else if (view() === 'rent') {
+        <table class="table order-table order-table-rent">
+          <thead>
+            <tr>
+              <th>Đơn thuê</th>
+              <th>Khách</th>
+              <th>Thời gian thuê</th>
+              <th>Trạng thái</th>
+              <th>Thanh toán</th>
+              <th>Cọc</th>
+              <th>Yêu cầu trả</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of rentOrders; track order.id) {
+              <tr
+                class="order-row"
+                [class.active]="selectedId() === order.id"
+                (click)="selectOrder(order.id)"
+              >
+                <td>
+                  <div class="rent-code">
+                    <div class="font-semibold text-primary-900">{{ order.code }}</div>
+                    <div class="text-xs text-primary-500">Tạo: {{ order.createdAt }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="customer-stack">
+                    <div class="customer-top">
+                      <div class="customer-name">{{ order.customer }}</div>
+                      <span [class]="order.isGuest ? 'chip chip-warning' : 'chip chip-teal'">
+                        {{ order.isGuest ? 'GUEST' : 'USER' }}
+                      </span>
+                    </div>
+                    <div class="customer-phone">{{ order.phone }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="item-meta">{{ order.period }}</div>
+                  <div class="text-xs text-primary-500">{{ order.days }} ngày</div>
+                </td>
+                <td>
+                  <span [class]="getRentStatusMetaFor(order).class">
+                    {{ getRentStatusMetaFor(order).label }}
+                  </span>
+                </td>
+                <td>
+                  <span [class]="paymentMeta[order.paymentStatus].class">
+                    {{ paymentMeta[order.paymentStatus].label }}
+                  </span>
+                </td>
+                <td>
+                  <div class="price-stack">
+                    <div class="price-main">{{ order.depositPaid }}</div>
+                    <div class="price-sub">Tiền thuê:</div>
+                    <div class="price-sub">{{ order.rentFee }}</div>
+                    <div class="price-sub">Hoàn dự kiến:</div>
+                    <div class="price-sub">{{ order.refundExpected }}</div>
+                  </div>
+                </td>
+                <td>
+                  <div class="rent-return">
+                    <span
+                      class="chip"
+                      [class]="order.returnRequested ? 'chip-warning' : 'chip-neutral'"
+                    >
+                      {{ order.returnRequested ? 'Có yêu cầu' : 'Không' }}
+                    </span>
+                    @if (order.returnRequestedAt) {
+                      <div class="text-xs text-primary-500">Gửi: {{ order.returnRequestedAt }}</div>
+                    }
+                  </div>
+                </td>
+                <td>
+                  <div class="table-actions table-actions-tight">
+                    <button class="btn btn-ghost btn-sm" (click)="onViewRent(order, $event)">
+                      Xem
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else if (view() === 'returns') {
+        <table class="table order-table order-table-returns">
+          <thead>
+            <tr>
+              <th>Mã</th>
+              <th>Đơn</th>
+              <th>Trạng thái</th>
+              <th>Số tiền</th>
+              <th>Ngày</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (request of returnOrders; track request.id) {
+              <tr
+                class="order-row"
+                [class.active]="selectedId() === request.id"
+                (click)="selectOrder(request.id)"
+              >
+                <td class="font-semibold text-primary-900">{{ request.code }}</td>
+                <td>
+                  <div class="item-meta">{{ request.orderCode }}</div>
+                </td>
+                <td>
+                  <span [class]="returnStatusMeta[request.status].class">
+                    {{ returnStatusMeta[request.status].label }}
+                  </span>
+                </td>
+                <td class="font-semibold">{{ request.amount }}</td>
+                <td class="text-sm text-primary-500">{{ request.requestedAt }}</td>
+                <td>
+                  <div class="table-actions table-actions-tight">
+                    <button class="btn btn-ghost btn-sm" (click)="selectOrder(request.id)">
+                      Xem
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      } @else {
+        <table class="table order-table order-table-sales">
+          <thead>
+            <tr>
+              <th>Mã đơn</th>
+              <th>Khách</th>
+              <th>Tổng tiền</th>
+              <th>Thanh toán</th>
+              <th>Trạng thái</th>
+              <th>Vận chuyển</th>
+              <th>Cập nhật</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of salesOrders; track order.id) {
+              <tr
+                class="order-row"
+                [class.active]="selectedId() === order.id"
+                (click)="selectOrder(order.id)"
+              >
+                <td class="font-semibold text-primary-900">{{ order.code }}</td>
+                <td>
+                  <div class="customer-stack">
+                    <div class="customer-top">
+                      <div class="customer-name">{{ order.customer }}</div>
+                      <span [class]="order.isGuest ? 'chip chip-warning' : 'chip chip-teal'">
+                        {{ order.isGuest ? 'GUEST' : 'USER' }}
+                      </span>
+                    </div>
+                    <div class="customer-phone">{{ order.phone }}</div>
+                  </div>
+                </td>
+                <td class="font-semibold">{{ order.total }}</td>
+                <td>
+                  <span [class]="paymentMeta[order.paymentStatus].class">
+                    {{ paymentMeta[order.paymentStatus].label }}
+                  </span>
+                </td>
+                <td>
+                  <span [class]="getSalesStatusMetaFor(order).class">
+                    {{ getSalesStatusMetaFor(order).label }}
+                  </span>
+                </td>
+                <td class="text-sm text-primary-500">{{ order.shipping }}</td>
+                <td class="text-sm text-primary-500">{{ order.updatedAt }}</td>
+                <td>
+                  <div class="table-actions table-actions-tight">
+                    <button class="btn btn-ghost btn-sm" (click)="onViewSales(order, $event)">
+                      Xem
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+
+      <div class="table-footer">
+        <span class="text-sm text-primary-500">
+          @if (view() === 'rent') {
+            Hiển thị {{ rentOrders.length }} / {{ rentTotal }} đơn
+          } @else if (view() === 'sales') {
+            Hiển thị {{ salesOrders.length }} / {{ salesTotal }} đơn
+          } @else if (view() === 'returns') {
+            Hiển thị {{ returnOrders.length }} / {{ returnTotal }} đơn
+          } @else {
+            Hiển thị 0 / 0 đơn
+          }
+        </span>
+        <button class="btn btn-secondary btn-sm">Tải thêm</button>
+      </div>
+
+      @if (view() === 'rent') {
+        @if (rentDetailLoading) {
+          <div class="detail-loading">Đang tải chi tiết đơn thuê...</div>
+        } @else if (rentDetailError) {
+          <div class="empty-state soft">{{ rentDetailError }}</div>
+        } @else if (selectedRentDetail) {
+          <div class="detail-drawer order-detail rent-detail">
+            <div class="detail-header">
+              <div>
+                <div class="section-title">{{ selectedRentDetail.rent_order_code }}</div>
+                <div class="item-meta">
+                  ID: {{ selectedRentDetail.rent_order_id }} ·
+                  {{ formatDateTime(selectedRentDetail.created_at) }}
+                </div>
+              </div>
+              <div class="header-badges">
+                <span
+                  [class]="selectedRentDetail.guest_id ? 'chip chip-warning' : 'chip chip-teal'"
+                >
+                  {{ selectedRentDetail.guest_id ? 'GUEST' : 'USER' }}
+                </span>
+                <span [class]="getRentDetailStatusMeta(selectedRentDetail).class">
+                  {{ getRentDetailStatusMeta(selectedRentDetail).label }}
+                </span>
+              </div>
+            </div>
+
+            <div class="detail-grid">
+              <div>
+                <div class="item-meta">Khách hàng</div>
+                <div class="font-semibold">
+                  {{ selectedRentDetail.customer_info.full_name || '-' }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">SĐT</div>
+                <div class="font-semibold">{{ selectedRentDetail.customer_info.phone || '-' }}</div>
+              </div>
+              <div>
+                <div class="item-meta">Email</div>
+                <div class="font-semibold">{{ selectedRentDetail.customer_info.email || '-' }}</div>
+              </div>
+              <div class="grid-span-2">
+                <div class="item-meta">Địa chỉ</div>
+                <div class="font-semibold">
+                  {{ formatAddressText(selectedRentDetail.customer_info.address) }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Thời gian thuê</div>
+                <div class="font-semibold">
+                  {{ formatDateTime(selectedRentDetail.rental_period.start_date) }} -
+                  {{ formatDateTime(selectedRentDetail.rental_period.end_date) }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Sản phẩm</div>
+                <div class="font-semibold">
+                  {{ selectedRentDetail.item.name_snapshot || '-' }}
+                </div>
+              </div>
+            </div>
+
+            @if (isGuestRentDetail()) {
+              <div class="detail-section">
+                <div class="section-title">Liên hệ khách</div>
+                <div class="detail-grid contact-grid">
+                  <div>
+                    <div class="item-meta">Kênh liên hệ</div>
+                    <select class="select select-compact" [(ngModel)]="rentContactChannelDraft">
+                      <option value="">Chọn kênh</option>
+                      @for (option of contactChannelOptions; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div>
+                    <div class="item-meta">Đã liên hệ lúc</div>
+                    <div class="font-semibold">
+                      {{ formatDateTime(selectedRentDetail.contacted_at) }}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="item-meta">Liên hệ bởi</div>
+                    <div class="font-semibold">{{ selectedRentDetail.contacted_by || '-' }}</div>
+                  </div>
+                  <div>
+                    <div class="item-meta">Đã chốt lúc</div>
+                    <div class="font-semibold">
+                      {{ formatDateTime(selectedRentDetail.confirmed_at) }}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="item-meta">Chốt bởi</div>
+                    <div class="font-semibold">{{ selectedRentDetail.confirmed_by || '-' }}</div>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <div class="detail-section">
+              <div class="section-title">Tổng quan cọc</div>
+              <div class="detail-grid deposit-summary-grid">
+                <div>
+                  <div class="item-meta">Cọc đã nhận</div>
+                  <input
+                    class="input input-compact"
+                    type="number"
+                    [(ngModel)]="rentDepositPaidDraft"
+                  />
+                </div>
+                <div>
+                  <div class="item-meta">Cọc đang giữ</div>
+                  <div class="font-semibold">
+                    {{
+                      formatCurrency(
+                        calcRentDeposit(selectedRentDetail) -
+                          (selectedRentDetail.settlement?.refund_paid ?? 0)
+                      )
+                    }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Tiền thuê</div>
+                  <div class="font-semibold">
+                    {{ formatCurrency(calcRentFee(selectedRentDetail)) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Dự kiến hoàn</div>
+                  <div class="font-semibold">
+                    {{
+                      formatCurrency(
+                        calcRentRefundExpected(selectedRentDetail)
+                      )
+                    }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Trạng thái thanh toán</div>
+                  <select class="select select-compact" [(ngModel)]="rentPaymentStatusDraft">
+                    @for (option of rentPaymentStatusOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Ghi chú nội bộ</div>
+              <textarea class="input textarea" rows="3" [(ngModel)]="rentAdminNoteDraft"></textarea>
+              <div class="detail-actions">
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="button"
+                  [disabled]="rentActionLoading"
+                  (click)="updateRentStatus(undefined, 'Cập nhật ghi chú')"
+                >
+                  Lưu ghi chú
+                </button>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Thông tin giao/nhận</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Nhà vận chuyển (giao)</span>
+                  <input class="input" [(ngModel)]="shippingOutProviderDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Mã vận đơn (giao)</span>
+                  <input class="input" [(ngModel)]="shippingOutTrackingDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Nhà vận chuyển (trả)</span>
+                  <input class="input" [(ngModel)]="shippingBackProviderDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Mã vận đơn (trả)</span>
+                  <input class="input" [(ngModel)]="shippingBackTrackingDraft" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú yêu cầu trả</span>
+                  <input class="input" [(ngModel)]="rentReturnNoteDraft" />
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Tình trạng đồ</div>
+              <div class="form-grid">
+                <div class="filter-field full-width">
+                  <span class="filter-label">Tình trạng khi giao</span>
+                  <textarea
+                    class="input textarea"
+                    rows="2"
+                    [(ngModel)]="conditionOutNoteDraft"
+                  ></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Tình trạng khi nhận lại</span>
+                  <textarea
+                    class="input textarea"
+                    rows="2"
+                    [(ngModel)]="conditionInNoteDraft"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Phí &amp; hoàn cọc</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Phí trễ (tự động)</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [readonly]="true"
+                    [(ngModel)]="rentLateFeeDraft"
+                  />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Phí hư hỏng</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [(ngModel)]="rentDamageFeeDraft"
+                    (input)="refreshRentRefundExpectedDraft()"
+                  />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Phạt vi phạm</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [(ngModel)]="rentPenaltyFeeDraft"
+                    (input)="refreshRentRefundExpectedDraft()"
+                  />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Phí vệ sinh</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [(ngModel)]="rentCleaningFeeDraft"
+                    (input)="refreshRentRefundExpectedDraft()"
+                  />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Phí khác</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [(ngModel)]="rentExtraChargeDraft"
+                    (input)="refreshRentRefundExpectedDraft()"
+                  />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Dự kiến hoàn</span>
+                  <input
+                    class="input"
+                    type="number"
+                    [readonly]="true"
+                    [(ngModel)]="rentRefundExpectedDraft"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Hoàn tiền</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Số tiền hoàn</span>
+                  <input class="input" type="number" [(ngModel)]="rentRefundPaidDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Biên nhận (URL)</span>
+                  <input class="input" [(ngModel)]="rentRefundReceiptUrlDraft" />
+                </div>
+              </div>
+              <div class="filter-field full-width">
+                <span class="filter-label">Ghi chú hoàn tiền</span>
+                <textarea
+                  class="input textarea"
+                  rows="2"
+                  [(ngModel)]="rentRefundNoteDraft"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Admin thao tác</div>
+              <div class="status-actions">
+                @if (selectedRentDetail.rent_status === 'booked') {
+                  @if (isGuestRentDetail()) {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="markRentContacted()"
+                    >
+                      Đã liên hệ
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="markRentConfirmed()"
+                    >
+                      Xác nhận đơn
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus(undefined, 'Tạo vận đơn giao')"
+                    >
+                      Tạo vận đơn giao
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('ongoing')"
+                    >
+                      Bắt đầu thuê
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('cancelled')"
+                    >
+                      Hủy đơn
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('ongoing', 'Xác nhận đơn thuê')"
+                    >
+                      Xác nhận đơn
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus(undefined, 'Tạo vận đơn giao')"
+                    >
+                      Tạo vận đơn giao
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('ongoing')"
+                    >
+                      Đánh dấu đã giao
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('cancelled')"
+                    >
+                      Hủy đơn
+                    </button>
+                  }
+                } @else if (selectedRentDetail.rent_status === 'ongoing') {
+                  @if (isGuestRentDetail()) {
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('returned')"
+                    >
+                      Đã trả đồ
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('cancelled')"
+                    >
+                      Hủy đơn
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus(undefined, 'Tạo vận đơn giao')"
+                    >
+                      Tạo vận đơn giao
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading || !selectedRentDetail.return_request?.requested_at"
+                      (click)="updateRentStatus('return_requested', 'Tạo mã vận đơn trả')"
+                    >
+                      Tạo mã vận đơn trả
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="rentActionLoading"
+                      (click)="updateRentStatus('cancelled')"
+                    >
+                      Hủy đơn
+                    </button>
+                  }
+                } @else if (selectedRentDetail.rent_status === 'return_requested') {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus(undefined, 'Gửi nhắc nhở khách', true)"
+                  >
+                    Gửi nhắc nhở
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('cancelled')"
+                  >
+                    Hủy đơn
+                  </button>
+                } @else if (selectedRentDetail.rent_status === 'returning') {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('returned')"
+                  >
+                    Đánh dấu shop đã nhận
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('violated')"
+                  >
+                    Chuyển vi phạm
+                  </button>
+                } @else if (selectedRentDetail.rent_status === 'returned') {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('closed')"
+                  >
+                    Hoàn cọc &amp; chốt đơn
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('violated')"
+                  >
+                    Chuyển vi phạm
+                  </button>
+                } @else if (selectedRentDetail.rent_status === 'violated') {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus(undefined, 'Cập nhật vi phạm', false, true)"
+                  >
+                    Lưu phí vi phạm
+                  </button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="rentActionLoading"
+                    (click)="updateRentStatus('closed')"
+                  >
+                    Hoàn cọc &amp; chốt đơn
+                  </button>
+                }
+              </div>
+              <div class="filter-field full-width">
+                <span class="filter-label">Lý do hủy</span>
+                <textarea
+                  class="input textarea"
+                  rows="2"
+                  [(ngModel)]="rentCancelReasonDraft"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Lịch sử trạng thái</div>
+              @if (selectedRentDetail.status_history?.length) {
+                <div class="history-list">
+                  @for (entry of selectedRentDetail.status_history; track $index) {
+                    <div class="history-row">
+                      <div class="item-meta">
+                        {{ entry.from || '-' }} → {{ entry.to || '-' }}
+                      </div>
+                      <div>{{ entry.note || '-' }}</div>
+                      <div class="item-meta">{{ formatDateTime(entry.changed_at) }}</div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state soft">Chưa có lịch sử cập nhật.</div>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      @if (view() === 'returns') {
+        @if (returnDetailLoading) {
+          <div class="detail-loading">Đang tải chi tiết hoàn trả...</div>
+        } @else if (returnDetailError) {
+          <div class="empty-state soft">{{ returnDetailError }}</div>
+        } @else if (selectedReturnDetail) {
+          <div class="detail-drawer order-detail return-detail">
+            <div class="detail-header return-header">
+              <div>
+                <div class="section-title">{{ selectedReturnDetail.return_id }}</div>
+                <div class="item-meta">
+                  Đơn: {{ selectedReturnDetail.order_code }} ·
+                  {{ formatDateTime(selectedReturnDetail.requested_at || selectedReturnDetail.created_at) }}
+                </div>
+              </div>
+              <div class="return-header-actions">
+                <span [class]="returnStatusMeta[selectedReturnDetail.status].class">
+                  {{ returnStatusMeta[selectedReturnDetail.status].label }}
+                </span>
+                <div class="return-action-stack">
+                  @if (selectedReturnDetail.status === 'submitted') {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('closed', 'Từ chối yêu cầu')"
+                    >
+                      Từ chối yêu cầu
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('need_more_info', 'Yêu cầu bổ sung thông tin')"
+                    >
+                      Yêu cầu bổ sung thông tin
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('approved', 'Duyệt yêu cầu')"
+                    >
+                      Duyệt yêu cầu
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'need_more_info') {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('closed', 'Từ chối yêu cầu')"
+                    >
+                      Từ chối yêu cầu
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('approved', 'Tiếp tục duyệt')"
+                    >
+                      Tiếp tục duyệt
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'approved') {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('submitted', 'Hủy phê duyệt')"
+                    >
+                      Hủy phê duyệt
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus(undefined, 'Chỉnh sửa phương án hoàn tiền')"
+                    >
+                      Chỉnh sửa phương án hoàn tiền
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('awaiting_return_shipment', 'Tạo mã vận đơn trả')"
+                    >
+                      Tạo mã vận đơn trả
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'awaiting_return_shipment') {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus(undefined, 'Gửi nhắc nhở khách')"
+                    >
+                      Gửi nhắc nhở khách
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('return_in_transit', 'Đánh dấu đã nhận mã vận đơn')"
+                    >
+                      Đánh dấu đã nhận mã vận đơn
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'return_in_transit') {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus(undefined, 'Xem tracking')"
+                    >
+                      Xem tracking
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('received_inspecting', 'Xác nhận đã nhận hàng')"
+                    >
+                      Xác nhận đã nhận hàng
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'received_inspecting') {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('closed', 'Từ chối hoàn tiền')"
+                    >
+                      Từ chối hoàn tiền
+                    </button>
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus(undefined, 'Trừ phí / điều chỉnh số tiền')"
+                    >
+                      Trừ phí / điều chỉnh số tiền
+                    </button>
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('refund_processing', 'Xác nhận hoàn tiền')"
+                    >
+                      Xác nhận hoàn tiền
+                    </button>
+                  } @else if (selectedReturnDetail.status === 'refund_processing') {
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('refunded', 'Đánh dấu đã hoàn tiền')"
+                    >
+                      Đánh dấu đã hoàn tiền
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus(undefined, 'Xem biên nhận')"
+                    >
+                      Xem biên nhận
+                    </button>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      [disabled]="returnActionLoading"
+                      (click)="updateReturnStatus('received_inspecting', 'Mở lại case')"
+                    >
+                      Mở lại case
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-grid">
+              <div>
+                <div class="item-meta">Khách hàng</div>
+                <div class="font-semibold">
+                  {{ selectedReturnDetail.customer_info?.full_name || '-' }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">SĐT</div>
+                <div class="font-semibold">{{ selectedReturnDetail.customer_info?.phone || '-' }}</div>
+              </div>
+              <div>
+                <div class="item-meta">Email</div>
+                <div class="font-semibold">{{ selectedReturnDetail.customer_info?.email || '-' }}</div>
+              </div>
+              <div class="grid-span-2">
+                <div class="item-meta">Địa chỉ</div>
+                <div class="font-semibold">
+                  {{ formatAddressText(selectedReturnDetail.customer_info?.address) }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Lý do</div>
+                <div class="font-semibold">{{ selectedReturnDetail.reason || '-' }}</div>
+              </div>
+              <div>
+                <div class="item-meta">Ghi chú khách</div>
+                <div class="font-semibold">{{ selectedReturnDetail.customer_note || '-' }}</div>
+              </div>
+              <div>
+                <div class="item-meta">Tổng tiền</div>
+                <div class="font-semibold">
+                  {{ formatCurrency(selectedReturnDetail.total_amount || 0) }}
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Vận đơn trả</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Nhà vận chuyển</span>
+                  <input class="input" [(ngModel)]="returnShippingProviderDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Mã vận đơn</span>
+                  <input class="input" [(ngModel)]="returnShippingTrackingDraft" />
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Hoàn tiền</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Số tiền hoàn</span>
+                  <input class="input" type="number" [(ngModel)]="returnRefundAmountDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Biên nhận (URL)</span>
+                  <input class="input" [(ngModel)]="returnReceiptUrlDraft" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú hoàn tiền</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="returnRefundNoteDraft"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Danh sách sản phẩm</div>
+              @if (selectedReturnDetail.items?.length) {
+                <div class="item-list">
+                  @for (item of selectedReturnDetail.items; track item.sku) {
+                    <div class="item-row">
+                      <div class="item-meta">{{ item.name }}</div>
+                      <div class="text-sm text-primary-500">SL: {{ item.quantity }}</div>
+                      <div class="text-sm text-primary-500">
+                        {{ formatCurrency(item.total_price || item.price * item.quantity) }}
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state soft">Chưa có dữ liệu sản phẩm.</div>
+              }
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Timeline</div>
+              @if (selectedReturnDetail.status_history?.length) {
+                <div class="history-list">
+                  @for (entry of selectedReturnDetail.status_history; track $index) {
+                    <div class="history-row">
+                      <div class="item-meta">
+                        {{ entry.from || '-' }} → {{ entry.to || '-' }}
+                      </div>
+                      <div>{{ entry.note || '-' }}</div>
+                      <div class="item-meta">{{ formatDateTime(entry.changed_at) }}</div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state soft">Chưa có lịch sử cập nhật.</div>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      @if (view() === 'sales') {
+        @if (detailLoading) {
+          <div class="detail-loading">Đang tải chi tiết đơn...</div>
+        } @else if (detailError) {
+          <div class="empty-state soft">{{ detailError }}</div>
+        } @else if (selectedSalesDetail) {
+          <div class="detail-drawer order-detail sales-detail">
+            <div class="detail-header">
+              <div>
+                <div class="section-title">{{ selectedSalesDetail.order_code }}</div>
+                <div class="item-meta">
+                  ID: {{ selectedSalesDetail.order_id }} ·
+                  {{ formatDateTime(selectedSalesDetail.created_at) }}
+                </div>
+              </div>
+              <div class="header-badges">
+                <span
+                  [class]="selectedSalesDetail.guest_id ? 'chip chip-warning' : 'chip chip-teal'"
+                >
+                  {{ selectedSalesDetail.guest_id ? 'GUEST' : 'USER' }}
+                </span>
+                <span [class]="getSalesDetailStatusMeta(selectedSalesDetail).class">
+                  {{ getSalesDetailStatusMeta(selectedSalesDetail).label }}
+                </span>
+              </div>
+            </div>
+
+            <div class="detail-grid">
+              <div>
+                <div class="item-meta">Khách hàng</div>
+                <div class="font-semibold">
+                  {{ selectedSalesDetail.customer_info.full_name || '-' }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">SĐT</div>
+                <div class="font-semibold">
+                  {{ selectedSalesDetail.customer_info.phone || '-' }}
+                </div>
+              </div>
+              <div>
+                <div class="item-meta">Email</div>
+                <div class="font-semibold">
+                  {{ selectedSalesDetail.customer_info.email || '-' }}
+                </div>
+              </div>
+              <div class="grid-span-2">
+                <div class="item-meta">Địa chỉ</div>
+                <div class="font-semibold">
+                  {{ formatAddressText(selectedSalesDetail.customer_info.address) }}
+                </div>
+              </div>
+            </div>
+
+            @if (isGuestSalesDetail()) {
+              <div class="detail-section">
+                <div class="section-title">Liên hệ khách</div>
+                <div class="detail-grid contact-grid">
+                  <div>
+                    <div class="item-meta">Kênh liên hệ</div>
+                    <select class="select select-compact" [(ngModel)]="salesContactChannelDraft">
+                      <option value="">Chọn kênh</option>
+                      @for (option of contactChannelOptions; track option.value) {
+                        <option [value]="option.value">{{ option.label }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div>
+                    <div class="item-meta">Đã liên hệ lúc</div>
+                    <div class="font-semibold">
+                      {{ formatDateTime(selectedSalesDetail.contacted_at) }}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="item-meta">Liên hệ bởi</div>
+                    <div class="font-semibold">{{ selectedSalesDetail.contacted_by || '-' }}</div>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <div class="detail-section">
+              <div class="section-title">Thông tin sản phẩm</div>
+              @if (getSalesItems(selectedSalesDetail).length) {
+                <div class="item-list">
+                  @for (item of getSalesItems(selectedSalesDetail); track item.sku) {
+                    <div class="item-row">
+                      <div class="item-meta">{{ item.name }}</div>
+                      <div class="text-sm text-primary-500">SL: {{ item.quantity }}</div>
+                      <div class="text-sm text-primary-500">
+                        {{ formatCurrency(item.total_price || item.price * item.quantity) }}
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state soft">Chưa có dữ liệu sản phẩm.</div>
+              }
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Thanh toán</div>
+              <div class="detail-grid">
+                <div>
+                  <div class="item-meta">Phương thức</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.payment_method || '-' }}</div>
+                </div>
+                <div>
+                  <div class="item-meta">Trạng thái</div>
+                  <span [class]="paymentMeta[selectedSalesDetail.payment_status].class">
+                    {{ paymentMeta[selectedSalesDetail.payment_status].label }}
+                  </span>
+                </div>
+                <div>
+                  <div class="item-meta">Đã thanh toán</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.paid_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Hoàn tiền</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.refund_status || '-' }}</div>
+                </div>
+                @if (isGuestSalesDetail()) {
+                  <div>
+                    <div class="item-meta">Số tiền đã nhận</div>
+                    <div class="font-semibold">
+                      {{
+                        selectedSalesDetail.payment_status === 'paid'
+                          ? formatCurrency(selectedSalesDetail.total_amount)
+                          : formatCurrency(0)
+                      }}
+                    </div>
+                  </div>
+                }
+              </div>
+              <div class="inline-actions">
+                <select class="select select-compact" [(ngModel)]="paymentStatusDraft">
+                  @for (option of paymentStatusOptions; track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="button"
+                  [disabled]="actionLoading"
+                  (click)="updatePaymentStatus()"
+                >
+                  Cập nhật thanh toán
+                </button>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Vận chuyển</div>
+              <div class="detail-grid">
+                <div>
+                  <div class="item-meta">Nhà vận chuyển</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.shipping_provider || '-' }}</div>
+                </div>
+                <div>
+                  <div class="item-meta">Mã vận đơn</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.tracking_code || '-' }}</div>
+                </div>
+                <div>
+                  <div class="item-meta">Ghi chú</div>
+                  <div class="font-semibold">
+                    {{ selectedSalesDetail.shipping_status_detail || '-' }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Ngày giao</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.shipped_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Ngày hoàn tất</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.delivered_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Khách xác nhận</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.customer_received_at) }}
+                  </div>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Nhà vận chuyển</span>
+                  <input class="input" [(ngModel)]="shippingProviderDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Mã vận đơn</span>
+                  <input class="input" [(ngModel)]="trackingCodeDraft" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Ghi chú giao hàng</span>
+                  <input class="input" [(ngModel)]="shippingStatusDraft" />
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Cập nhật trạng thái</div>
+              <div class="status-actions">
+                @if (selectedSalesDetail.order_status === 'pending') {
+                  @if (isGuestSalesDetail()) {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="actionLoading"
+                      (click)="markSalesContacted()"
+                    >
+                      Đã liên hệ
+                    </button>
+                  }
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('confirmed')"
+                  >
+                    Xác nhận đơn
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('cancelled')"
+                  >
+                    Hủy đơn
+                  </button>
+                } @else if (selectedSalesDetail.order_status === 'confirmed') {
+                  @if (isGuestSalesDetail()) {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="actionLoading"
+                      (click)="updateSalesStatus('shipping')"
+                    >
+                      Tạo vận đơn
+                    </button>
+                  } @else {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      type="button"
+                      [disabled]="actionLoading"
+                      (click)="updateSalesStatus('processing')"
+                    >
+                      Bắt đầu xử lý
+                    </button>
+                  }
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('pending')"
+                  >
+                    Quay về chờ xác nhận
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('cancelled')"
+                  >
+                    Hủy đơn
+                  </button>
+                } @else if (selectedSalesDetail.order_status === 'processing') {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('shipping')"
+                  >
+                    Tạo vận đơn &amp; chuyển đang giao
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('cancelled')"
+                  >
+                    Hủy đơn
+                  </button>
+                } @else if (selectedSalesDetail.order_status === 'shipping') {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="
+                      actionLoading ||
+                      (!selectedSalesDetail.customer_received_at && !selectedSalesDetail.guest_id)
+                    "
+                    (click)="updateSalesStatus('completed')"
+                  >
+                    Hoàn thành
+                  </button>
+                  @if (!selectedSalesDetail.customer_received_at && !selectedSalesDetail.guest_id) {
+                    <span class="item-meta">Chờ khách xác nhận đã nhận hàng.</span>
+                  }
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('processing')"
+                  >
+                    Giao thất bại
+                  </button>
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('cancelled')"
+                  >
+                    Hủy đơn
+                  </button>
+                } @else if (selectedSalesDetail.order_status === 'completed') {
+                  <span class="item-meta">Đơn đã hoàn thành.</span>
+                } @else {
+                  <span class="item-meta">Đơn đã hủy.</span>
+                }
+              </div>
+              @if (
+                selectedSalesDetail.order_status === 'pending' ||
+                selectedSalesDetail.order_status === 'confirmed' ||
+                selectedSalesDetail.order_status === 'processing' ||
+                selectedSalesDetail.order_status === 'shipping'
+              ) {
+                <div class="filter-field full-width">
+                  <span class="filter-label">Lý do hủy</span>
+                  <textarea
+                    class="input textarea"
+                    rows="2"
+                    [(ngModel)]="cancelReasonDraft"
+                  ></textarea>
+                </div>
+              }
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Ghi chú nội bộ</div>
+              <textarea class="input textarea" rows="3" [(ngModel)]="adminNoteDraft"></textarea>
+              <div class="detail-actions">
+                <button
+                  class="btn btn-secondary btn-sm"
+                  type="button"
+                  [disabled]="actionLoading"
+                  (click)="saveAdminNote()"
+                >
+                  Lưu ghi chú
+                </button>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Thông tin xử lý</div>
+              <div class="detail-grid">
+                <div>
+                  <div class="item-meta">Xác nhận lúc</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.confirmed_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Xác nhận bởi</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.confirmed_by || '-' }}</div>
+                </div>
+                <div>
+                  <div class="item-meta">Xử lý lúc</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.processing_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Xử lý bởi</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.processing_by || '-' }}</div>
+                </div>
+                <div>
+                  <div class="item-meta">Hủy lúc</div>
+                  <div class="font-semibold">
+                    {{ formatDateTime(selectedSalesDetail.cancelled_at) }}
+                  </div>
+                </div>
+                <div>
+                  <div class="item-meta">Hủy bởi</div>
+                  <div class="font-semibold">{{ selectedSalesDetail.cancelled_by || '-' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Lịch sử trạng thái</div>
+              @if (selectedSalesDetail.status_history?.length) {
+                <div class="history-list">
+                  @for (entry of selectedSalesDetail.status_history; track $index) {
+                    <div class="history-row">
+                      <div>
+                        <div class="font-semibold">
+                          {{ entry.from || '-' }} → {{ entry.to || '-' }}
+                        </div>
+                        <div class="item-meta">{{ entry.note || '-' }}</div>
+                      </div>
+                      <div class="item-meta">{{ formatDateTime(entry.changed_at) }}</div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-state soft">Chưa có lịch sử cập nhật.</div>
+              }
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
+</div>
+
+

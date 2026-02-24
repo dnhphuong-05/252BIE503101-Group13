@@ -1,0 +1,97 @@
+@if (show) {
+  <div class="success-overlay" (click)="onOverlayClick()">
+    <div class="success-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <!-- Success Icon -->
+      <div class="success-icon-wrapper">
+        <div class="success-icon">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="32" fill="#10b981" fill-opacity="0.1" />
+            <circle cx="32" cy="32" r="28" fill="#10b981" fill-opacity="0.2" />
+            <path
+              d="M20 32l8 8 16-16"
+              stroke="#10b981"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Header -->
+      <div class="success-header">
+        <h2>🎉 Đặt hàng thành công!</h2>
+        <p class="success-subtitle">PHỤC đã nhận được đơn hàng của bạn</p>
+      </div>
+
+      <!-- Order Code Badge -->
+      <div class="order-code-section">
+        <div class="order-code-label">Mã đơn hàng</div>
+        <div class="order-code-badge">
+          <span class="order-code">{{ orderCode }}</span>
+          <button class="copy-btn" (click)="copyOrderCode()" title="Sao chép mã">
+            <i class="fas fa-copy"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Status Info -->
+      <div class="status-box">
+        <div class="status-item">
+          <i class="fas fa-clock status-icon"></i>
+          <div class="status-content">
+            <strong>Trạng thái</strong>
+            <p>Chờ xác nhận</p>
+          </div>
+        </div>
+        <div class="status-item">
+          <i class="fas fa-money-bill-wave status-icon"></i>
+          <div class="status-content">
+            <strong>Tổng tiền</strong>
+            <p>{{ total | number: '.0-0' }}đ</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email Notification -->
+      @if (emailSent) {
+        <div class="email-notification">
+          <i class="fas fa-envelope-circle-check"></i>
+          <p>Email xác nhận đã được gửi đến hộp thư của bạn</p>
+        </div>
+      }
+
+      <!-- Info Box -->
+      <div class="info-box">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <strong>Chúng tôi sẽ liên hệ với bạn trong vòng 24h</strong>
+          <p>Để xác nhận đơn hàng và thông tin giao hàng</p>
+        </div>
+      </div>
+
+      <!-- Tracking Button -->
+      <div class="tracking-section">
+        <p class="tracking-label">👉 Theo dõi đơn hàng của bạn</p>
+        <button class="tracking-btn" (click)="goToTracking()">
+          <i class="fas fa-truck"></i>
+          <span>Xem chi tiết đơn hàng</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Actions -->
+      <div class="modal-actions">
+        <button class="btn-primary" (click)="closeModal()">
+          <i class="fas fa-check"></i>
+          <span>Hoàn tất</span>
+        </button>
+      </div>
+
+      <!-- Footer Note -->
+      <div class="footer-note">
+        <p>Cảm ơn bạn đã tin tưởng và lựa chọn PHỤC! ❤️</p>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,32 @@
+<div class="toast-stack" aria-live="polite" aria-atomic="true">
+  <div
+    class="toast"
+    *ngFor="let toast of toasts()"
+    [class.toast-success]="toast.type === NotificationType.SUCCESS"
+    [class.toast-error]="toast.type === NotificationType.ERROR"
+    [class.toast-warning]="toast.type === NotificationType.WARNING"
+    [class.toast-info]="toast.type === NotificationType.INFO"
+  >
+    <div class="toast-icon">
+      <i class="fas fa-circle-info" *ngIf="toast.type === NotificationType.INFO"></i>
+      <i class="fas fa-circle-check" *ngIf="toast.type === NotificationType.SUCCESS"></i>
+      <i class="fas fa-triangle-exclamation" *ngIf="toast.type === NotificationType.WARNING"></i>
+      <i class="fas fa-circle-xmark" *ngIf="toast.type === NotificationType.ERROR"></i>
+    </div>
+
+    <div class="toast-content">
+      <div class="toast-title" *ngIf="toast.title">{{ toast.title }}</div>
+      <div class="toast-message">{{ toast.message }}</div>
+    </div>
+
+    <button
+      type="button"
+      class="toast-close"
+      *ngIf="toast.dismissible"
+      (click)="dismiss(toast.id)"
+      aria-label="Đóng thông báo"
+    >
+      <i class="fas fa-xmark"></i>
+    </button>
+  </div>
+</div>

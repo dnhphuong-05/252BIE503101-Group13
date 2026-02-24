@@ -1,0 +1,105 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-left">
+      <div class="brand-block">
+        <div class="brand-logos">
+          <div class="brand-mark">
+            <img src="assets/images/brand/logo-main.png" alt="Viet Phuc logo" />
+          </div>
+          <img class="brand-sub-logo" src="assets/images/brand/logo-sub.png" alt="Viet Phuc sub logo" />
+        </div>
+        <div class="brand-text"></div>
+      </div>
+
+      <div class="auth-hero">
+        <h1>Hệ thống quản trị</h1>
+        <p>Hồi Cổ Phong Hoa - Khơi Màu Gấm Vóc</p>
+        <div class="feature-list">
+          <div class="feature-item">
+            <i class="fas fa-shield-alt"></i>
+            <span>Phân quyền theo vai trò</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-bolt"></i>
+            <span>Quick actions tạo mới</span>
+          </div>
+          <div class="feature-item">
+            <i class="fas fa-chart-line"></i>
+            <span>Báo cáo &amp; theo dõi realtime</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-heading">
+        <h2>Sign in</h2>
+        <p>Use your admin credentials to continue</p>
+      </div>
+
+      <form (ngSubmit)="onSignIn()" #loginForm="ngForm">
+        <div class="input-group">
+          <label class="label"><i class="fas fa-envelope label-icon"></i>Email or username</label>
+          <input
+            class="input"
+            type="text"
+            name="identifier"
+            [(ngModel)]="identifier"
+            #identifierField="ngModel"
+            required
+            autocomplete="username"
+            placeholder="admin@vietphuc.vn"
+            [disabled]="isLoading"
+          />
+          @if (identifierField.touched && identifierField.invalid) {
+            <div class="error-message">Thông tin đăng nhập là bắt buộc</div>
+          }
+        </div>
+
+        <div class="input-group has-toggle">
+          <label class="label"><i class="fas fa-lock label-icon"></i>Password</label>
+          <div class="input-wrapper">
+          <input
+              class="input"
+              [type]="showPassword ? 'text' : 'password'"
+              name="password"
+              [(ngModel)]="password"
+              #passwordField="ngModel"
+              required
+              minlength="6"
+              autocomplete="current-password"
+              placeholder="Mật khẩu"
+              [disabled]="isLoading"
+            />
+          <i
+            class="toggle-icon"
+            [ngClass]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
+            (click)="togglePasswordVisibility()"
+          ></i>
+          </div>
+          @if (passwordField.touched && passwordField.invalid) {
+            <div class="error-message">Mật khẩu tối thiểu 6 ký tự</div>
+          }
+        </div>
+
+        @if (loginError) {
+          <div class="error-message general-error">{{ loginError }}</div>
+        }
+
+        <button
+          class="btn btn-primary w-full"
+          type="submit"
+          [disabled]="isLoading || loginForm.invalid"
+        >
+          @if (!isLoading) {
+            <span>Sign in</span>
+          } @else {
+            <span>Signing in...</span>
+          }
+        </button>
+
+        <p class="hint">Chỉ tài khoản Admin/Staff/Super Admin mới có thể truy cập.</p>
+      </form>
+    </div>
+  </div>
+</div>

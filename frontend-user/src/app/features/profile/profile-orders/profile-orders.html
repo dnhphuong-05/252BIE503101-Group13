@@ -1,0 +1,167 @@
+<div class="profile-orders-page">
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-shopping-bag"></i>
+        Đơn hàng của tôi
+      </h1>
+      <p class="page-subtitle">Quản lý và theo dõi tình trạng đơn hàng</p>
+    </div>
+  </div>
+
+  <!-- Order Tabs -->
+  <div class="order-tabs">
+    <button
+      *ngFor="let tab of tabs"
+      class="tab-item"
+      [class.active]="selectedTab === tab.id"
+      (click)="selectTab(tab.id)"
+    >
+      <span class="tab-label">{{ tab.label }}</span>
+      @if (tab.count > 0) {
+        <span class="tab-badge">{{ tab.count }}</span>
+      }
+    </button>
+  </div>
+
+  <div class="summary-strip" *ngIf="!isLoading && !loadError">
+    <div class="summary-card">
+      <span class="summary-label">Tổng đơn</span>
+      <strong class="summary-value">{{ orders.length }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Đơn đang xử lý</span>
+      <strong class="summary-value">{{ activeOrders }}</strong>
+    </div>
+    <div class="summary-card">
+      <span class="summary-label">Tổng chi tiêu</span>
+      <strong class="summary-value">{{ formatPrice(totalSpent) }}</strong>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Đang tải đơn hàng...</p>
+    </div>
+  }
+
+  @if (!isLoading && loadError) {
+    <div class="error-state">
+      <i class="fas fa-exclamation-circle"></i>
+      <p>{{ loadError }}</p>
+    </div>
+  }
+
+  <!-- Orders List -->
+  @if (!isLoading && !loadError && filteredOrders.length > 0) {
+    <div class="orders-list">
+      <div *ngFor="let order of filteredOrders" class="order-card">
+        <div class="order-header">
+          <div class="order-info">
+            <h3 class="order-code">{{ order.orderCode }}</h3>
+            <span class="order-date">
+              <i class="fas fa-calendar-alt"></i>
+              {{ formatDate(order.orderDate) }}
+            </span>
+          </div>
+          <div
+            class="order-status"
+            [style.background]="getStatusColor(order.status) + '15'"
+            [style.color]="getStatusColor(order.status)"
+          >
+            <i class="fas fa-circle"></i>
+            {{ getStatusLabel(order.status) }}
+          </div>
+        </div>
+
+        <div class="order-items">
+          <div *ngFor="let item of order.items" class="order-item">
+            <img [src]="item.productImage" [alt]="item.productName" class="item-image" />
+            <div class="item-info">
+              <h4 class="item-name">{{ item.productName }}</h4>
+              <div class="item-details">
+                <span><i class="fas fa-expand"></i> Size: {{ item.size || '—' }}</span>
+                <span><i class="fas fa-palette"></i> Màu: {{ item.color || '—' }}</span>
+                <span><i class="fas fa-times"></i> {{ item.quantity }}</span>
+              </div>
+            </div>
+            <div class="item-price">
+              {{ formatPrice(item.price) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="order-footer">
+          <div class="order-total">
+            <span>Tổng tiền:</span>
+            <strong>{{ formatPrice(order.totalAmount) }}</strong>
+          </div>
+          <div class="order-actions">
+            @if (order.status === 'shipping') {
+              <button
+                class="btn btn-received-order"
+                [disabled]="!canConfirmReceived(order) || confirmingOrderId === order.id"
+                (click)="confirmReceived(order)"
+              >
+                <i class="fas fa-check"></i>
+                <span>Đã nhận được hàng</span>
+              </button>
+              <button
+                class="btn btn-return-order"
+                [disabled]="!canRequestReturn(order) || returningOrderId === order.id"
+                (click)="openReturnModal(order)"
+              >
+                <i class="fas fa-undo"></i>
+                <span>Yêu cầu hoàn trả</span>
+              </button>
+            }
+            <button
+              class="btn btn-cancel-order"
+              [disabled]="order.status !== 'pending' || isCanceling"
+              (click)="openCancelModal(order)"
+            >
+              <i class="fas fa-times"></i>
+              <span>Huỷ đơn</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Empty State -->
+  @if (!isLoading && !loadError && filteredOrders.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i class="fas fa-shopping-bag"></i>
+      </div>
+      <h3>Chưa có đơn hàng nào</h3>
+      <p>
+        Bạn chưa có đơn hàng
+        {{ selectedTab === 'all' ? '' : getStatusLabel(selectedTab).toLowerCase() }} nào
+      </p>
+      <a routerLink="/products" class="btn btn-shop-now">
+        <i class="fas fa-store"></i>
+        <span>Khám phá cổ phục</span>
+      </a>
+    </div>
+  }
+
+  <app-cancel-order-modal
+    [show]="showCancelModal"
+    [orderCode]="cancelingOrder?.orderCode || ''"
+    [loading]="isCanceling"
+    (close)="closeCancelModal()"
+    (submit)="confirmCancelOrder($event)"
+  ></app-cancel-order-modal>
+
+  <app-return-request-modal
+    [show]="showReturnModal"
+    [orderCode]="returningOrder?.orderCode || ''"
+    [loading]="returningOrderId === returningOrder?.id"
+    (close)="closeReturnModal()"
+    (submit)="submitReturnRequest($event)"
+  ></app-return-request-modal>
+</div>

@@ -1,0 +1,55 @@
+<div class="overview-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        <i class="fas fa-chart-pie"></i>
+        Tổng quan tài khoản
+      </h1>
+      <p class="page-subtitle">
+        Theo dõi nhanh tình trạng đơn hàng, điểm thưởng và đánh giá &amp; bình luận.
+      </p>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-bar">
+      <span></span>
+    </div>
+  }
+
+  <app-profile-overview [currentUser]="currentUser" [stats]="stats"></app-profile-overview>
+
+  <div class="quick-actions">
+    <h2 class="section-title">Truy cập nhanh</h2>
+    <div class="quick-grid">
+      <a routerLink="/profile/info" class="quick-card">
+        <i class="fas fa-id-card"></i>
+        <div>
+          <h3>Thông tin cơ bản</h3>
+          <p>Cập nhật hồ sơ và avatar</p>
+        </div>
+      </a>
+      <a routerLink="/profile/addresses" class="quick-card">
+        <i class="fas fa-map-marker-alt"></i>
+        <div>
+          <h3>Địa chỉ nhận hàng</h3>
+          <p>Thêm hoặc đặt mặc định</p>
+        </div>
+      </a>
+      <a routerLink="/profile/measurements" class="quick-card">
+        <i class="fas fa-ruler"></i>
+        <div>
+          <h3>Số đo may đo</h3>
+          <p>Cập nhật bộ số đo hiện tại</p>
+        </div>
+      </a>
+      <a routerLink="/profile/reviews-comments" class="quick-card">
+        <i class="fas fa-star-half-alt"></i>
+        <div>
+          <h3>Đánh giá &amp; Bình luận</h3>
+          <p>Quản lý review sản phẩm và bình luận bài viết</p>
+        </div>
+      </a>
+    </div>
+  </div>
+</div>

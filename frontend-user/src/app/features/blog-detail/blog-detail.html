@@ -1,0 +1,433 @@
+﻿<div class="blog-detail-page" *ngIf="!isLoading && blog">
+  <div class="detail-topbar">
+    <div class="container topbar-inner">
+      <a routerLink="/blog" class="back-link">
+        <i class="fas fa-arrow-left"></i>
+        Quay lại danh sách blog
+      </a>
+      <div class="topbar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Tìm kiếm bài viết..." />
+      </div>
+    </div>
+  </div>
+
+  <section class="detail-body">
+    <div class="container detail-grid">
+      <div class="detail-content">
+        <article class="detail-article">
+          <header class="article-header">
+            <span class="article-category">
+              <i class="fas fa-tag"></i>
+              {{ getCategoryName(blog.category_id) }}
+            </span>
+            <h1 class="article-title">{{ blog.title }}</h1>
+            <div class="article-meta">
+              <div class="author-chip">
+                <img [src]="getAuthorAvatar()" [alt]="getAuthorName()" />
+                <span>{{ getAuthorName() }}</span>
+              </div>
+              <span class="meta-item">
+                <i class="far fa-calendar"></i>
+                {{ formatDate(blog.published_at) }}
+              </span>
+              <span class="meta-item">
+                <i class="far fa-eye"></i>
+                {{ blog.views }} lượt xem
+              </span>
+              <span class="meta-item">
+                <i class="far fa-clock"></i>
+                {{ blog.reading_time }} phút đọc
+              </span>
+            </div>
+          </header>
+
+          <div class="article-featured-image">
+            <img [src]="getFeaturedImage()" [alt]="blog.title" />
+          </div>
+
+          <div class="article-excerpt">
+            <p>{{ blog.excerpt }}</p>
+          </div>
+
+          <div class="article-body" [innerHTML]="safeContent"></div>
+
+          <div class="article-tags" *ngIf="blog.tags && blog.tags.length > 0">
+            <span class="tag" *ngFor="let tag of blog.tags">#{{ tag }}</span>
+          </div>
+
+          <div class="article-actions">
+            <a routerLink="/products" class="action-btn primary">
+              <i class="fas fa-images"></i>
+              Xem bộ sưu tập
+            </a>
+            <button class="action-btn ghost" (click)="copyLink()">
+              <i class="fas fa-link"></i>
+              Sao chép link
+            </button>
+          </div>
+
+          <div class="author-bio" *ngIf="blog.author?.bio">
+            <img [src]="getAuthorAvatar()" [alt]="getAuthorName()" />
+            <div>
+              <h3>{{ getAuthorName() }}</h3>
+              <p class="author-role" *ngIf="blog.author?.role">{{ blog.author?.role }}</p>
+              <p class="author-text">{{ blog.author?.bio }}</p>
+            </div>
+          </div>
+
+          <section class="comments-section">
+            <div class="comments-header">
+              <h2>
+                <i class="far fa-comments"></i>
+                Bình luận ({{ commentsPagination.total }})
+              </h2>
+            </div>
+
+            <div class="comment-form-wrapper">
+              <h3>Để lại bình luận của bạn</h3>
+              <form class="comment-form" (ngSubmit)="submitComment()">
+                <div class="form-group" *ngIf="!isLoggedIn">
+                  <label for="user-name">Tên của bạn *</label>
+                  <input
+                    type="text"
+                    id="user-name"
+                    [(ngModel)]="newComment.user_name"
+                    name="user_name"
+                    placeholder="Nhập tên của bạn"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="comment-content">Nội dung bình luận *</label>
+                  <textarea
+                    id="comment-content"
+                    [(ngModel)]="newComment.comment"
+                    name="comment"
+                    rows="5"
+                    placeholder="Nhập nội dung bình luận..."
+                    required
+                  ></textarea>
+                </div>
+                <div class="form-error" *ngIf="commentError">
+                  <i class="fas fa-exclamation-circle"></i>
+                  {{ commentError }}
+                </div>
+                <button type="submit" class="btn-submit-comment" [disabled]="isSubmittingComment">
+                  <i class="fas fa-paper-plane"></i>
+                  {{ isSubmittingComment ? 'Đang gửi...' : 'Gửi bình luận' }}
+                </button>
+              </form>
+            </div>
+
+            <div class="comments-list">
+              <div
+                class="comment-item"
+                *ngFor="let comment of comments"
+                [class.author-reply]="comment.is_author_reply"
+              >
+                <div class="comment-avatar">
+                  <i
+                    class="fas"
+                    [class.fa-user-shield]="comment.is_author_reply"
+                    [class.fa-user-circle]="!comment.is_author_reply"
+                  ></i>
+                </div>
+                <div class="comment-content">
+                  <div class="comment-header">
+                    <span class="comment-author">
+                      {{ comment.user_name }}
+                      <span class="admin-badge" *ngIf="comment.is_author_reply">
+                        <i class="fas fa-check-circle"></i> Admin
+                      </span>
+                    </span>
+                    <span class="comment-date">{{ formatDate(comment.created_at) }}</span>
+                  </div>
+                  <p class="comment-text">{{ comment.comment }}</p>
+                  <div class="comment-actions">
+                    <button
+                      class="comment-like"
+                      [disabled]="!isLoggedIn"
+                      [attr.title]="isLoggedIn ? 'Thích bình luận' : 'Đăng nhập để thích'"
+                      (click)="likeComment(comment)"
+                    >
+                      <i class="far fa-thumbs-up"></i>
+                      Thích ({{ comment.likes }})
+                    </button>
+                    <button class="comment-reply" (click)="startReply(comment)">
+                      <i class="far fa-comment-dots"></i>
+                      Phản hồi
+                    </button>
+                  </div>
+
+                  <div class="reply-form" *ngIf="isReplyingTo(comment)">
+                    <form class="comment-form reply" (ngSubmit)="submitReply(comment)">
+                      <div class="form-group" *ngIf="!isLoggedIn">
+                        <label
+                          [attr.for]="'reply-user-name-' + (getCommentKey(comment) || comment.id)"
+                        >
+                          Tên của bạn *
+                        </label>
+                        <input
+                          type="text"
+                          [attr.id]="'reply-user-name-' + (getCommentKey(comment) || comment.id)"
+                          [(ngModel)]="replyDraft.user_name"
+                          [name]="'reply_user_name_' + (getCommentKey(comment) || comment.id)"
+                          [ngModelOptions]="{ standalone: true }"
+                          placeholder="Nhập tên của bạn"
+                          required
+                        />
+                      </div>
+                      <div class="form-group">
+                        <label
+                          [attr.for]="'reply-content-' + (getCommentKey(comment) || comment.id)"
+                        >
+                          Nội dung phản hồi *
+                        </label>
+                        <textarea
+                          [attr.id]="'reply-content-' + (getCommentKey(comment) || comment.id)"
+                          [(ngModel)]="replyDraft.comment"
+                          [name]="'reply_comment_' + (getCommentKey(comment) || comment.id)"
+                          [ngModelOptions]="{ standalone: true }"
+                          rows="3"
+                          placeholder="Nhập phản hồi..."
+                          required
+                        ></textarea>
+                      </div>
+                      <div class="form-error" *ngIf="replyError">
+                        <i class="fas fa-exclamation-circle"></i>
+                        {{ replyError }}
+                      </div>
+                      <div class="reply-actions">
+                        <button type="button" class="btn-cancel-reply" (click)="cancelReply()">
+                          Hủy
+                        </button>
+                        <button
+                          type="submit"
+                          class="btn-submit-reply"
+                          [disabled]="isSubmittingReply"
+                        >
+                          <i class="fas fa-paper-plane"></i>
+                          {{ isSubmittingReply ? 'Đang gửi...' : 'Gửi phản hồi' }}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <!-- Nested replies -->
+                  <div
+                    class="comment-replies"
+                    *ngIf="comment.replies && comment.replies.length > 0"
+                  >
+                    <div
+                      class="comment-item reply-item"
+                      *ngFor="let reply of comment.replies"
+                      [class.author-reply]="reply.is_author_reply"
+                    >
+                      <div class="comment-avatar">
+                        <i
+                          class="fas"
+                          [class.fa-user-shield]="reply.is_author_reply"
+                          [class.fa-user-circle]="!reply.is_author_reply"
+                        ></i>
+                      </div>
+                      <div class="comment-content">
+                        <div class="comment-header">
+                          <span class="comment-author">
+                            {{ reply.user_name }}
+                            <span class="admin-badge" *ngIf="reply.is_author_reply">
+                              <i class="fas fa-check-circle"></i> Admin
+                            </span>
+                          </span>
+                          <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                        </div>
+                        <p class="comment-text">{{ reply.comment }}</p>
+                        <div class="comment-actions">
+                          <button
+                            class="comment-like"
+                            [disabled]="!isLoggedIn"
+                            [attr.title]="isLoggedIn ? 'Thích bình luận' : 'Đăng nhập để thích'"
+                            (click)="likeComment(reply)"
+                          >
+                            <i class="far fa-thumbs-up"></i>
+                            Thích ({{ reply.likes }})
+                          </button>
+                          <button class="comment-reply" (click)="startReply(reply)">
+                            <i class="far fa-comment-dots"></i>
+                            Phản hồi
+                          </button>
+                        </div>
+
+                        <div class="reply-form" *ngIf="isReplyingTo(reply)">
+                          <form class="comment-form reply" (ngSubmit)="submitReply(reply)">
+                            <div class="form-group" *ngIf="!isLoggedIn">
+                              <label
+                                [attr.for]="'reply-user-name-' + (getCommentKey(reply) || reply.id)"
+                              >
+                                Tên của bạn *
+                              </label>
+                              <input
+                                type="text"
+                                [attr.id]="'reply-user-name-' + (getCommentKey(reply) || reply.id)"
+                                [(ngModel)]="replyDraft.user_name"
+                                [name]="'reply_user_name_' + (getCommentKey(reply) || reply.id)"
+                                [ngModelOptions]="{ standalone: true }"
+                                placeholder="Nhập tên của bạn"
+                                required
+                              />
+                            </div>
+                            <div class="form-group">
+                              <label
+                                [attr.for]="'reply-content-' + (getCommentKey(reply) || reply.id)"
+                              >
+                                Nội dung phản hồi *
+                              </label>
+                              <textarea
+                                [attr.id]="'reply-content-' + (getCommentKey(reply) || reply.id)"
+                                [(ngModel)]="replyDraft.comment"
+                                [name]="'reply_comment_' + (getCommentKey(reply) || reply.id)"
+                                [ngModelOptions]="{ standalone: true }"
+                                rows="3"
+                                placeholder="Nhập phản hồi..."
+                                required
+                              ></textarea>
+                            </div>
+                            <div class="form-error" *ngIf="replyError">
+                              <i class="fas fa-exclamation-circle"></i>
+                              {{ replyError }}
+                            </div>
+                            <div class="reply-actions">
+                              <button type="button" class="btn-cancel-reply" (click)="cancelReply()">
+                                Hủy
+                              </button>
+                              <button
+                                type="submit"
+                                class="btn-submit-reply"
+                                [disabled]="isSubmittingReply"
+                              >
+                                <i class="fas fa-paper-plane"></i>
+                                {{ isSubmittingReply ? 'Đang gửi...' : 'Gửi phản hồi' }}
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="loading-comments" *ngIf="isLoadingComments">
+                <i class="fas fa-spinner fa-spin"></i>
+                Đang tải bình luận...
+              </div>
+
+              <div class="no-comments" *ngIf="!isLoadingComments && comments.length === 0">
+                <i class="far fa-comment-dots"></i>
+                <p>Chưa có bình luận nào. Hãy là người đầu tiên bình luận!</p>
+              </div>
+
+              <button
+                class="btn-load-more-comments"
+                *ngIf="commentsPagination.page < commentsPagination.pages"
+                (click)="loadMoreComments()"
+              >
+                Xem thêm bình luận
+              </button>
+            </div>
+          </section>
+        </article>
+
+        <aside class="detail-sidebar">
+          <div class="sidebar-card share-card">
+            <h3>Share to</h3>
+            <div class="share-icons">
+              <button (click)="shareOnFacebook()"><i class="fab fa-facebook-f"></i></button>
+              <button (click)="shareOnTwitter()"><i class="fab fa-twitter"></i></button>
+              <button (click)="copyLink()"><i class="fas fa-link"></i></button>
+            </div>
+          </div>
+
+          <div class="sidebar-card related-card" *ngIf="relatedBlogs.length > 0">
+            <h3>Related Articles</h3>
+            <a
+              class="related-item"
+              *ngFor="let relatedBlog of relatedBlogs"
+              [routerLink]="['/blog', relatedBlog.slug]"
+            >
+              <img [src]="relatedBlog.thumbnail" [alt]="relatedBlog.title" />
+              <div>
+                <h4>{{ relatedBlog.title }}</h4>
+                <span>{{ getCategoryName(relatedBlog.category_id) }}</span>
+              </div>
+            </a>
+          </div>
+
+          <div class="sidebar-card tags-card" *ngIf="blog.tags && blog.tags.length > 0">
+            <h3>Tags</h3>
+            <div class="tags-cloud">
+              <span class="tag" *ngFor="let tag of blog.tags">#{{ tag }}</span>
+            </div>
+          </div>
+
+          <div class="sidebar-card products-card" *ngIf="sidebarProducts.length > 0">
+            <h3>Sản phẩm nổi bật</h3>
+            <div class="sidebar-products">
+              <div class="mini-product-card" *ngFor="let product of sidebarProducts">
+                <a
+                  class="mini-product-media"
+                  [routerLink]="['/products', product.product_id]"
+                  [attr.aria-label]="product.name"
+                >
+                  <img [src]="getProductImage(product)" [alt]="product.name" loading="lazy" />
+                  <span class="mini-badge" *ngIf="getDiscountPercentage(product) > 0">
+                    -{{ getDiscountPercentage(product) }}%
+                  </span>
+                </a>
+                <div class="mini-product-body">
+                  <div class="mini-meta">{{ product.category_name }}</div>
+                  <a class="mini-title" [routerLink]="['/products', product.product_id]">
+                    {{ product.name }}
+                  </a>
+                  <div class="mini-rating">
+                    <i
+                      *ngFor="let star of [1, 2, 3, 4, 5]"
+                      [class]="
+                        star <= (product.rating_average || 0) ? 'fas fa-star' : 'far fa-star'
+                      "
+                    ></i>
+                  </div>
+                  <div class="mini-prices">
+                    <span class="mini-new">{{ getFinalPrice(product) | number }}đ</span>
+                    <span *ngIf="getDiscountPercentage(product) > 0" class="mini-old">
+                      {{ product.price_buy | number }}đ
+                    </span>
+                  </div>
+                  <a class="mini-buy-btn" [routerLink]="['/products', product.product_id]">
+                    Buy Now
+                  </a>
+                </div>
+              </div>
+            </div>
+            <a routerLink="/products" class="sidebar-more">Xem tất cả</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="loading-state" *ngIf="isLoading">
+  <i class="fas fa-spinner fa-spin"></i>
+  <p>Đang tải bài viết...</p>
+</div>
+
+<div class="error-state" *ngIf="error">
+  <i class="fas fa-exclamation-circle"></i>
+  <h2>Không thể tải bài viết</h2>
+  <p>{{ error }}</p>
+  <button class="btn-back" routerLink="/blog">
+    <i class="fas fa-arrow-left"></i>
+    Quay lại danh sách blog
+  </button>
+</div>

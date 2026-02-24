@@ -1,0 +1,25 @@
+<div class="profile-basic-page">
+  <div class="page-header">
+    <div class="header-text">
+      <h1 class="page-title">
+        <i class="fas fa-id-card"></i>
+        Thông tin cơ bản
+      </h1>
+      <p class="page-subtitle">Quản lý hồ sơ cá nhân, avatar và thông tin cơ thể cơ bản.</p>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Đang xử lý...</p>
+    </div>
+  </div>
+
+  <app-basic-info-form
+    [currentUser]="currentUser"
+    (saveProfile)="onSaveProfile($event)"
+    (uploadAvatar)="onUploadAvatar($event)"
+  ></app-basic-info-form>
+</div>
