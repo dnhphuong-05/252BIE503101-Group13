@@ -4,6 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { CartItem, CartService } from '../../services/cart.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-cart',
@@ -24,6 +25,7 @@ export class Cart implements OnInit, OnDestroy {
     private cartService: CartService,
     private authService: AuthService,
     private router: Router,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -62,7 +64,7 @@ export class Cart implements OnInit, OnDestroy {
     if (!this.items.length) return;
     const selectedItems = this.getSelectedItems();
     if (selectedItems.length === 0) {
-      alert('Vui lòng chọn sản phẩm cần thanh toán.');
+      this.toastService.info('Vui lòng chọn sản phẩm cần thanh toán.');
       return;
     }
 

@@ -1,7 +1,7 @@
 ﻿import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ApiResponse, BackendListResponse } from '../../../../models';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -310,6 +310,7 @@ interface ReturnRequestApi {
 })
 export class OrderListComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly notification = inject(NotificationService);
   private readonly apiUrl = environment.apiUrl;
@@ -385,6 +386,10 @@ export class OrderListComponent implements OnInit {
   protected rentReturnFilter: 'all' | 'requested' | 'none' = 'all';
   protected rentCustomerFilter: 'all' | 'user' | 'guest' = 'all';
   protected returnStatusFilter: ReturnStatus | 'all' = 'all';
+  protected detailMode = false;
+  protected selectedSalesProgressStep: OrderStatus | null = null;
+  protected selectedRentProgressStep: RentStatus | null = null;
+  protected selectedReturnProgressStep: ReturnStatus | null = null;
 
   protected readonly orderStatusMeta: Record<OrderStatus, { label: string; class: string }> = {
     pending: { label: 'Chờ xác nhận', class: 'badge badge-warning' },
@@ -430,6 +435,29 @@ export class OrderListComponent implements OnInit {
     cancelled: [],
   };
 
+  private readonly rentTransitions: Record<RentStatus, RentStatus[]> = {
+    booked: ['ongoing', 'cancelled'],
+    ongoing: ['return_requested', 'cancelled', 'violated'],
+    return_requested: ['returning', 'cancelled'],
+    returning: ['returned', 'violated'],
+    returned: ['closed', 'violated'],
+    closed: [],
+    cancelled: [],
+    violated: ['closed'],
+  };
+
+  private readonly returnTransitions: Record<ReturnStatus, ReturnStatus[]> = {
+    submitted: ['need_more_info', 'approved', 'closed'],
+    need_more_info: ['approved', 'closed'],
+    approved: ['awaiting_return_shipment', 'submitted'],
+    awaiting_return_shipment: ['return_in_transit'],
+    return_in_transit: ['received_inspecting'],
+    received_inspecting: ['refund_processing', 'closed'],
+    refund_processing: ['refunded'],
+    refunded: ['closed'],
+    closed: [],
+  };
+
   protected readonly rentStatusMeta: Record<RentStatus, { label: string; class: string }> = {
     booked: { label: 'Đã đặt', class: 'badge badge-warning' },
     ongoing: { label: 'Đang thuê', class: 'badge badge-info' },
@@ -452,6 +480,32 @@ export class OrderListComponent implements OnInit {
     refunded: { label: 'Đã hoàn tiền', class: 'badge badge-success' },
     closed: { label: 'Đã đóng', class: 'badge badge-neutral' },
   };
+  protected readonly salesProgressFlow: OrderStatus[] = [
+    'pending',
+    'confirmed',
+    'processing',
+    'shipping',
+    'completed',
+  ];
+  protected readonly rentProgressFlow: RentStatus[] = [
+    'booked',
+    'ongoing',
+    'return_requested',
+    'returning',
+    'returned',
+    'closed',
+  ];
+  protected readonly returnProgressFlow: ReturnStatus[] = [
+    'submitted',
+    'need_more_info',
+    'approved',
+    'awaiting_return_shipment',
+    'return_in_transit',
+    'received_inspecting',
+    'refund_processing',
+    'refunded',
+    'closed',
+  ];
 
   protected readonly selectedSalesOrder = computed(() => {
     if (this.view() !== 'sales') return null;
@@ -474,9 +528,62 @@ export class OrderListComponent implements OnInit {
     return this.returnOrders.find((order) => order.id === id) || null;
   });
 
+  private routeReady = false;
+  private pendingSalesOrderId: string | null = null;
+  private pendingRentOrderId: string | null = null;
+  private pendingReturnRequestId: string | null = null;
+
   ngOnInit(): void {
+    this.route.paramMap.subscribe((params) => {
+      const routeId = params.get('id');
+      if (!routeId) {
+        return;
+      }
+      this.pendingSalesOrderId = routeId;
+      this.pendingRentOrderId = routeId;
+      this.pendingReturnRequestId = routeId;
+
+      if (this.routeReady && this.hasLoadedViewData()) {
+        this.applyPendingSelection();
+      }
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      const orderId = params.get('order');
+      const requestId = params.get('request');
+
+      if (orderId) {
+        this.pendingSalesOrderId = orderId;
+        this.pendingRentOrderId = orderId;
+      }
+      if (requestId) {
+        this.pendingReturnRequestId = requestId;
+      }
+
+      if (this.routeReady && !this.detailMode) {
+        if (this.view() === 'sales' && orderId) {
+          this.router.navigate(['/orders/sales', orderId], { replaceUrl: true });
+          return;
+        }
+        if (this.view() === 'rent' && orderId) {
+          this.router.navigate(['/orders/rent', orderId], { replaceUrl: true });
+          return;
+        }
+        if (this.view() === 'returns' && requestId) {
+          this.router.navigate(['/orders/returns', requestId], { replaceUrl: true });
+          return;
+        }
+      }
+
+      if (this.routeReady && this.hasLoadedViewData()) {
+        this.applyPendingSelection();
+      }
+    });
+
     this.route.data.subscribe((data) => {
+      this.routeReady = true;
       const view = (data['view'] as OrderView) ?? 'sales';
+      this.detailMode = Boolean(data['detail']);
       this.view.set(view);
       if (view === 'returns') {
         this.selectedId.set(null);
@@ -511,12 +618,30 @@ export class OrderListComponent implements OnInit {
 
   protected onViewSales(order: SalesOrder, event?: Event): void {
     event?.stopPropagation();
-    this.selectOrder(order.id);
+    if (this.detailMode) {
+      return;
+    }
+    this.router.navigate(['/orders/sales', order.id]);
   }
 
   protected onViewRent(order: RentOrder, event?: Event): void {
     event?.stopPropagation();
-    this.selectOrder(order.id);
+    if (this.detailMode) {
+      return;
+    }
+    this.router.navigate(['/orders/rent', order.id]);
+  }
+
+  protected onViewReturn(request: ReturnRequestRow, event?: Event): void {
+    event?.stopPropagation();
+    if (this.detailMode) {
+      return;
+    }
+    this.router.navigate(['/orders/returns', request.id]);
+  }
+
+  protected backToList(): void {
+    this.router.navigate(['/orders', this.view()]);
   }
 
   private loadSalesOrders(): void {
@@ -531,29 +656,11 @@ export class OrderListComponent implements OnInit {
       .subscribe({
         next: (response) => {
           const items = response.data?.items ?? [];
-          this.salesOrdersRaw = items.map((order) => {
-            const isGuest = Boolean(order.guest_id);
-            return {
-              id: order.order_id ?? order.order_code,
-              code: order.order_code ?? order.order_id,
-              customer: order.customer_info?.full_name ?? '-',
-              phone: order.customer_info?.phone ?? '-',
-              total: this.formatCurrency(order.total_amount),
-              paymentStatus: order.payment_status ?? 'unpaid',
-              orderStatus: order.order_status ?? 'pending',
-              shipping: this.formatShipping(order.shipping_provider, order.tracking_code),
-              createdAt: this.formatDate(order.created_at),
-              updatedAt: this.formatDate(order.updated_at),
-              guestId: order.guest_id ?? null,
-              userId: order.user_id ?? null,
-              isGuest,
-              contactChannel: order.contact_channel ?? null,
-              contactedAt: order.contacted_at ?? null,
-            };
-          });
+          this.salesOrdersRaw = items.map((order) => this.mapSalesOrderRow(order));
           this.salesTotal = response.data?.pagination.total ?? this.salesOrdersRaw.length;
           this.applySalesFilters();
           this.isLoading = false;
+          this.applyPendingSelection();
         },
         error: (error) => {
           console.error('Failed to load sales orders:', error);
@@ -580,52 +687,11 @@ export class OrderListComponent implements OnInit {
       .subscribe({
         next: (response) => {
           const items = response.data?.items ?? [];
-          this.rentOrdersRaw = items.map((order) => {
-            const isGuest = Boolean(order.guest_id);
-            return {
-              id: order.rent_order_id ?? order.rent_order_code,
-              code: order.rent_order_code ?? order.rent_order_id,
-              customer: order.customer_info?.full_name ?? '-',
-              phone: order.customer_info?.phone ?? '-',
-              period: this.formatPeriod(
-                order.rental_period?.start_date,
-                order.rental_period?.end_date,
-              ),
-              days: order.rental_period?.days ?? 0,
-              rentStatus: order.rent_status ?? 'booked',
-              paymentStatus: order.payment?.payment_status ?? 'unpaid',
-              depositPaid: this.formatCurrency(this.calcRentDeposit(order)),
-              rentFee: this.formatCurrency(this.calcRentFee(order)),
-              refundExpected: this.formatCurrency(this.calcRentRefundExpected(order)),
-              returnRequested: Boolean(
-                order.return_request?.requested_at ||
-                  ['return_requested', 'returning', 'returned', 'closed', 'violated'].includes(
-                    order.rent_status,
-                  ),
-              ),
-              returnRequestedAt: order.return_request?.requested_at
-                ? this.formatDate(order.return_request.requested_at)
-                : '',
-              tracking: this.formatShipping(
-                order.shipping_out?.provider ??
-                  order.shipping?.shipping_provider ??
-                  null,
-                order.shipping_out?.tracking_code ??
-                  order.shipping?.tracking_code ??
-                  null,
-              ),
-              createdAt: this.formatDate(order.created_at),
-              guestId: order.guest_id ?? null,
-              userId: order.user_id ?? null,
-              isGuest,
-              contactChannel: order.contact_channel ?? null,
-              contactedAt: order.contacted_at ?? null,
-              confirmedAt: order.confirmed_at ?? null,
-            };
-          });
+          this.rentOrdersRaw = items.map((order) => this.mapRentOrderRow(order));
           this.rentTotal = response.data?.pagination.total ?? this.rentOrdersRaw.length;
           this.applyRentFilters();
           this.isLoading = false;
+          this.applyPendingSelection();
         },
         error: (error) => {
           console.error('Failed to load rent orders:', error);
@@ -655,17 +721,11 @@ export class OrderListComponent implements OnInit {
       .subscribe({
         next: (response) => {
           const items = response.data?.items ?? [];
-          this.returnOrdersRaw = items.map((request) => ({
-            id: request.return_id ?? request.order_id,
-            code: request.return_id ?? '-',
-            orderCode: request.order_code ?? request.order_id ?? '-',
-            status: request.status ?? 'submitted',
-            amount: this.formatCurrency(request.total_amount ?? 0),
-            requestedAt: this.formatDate(request.requested_at ?? request.created_at),
-          }));
+          this.returnOrdersRaw = items.map((request) => this.mapReturnRequestRow(request));
           this.returnTotal = response.data?.pagination.total ?? this.returnOrdersRaw.length;
           this.applyReturnFilters();
           this.isLoading = false;
+          this.applyPendingSelection();
         },
         error: (error) => {
           console.error('Failed to load return requests:', error);
@@ -694,7 +754,14 @@ export class OrderListComponent implements OnInit {
             return;
           }
           this.selectedRentDetail = response.data;
+          this.selectedId.set(response.data.rent_order_id ?? orderId);
+          this.updateRentRow(response.data);
           this.hydrateRentDrafts(response.data);
+          this.selectedRentProgressStep = this.resolveFlowStep(
+            this.rentProgressFlow,
+            response.data.rent_status,
+            response.data.status_history,
+          );
           this.rentDetailLoading = false;
         },
         error: (error) => {
@@ -718,7 +785,14 @@ export class OrderListComponent implements OnInit {
             return;
           }
           this.selectedSalesDetail = response.data;
+          this.selectedId.set(response.data.order_id ?? orderId);
+          this.updateSalesRow(response.data);
           this.hydrateSalesDrafts(response.data);
+          this.selectedSalesProgressStep = this.resolveFlowStep(
+            this.salesProgressFlow,
+            response.data.order_status,
+            response.data.status_history,
+          );
           this.detailLoading = false;
         },
         error: (error) => {
@@ -742,7 +816,14 @@ export class OrderListComponent implements OnInit {
             return;
           }
           this.selectedReturnDetail = response.data;
+          this.selectedId.set(response.data.return_id ?? returnId);
+          this.updateReturnRow(response.data);
           this.hydrateReturnDrafts(response.data);
+          this.selectedReturnProgressStep = this.resolveFlowStep(
+            this.returnProgressFlow,
+            response.data.status,
+            response.data.status_history,
+          );
           this.returnDetailLoading = false;
         },
         error: (error) => {
@@ -841,6 +922,11 @@ export class OrderListComponent implements OnInit {
             this.selectedSalesDetail = response.data;
             this.hydrateSalesDrafts(response.data);
             this.updateSalesRow(response.data);
+            this.selectedSalesProgressStep = this.resolveFlowStep(
+              this.salesProgressFlow,
+              response.data.order_status,
+              response.data.status_history,
+            );
             if (this.salesToastOverride) {
               this.notification.showSuccess(this.salesToastOverride);
             } else if (this.shouldShowSalesNoteToast) {
@@ -883,6 +969,11 @@ export class OrderListComponent implements OnInit {
             this.selectedSalesDetail = response.data;
             this.hydrateSalesDrafts(response.data);
             this.updateSalesRow(response.data);
+            this.selectedSalesProgressStep = this.resolveFlowStep(
+              this.salesProgressFlow,
+              response.data.order_status,
+              response.data.status_history,
+            );
             this.notification.showSuccess('Đã cập nhật trạng thái thanh toán');
           }
         },
@@ -1083,6 +1174,11 @@ export class OrderListComponent implements OnInit {
             this.selectedRentDetail = response.data;
             this.hydrateRentDrafts(response.data);
             this.updateRentRow(response.data);
+            this.selectedRentProgressStep = this.resolveFlowStep(
+              this.rentProgressFlow,
+              response.data.rent_status,
+              response.data.status_history,
+            );
             if (notifyReturnReminder) {
               this.notification.showSuccess('Đã gửi nhắc nhở');
             } else if (shouldShowRentNoteToast) {
@@ -1164,6 +1260,11 @@ export class OrderListComponent implements OnInit {
             this.selectedReturnDetail = response.data;
             this.hydrateReturnDrafts(response.data);
             this.updateReturnRow(response.data);
+            this.selectedReturnProgressStep = this.resolveFlowStep(
+              this.returnProgressFlow,
+              response.data.status,
+              response.data.status_history,
+            );
             const message = this.getReturnToastMessage(nextStatus, logNote);
             if (message) {
               this.notification.showSuccess(message);
@@ -1296,77 +1397,138 @@ export class OrderListComponent implements OnInit {
     this.returnReceiptUrlDraft = request.refund?.receipt_url ?? '';
   }
 
-  private updateSalesRow(order: BuyOrderDetailApi): void {
-    const updatedAt = this.formatDate(order.updated_at ?? new Date().toISOString());
-    const shipping = this.formatShipping(order.shipping_provider, order.tracking_code);
+  private mapSalesOrderRow(order: BuyOrderApi | BuyOrderDetailApi): SalesOrder {
     const isGuest = Boolean(order.guest_id);
-    const updateRow = (item: SalesOrder) =>
-      item.id === order.order_id
-        ? {
-            ...item,
-            orderStatus: order.order_status ?? item.orderStatus,
-            paymentStatus: order.payment_status ?? item.paymentStatus,
-            shipping,
-            updatedAt,
-            guestId: order.guest_id ?? item.guestId,
-            userId: order.user_id ?? item.userId,
-            isGuest,
-            contactChannel: order.contact_channel ?? item.contactChannel,
-            contactedAt: order.contacted_at ?? item.contactedAt,
-          }
-        : item;
-    this.salesOrders = this.salesOrders.map(updateRow);
-    this.salesOrdersRaw = this.salesOrdersRaw.map(updateRow);
+    return {
+      id: order.order_id ?? order.order_code,
+      code: order.order_code ?? order.order_id,
+      customer: order.customer_info?.full_name ?? '-',
+      phone: order.customer_info?.phone ?? '-',
+      total: this.formatCurrency(order.total_amount),
+      paymentStatus: order.payment_status ?? 'unpaid',
+      orderStatus: order.order_status ?? 'pending',
+      shipping: this.formatShipping(order.shipping_provider, order.tracking_code),
+      createdAt: this.formatDate(order.created_at),
+      updatedAt: this.formatDate(order.updated_at ?? order.created_at),
+      guestId: order.guest_id ?? null,
+      userId: order.user_id ?? null,
+      isGuest,
+      contactChannel: order.contact_channel ?? null,
+      contactedAt: order.contacted_at ?? null,
+    };
+  }
+
+  private mapRentOrderRow(order: RentOrderApi | RentOrderDetailApi): RentOrder {
+    const isGuest = Boolean(order.guest_id);
+    return {
+      id: order.rent_order_id ?? order.rent_order_code,
+      code: order.rent_order_code ?? order.rent_order_id,
+      customer: order.customer_info?.full_name ?? '-',
+      phone: order.customer_info?.phone ?? '-',
+      period: this.formatPeriod(order.rental_period?.start_date, order.rental_period?.end_date),
+      days: order.rental_period?.days ?? 0,
+      rentStatus: order.rent_status ?? 'booked',
+      paymentStatus: order.payment?.payment_status ?? 'unpaid',
+      depositPaid: this.formatCurrency(this.calcRentDeposit(order)),
+      rentFee: this.formatCurrency(this.calcRentFee(order)),
+      refundExpected: this.formatCurrency(this.calcRentRefundExpected(order)),
+      returnRequested: Boolean(
+        order.return_request?.requested_at ||
+          ['return_requested', 'returning', 'returned', 'closed', 'violated'].includes(
+            order.rent_status,
+          ),
+      ),
+      returnRequestedAt: order.return_request?.requested_at
+        ? this.formatDate(order.return_request.requested_at)
+        : '',
+      tracking: this.formatShipping(
+        order.shipping_out?.provider ?? order.shipping?.shipping_provider ?? null,
+        order.shipping_out?.tracking_code ?? order.shipping?.tracking_code ?? null,
+      ),
+      createdAt: this.formatDate(order.created_at),
+      guestId: order.guest_id ?? null,
+      userId: order.user_id ?? null,
+      isGuest,
+      contactChannel: order.contact_channel ?? null,
+      contactedAt: order.contacted_at ?? null,
+      confirmedAt: order.confirmed_at ?? null,
+    };
+  }
+
+  private mapReturnRequestRow(request: ReturnRequestApi): ReturnRequestRow {
+    return {
+      id: request.return_id ?? request.order_id,
+      code: request.return_id ?? '-',
+      orderCode: request.order_code ?? request.order_id ?? '-',
+      status: request.status ?? 'submitted',
+      amount: this.formatCurrency(request.total_amount ?? 0),
+      requestedAt: this.formatDate(request.requested_at ?? request.created_at),
+    };
+  }
+
+  private upsertRow<T extends { id: string }>(items: T[], nextRow: T): T[] {
+    const index = items.findIndex((item) => item.id === nextRow.id);
+    if (index === -1) {
+      return [nextRow, ...items];
+    }
+
+    return items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...nextRow } : item));
+  }
+
+  private updateSalesRow(order: BuyOrderDetailApi): void {
+    const nextRow = this.mapSalesOrderRow(order);
+    this.salesOrdersRaw = this.upsertRow(this.salesOrdersRaw, nextRow);
+    this.salesOrders = this.upsertRow(this.salesOrders, nextRow);
   }
 
   private updateRentRow(order: RentOrderDetailApi): void {
-    const tracking = this.formatShipping(
-      order.shipping_out?.provider ?? order.shipping?.shipping_provider ?? null,
-      order.shipping_out?.tracking_code ?? order.shipping?.tracking_code ?? null,
-    );
-    const isGuest = Boolean(order.guest_id);
-    const updateRow = (item: RentOrder) =>
-      item.id === order.rent_order_id
-        ? {
-            ...item,
-            rentStatus: order.rent_status ?? item.rentStatus,
-            paymentStatus: order.payment?.payment_status ?? item.paymentStatus,
-            depositPaid: this.formatCurrency(this.calcRentDeposit(order)),
-            rentFee: this.formatCurrency(this.calcRentFee(order)),
-            refundExpected: this.formatCurrency(this.calcRentRefundExpected(order)),
-            returnRequested: Boolean(
-              order.return_request?.requested_at ||
-                ['return_requested', 'returning', 'returned', 'closed', 'violated'].includes(
-                  order.rent_status,
-                ),
-            ),
-            returnRequestedAt: order.return_request?.requested_at
-              ? this.formatDate(order.return_request.requested_at)
-              : '',
-            tracking,
-            guestId: order.guest_id ?? item.guestId,
-            userId: order.user_id ?? item.userId,
-            isGuest,
-            contactChannel: order.contact_channel ?? item.contactChannel,
-            contactedAt: order.contacted_at ?? item.contactedAt,
-            confirmedAt: order.confirmed_at ?? item.confirmedAt,
-          }
-        : item;
-    this.rentOrders = this.rentOrders.map(updateRow);
-    this.rentOrdersRaw = this.rentOrdersRaw.map(updateRow);
+    const nextRow = this.mapRentOrderRow(order);
+    this.rentOrdersRaw = this.upsertRow(this.rentOrdersRaw, nextRow);
+    this.rentOrders = this.upsertRow(this.rentOrders, nextRow);
   }
 
   private updateReturnRow(request: ReturnRequestApi): void {
-    this.returnOrders = this.returnOrders.map((item) =>
-      item.id === request.return_id
-        ? {
-            ...item,
-            status: request.status ?? item.status,
-            amount: this.formatCurrency(request.total_amount ?? 0),
-            requestedAt: this.formatDate(request.requested_at ?? request.created_at),
-          }
-        : item,
-    );
+    const nextRow = this.mapReturnRequestRow(request);
+    this.returnOrdersRaw = this.upsertRow(this.returnOrdersRaw, nextRow);
+    this.returnOrders = this.upsertRow(this.returnOrders, nextRow);
+  }
+
+  private applyPendingSelection(): void {
+    if (!this.detailMode) {
+      return;
+    }
+
+    if (this.view() === 'sales' && this.pendingSalesOrderId) {
+      const orderId = this.pendingSalesOrderId;
+      this.pendingSalesOrderId = null;
+      this.selectOrder(orderId);
+      return;
+    }
+
+    if (this.view() === 'rent' && this.pendingRentOrderId) {
+      const orderId = this.pendingRentOrderId;
+      this.pendingRentOrderId = null;
+      this.selectOrder(orderId);
+      return;
+    }
+
+    if (this.view() === 'returns' && this.pendingReturnRequestId) {
+      const requestId = this.pendingReturnRequestId;
+      this.pendingReturnRequestId = null;
+      this.selectOrder(requestId);
+    }
+  }
+
+  private hasLoadedViewData(): boolean {
+    if (this.view() === 'sales') {
+      return this.salesOrdersRaw.length > 0 || !!this.selectedSalesDetail;
+    }
+
+    if (this.view() === 'rent') {
+      return this.rentOrdersRaw.length > 0 || !!this.selectedRentDetail;
+    }
+
+    return this.returnOrdersRaw.length > 0 || !!this.selectedReturnDetail;
   }
 
   protected applyFilters(): void {
@@ -1441,7 +1603,13 @@ export class OrderListComponent implements OnInit {
     }
 
     this.salesOrders = filtered;
-    this.syncSelectedSales();
+    if (this.detailMode) {
+      this.syncSelectedSales();
+    } else {
+      this.selectedId.set(null);
+      this.selectedSalesDetail = null;
+      this.selectedSalesProgressStep = null;
+    }
   }
 
   private applyRentFilters(): void {
@@ -1476,7 +1644,13 @@ export class OrderListComponent implements OnInit {
     }
 
     this.rentOrders = filtered;
-    this.syncSelectedRent();
+    if (this.detailMode) {
+      this.syncSelectedRent();
+    } else {
+      this.selectedId.set(null);
+      this.selectedRentDetail = null;
+      this.selectedRentProgressStep = null;
+    }
   }
 
   private applyReturnFilters(): void {
@@ -1497,7 +1671,13 @@ export class OrderListComponent implements OnInit {
     }
 
     this.returnOrders = filtered;
-    this.syncSelectedReturn();
+    if (this.detailMode) {
+      this.syncSelectedReturn();
+    } else {
+      this.selectedId.set(null);
+      this.selectedReturnDetail = null;
+      this.selectedReturnProgressStep = null;
+    }
   }
 
   private syncSelectedSales(): void {
@@ -1512,6 +1692,7 @@ export class OrderListComponent implements OnInit {
       this.fetchSalesDetail(nextId);
     } else {
       this.selectedSalesDetail = null;
+      this.selectedSalesProgressStep = null;
     }
   }
 
@@ -1527,6 +1708,7 @@ export class OrderListComponent implements OnInit {
       this.fetchRentDetail(nextId);
     } else {
       this.selectedRentDetail = null;
+      this.selectedRentProgressStep = null;
     }
   }
 
@@ -1542,6 +1724,7 @@ export class OrderListComponent implements OnInit {
       this.fetchReturnDetail(nextId);
     } else {
       this.selectedReturnDetail = null;
+      this.selectedReturnProgressStep = null;
     }
   }
 
@@ -1585,6 +1768,434 @@ export class OrderListComponent implements OnInit {
     return order.items ?? [];
   }
 
+  protected salesProgressLabel(status: OrderStatus): string {
+    return this.orderStatusMeta[status]?.label ?? status;
+  }
+
+  protected rentProgressLabel(status: RentStatus): string {
+    return this.rentStatusMeta[status]?.label ?? status;
+  }
+
+  protected returnProgressLabel(status: ReturnStatus): string {
+    return this.returnStatusMeta[status]?.label ?? status;
+  }
+
+  protected selectSalesProgressStep(step: OrderStatus): void {
+    this.selectedSalesProgressStep = step;
+  }
+
+  protected selectRentProgressStep(step: RentStatus): void {
+    this.selectedRentProgressStep = step;
+  }
+
+  protected selectReturnProgressStep(step: ReturnStatus): void {
+    this.selectedReturnProgressStep = step;
+  }
+
+  protected salesFocusedStep(): OrderStatus {
+    return (
+      this.selectedSalesProgressStep ??
+      this.resolveFlowStep(
+        this.salesProgressFlow,
+        this.selectedSalesDetail?.order_status,
+        this.selectedSalesDetail?.status_history,
+      )
+    );
+  }
+
+  protected rentFocusedStep(): RentStatus {
+    return (
+      this.selectedRentProgressStep ??
+      this.resolveFlowStep(
+        this.rentProgressFlow,
+        this.selectedRentDetail?.rent_status,
+        this.selectedRentDetail?.status_history,
+      )
+    );
+  }
+
+  protected returnFocusedStep(): ReturnStatus {
+    return (
+      this.selectedReturnProgressStep ??
+      this.resolveFlowStep(
+        this.returnProgressFlow,
+        this.selectedReturnDetail?.status,
+        this.selectedReturnDetail?.status_history,
+      )
+    );
+  }
+
+  protected salesCurrentStepLabel(): string {
+    return this.salesProgressLabel(this.salesFocusedStep());
+  }
+
+  protected rentCurrentStepLabel(): string {
+    return this.rentProgressLabel(this.rentFocusedStep());
+  }
+
+  protected returnCurrentStepLabel(): string {
+    return this.returnProgressLabel(this.returnFocusedStep());
+  }
+
+  protected salesStepFieldHints(): string[] {
+    const status = this.salesFocusedStep();
+    switch (status) {
+      case 'pending':
+        return ['Xác minh thông tin khách', 'Kiểm tra sản phẩm', 'Xác nhận đơn'];
+      case 'confirmed':
+        return ['Đã xác nhận', 'Chuẩn bị xử lý', 'Cập nhật thanh toán'];
+      case 'processing':
+        return ['Đóng gói sản phẩm', 'Tạo vận đơn', 'Chuyển sang đang giao'];
+      case 'shipping':
+        return ['Theo dõi vận chuyển', 'Cập nhật giao hàng', 'Xác nhận hoàn thành'];
+      case 'completed':
+        return ['Đơn đã hoàn tất', 'Đối soát thanh toán', 'Lưu lịch sử'];
+      case 'cancelled':
+        return ['Đơn đã hủy', 'Lý do hủy đơn', 'Lưu lịch sử'];
+      default:
+        return [];
+    }
+  }
+
+  protected rentStepFieldHints(): string[] {
+    const status = this.rentFocusedStep();
+    switch (status) {
+      case 'booked':
+        return ['Xác nhận đơn thuê', 'Tạo vận đơn giao', 'Chuẩn bị bàn giao'];
+      case 'ongoing':
+        return ['Theo dõi thời gian thuê', 'Xử lý yêu cầu trả', 'Cập nhật trạng thái'];
+      case 'return_requested':
+        return ['Tạo vận đơn trả', 'Nhắc khách gửi hàng', 'Chuẩn bị nhận hàng'];
+      case 'returning':
+        return ['Theo dõi hàng trả', 'Xác nhận shop đã nhận', 'Kiểm tra tình trạng'];
+      case 'returned':
+        return ['Tính phí phát sinh', 'Tính tiền hoàn cọc', 'Chốt hoàn tiền'];
+      case 'closed':
+        return ['Đơn đã hoàn tất', 'Đối soát công nợ', 'Lưu lịch sử'];
+      case 'cancelled':
+        return ['Đơn đã hủy', 'Lý do hủy đơn', 'Lưu lịch sử'];
+      case 'violated':
+        return ['Xác nhận vi phạm', 'Cập nhật phí phạt', 'Chốt đơn'];
+      default:
+        return [];
+    }
+  }
+
+  protected returnStepFieldHints(): string[] {
+    const status = this.returnFocusedStep();
+    switch (status) {
+      case 'submitted':
+        return ['Tiếp nhận yêu cầu', 'Xác minh lý do trả', 'Phản hồi khách'];
+      case 'need_more_info':
+        return ['Chờ khách bổ sung', 'Kiểm tra thông tin', 'Duyệt lại yêu cầu'];
+      case 'approved':
+        return ['Duyệt hoàn trả', 'Tạo vận đơn trả', 'Thông báo khách'];
+      case 'awaiting_return_shipment':
+        return ['Chờ khách gửi hàng', 'Theo dõi mã vận đơn', 'Nhắc khách nếu cần'];
+      case 'return_in_transit':
+        return ['Theo dõi vận chuyển', 'Xác nhận đã nhận hàng', 'Chuẩn bị kiểm tra'];
+      case 'received_inspecting':
+        return ['Kiểm tra sản phẩm', 'Tính số tiền hoàn', 'Xác nhận hoàn tiền'];
+      case 'refund_processing':
+        return ['Đang hoàn tiền', 'Cập nhật biên nhận', 'Chuyển đã hoàn tiền'];
+      case 'refunded':
+        return ['Đã hoàn tiền', 'Đối soát chứng từ', 'Đóng yêu cầu'];
+      case 'closed':
+        return ['Yêu cầu đã đóng', 'Lưu lịch sử', 'Kết thúc xử lý'];
+      default:
+        return [];
+    }
+  }
+
+  protected salesStepPrimaryActionLabel(): string {
+    switch (this.salesFocusedStep()) {
+      case 'pending':
+        return 'Xác nhận đơn';
+      case 'confirmed':
+        return this.isGuestSalesDetail() ? 'Tạo vận đơn' : 'Bắt đầu xử lý';
+      case 'processing':
+        return 'Tạo vận đơn & chuyển giao';
+      case 'shipping':
+        return 'Xác nhận hoàn thành';
+      default:
+        return '';
+    }
+  }
+
+  protected rentStepPrimaryActionLabel(): string {
+    switch (this.rentFocusedStep()) {
+      case 'booked':
+        return 'Xác nhận bắt đầu thuê';
+      case 'ongoing':
+        return 'Tạo mã vận đơn trả';
+      case 'return_requested':
+        return 'Gửi nhắc nhở khách';
+      case 'returning':
+        return 'Xác nhận shop đã nhận';
+      case 'returned':
+        return 'Hoàn cọc & chốt đơn';
+      default:
+        return '';
+    }
+  }
+
+  protected returnStepPrimaryActionLabel(): string {
+    switch (this.returnFocusedStep()) {
+      case 'submitted':
+        return 'Duyệt yêu cầu';
+      case 'need_more_info':
+        return 'Tiếp tục duyệt';
+      case 'approved':
+        return 'Tạo mã vận đơn trả';
+      case 'awaiting_return_shipment':
+        return 'Đánh dấu đã nhận mã vận đơn';
+      case 'return_in_transit':
+        return 'Xác nhận đã nhận hàng';
+      case 'received_inspecting':
+        return 'Xác nhận hoàn tiền';
+      case 'refund_processing':
+        return 'Đánh dấu đã hoàn tiền';
+      case 'refunded':
+        return 'Đóng yêu cầu';
+      default:
+        return '';
+    }
+  }
+
+  protected canRunSalesStepAction(): boolean {
+    if (!this.selectedSalesDetail || this.actionLoading) return false;
+    const focused = this.salesFocusedStep();
+    const current = this.resolveFlowStep(
+      this.salesProgressFlow,
+      this.selectedSalesDetail.order_status,
+      this.selectedSalesDetail.status_history,
+    );
+    if (focused !== current) return false;
+
+    const target = this.getSalesStepActionTarget(focused);
+    if (!target || !this.canSalesTransitionTo(target)) return false;
+    if (
+      target === 'completed' &&
+      !this.selectedSalesDetail.customer_received_at &&
+      !this.selectedSalesDetail.guest_id
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  protected canRunRentStepAction(): boolean {
+    if (!this.selectedRentDetail || this.rentActionLoading) return false;
+    const focused = this.rentFocusedStep();
+    const current = this.resolveFlowStep(
+      this.rentProgressFlow,
+      this.selectedRentDetail.rent_status,
+      this.selectedRentDetail.status_history,
+    );
+    if (focused !== current) return false;
+
+    if (focused === 'return_requested') return true;
+
+    const target = this.getRentStepActionTarget(focused);
+    return Boolean(target && this.canRentTransitionTo(target));
+  }
+
+  protected canRunReturnStepAction(): boolean {
+    if (!this.selectedReturnDetail || this.returnActionLoading) return false;
+    const focused = this.returnFocusedStep();
+    const current = this.resolveFlowStep(
+      this.returnProgressFlow,
+      this.selectedReturnDetail.status,
+      this.selectedReturnDetail.status_history,
+    );
+    if (focused !== current) return false;
+
+    const target = this.getReturnStepActionTarget(focused);
+    return Boolean(target && this.canReturnTransitionTo(target));
+  }
+
+  protected runSalesStepAction(): void {
+    if (!this.canRunSalesStepAction()) {
+      this.notification.showInfo('Chỉ thao tác ở bước hiện tại theo đúng trình tự.');
+      return;
+    }
+    const target = this.getSalesStepActionTarget(this.salesFocusedStep());
+    if (!target) return;
+    this.updateSalesStatus(target);
+  }
+
+  protected runRentStepAction(): void {
+    if (!this.canRunRentStepAction()) {
+      this.notification.showInfo('Chỉ thao tác ở bước hiện tại theo đúng trình tự.');
+      return;
+    }
+    const focused = this.rentFocusedStep();
+    if (focused === 'return_requested') {
+      this.updateRentStatus(undefined, 'Gửi nhắc nhở khách', true);
+      return;
+    }
+    const target = this.getRentStepActionTarget(focused);
+    if (!target) return;
+    if (target === 'return_requested') {
+      this.updateRentStatus('return_requested', 'Tạo mã vận đơn trả');
+      return;
+    }
+    this.updateRentStatus(target);
+  }
+
+  protected runReturnStepAction(): void {
+    if (!this.canRunReturnStepAction()) {
+      this.notification.showInfo('Chỉ thao tác ở bước hiện tại theo đúng trình tự.');
+      return;
+    }
+    const focused = this.returnFocusedStep();
+    const target = this.getReturnStepActionTarget(focused);
+    if (!target) return;
+    this.updateReturnStatus(target, this.returnStepPrimaryActionLabel());
+  }
+
+  private getSalesStepActionTarget(step: OrderStatus): OrderStatus | null {
+    if (step === 'pending') return 'confirmed';
+    if (step === 'confirmed') return this.isGuestSalesDetail() ? 'shipping' : 'processing';
+    if (step === 'processing') return 'shipping';
+    if (step === 'shipping') return 'completed';
+    return null;
+  }
+
+  private getRentStepActionTarget(step: RentStatus): RentStatus | null {
+    if (step === 'booked') return 'ongoing';
+    if (step === 'ongoing') return 'return_requested';
+    if (step === 'returning') return 'returned';
+    if (step === 'returned') return 'closed';
+    return null;
+  }
+
+  private getReturnStepActionTarget(step: ReturnStatus): ReturnStatus | null {
+    if (step === 'submitted') return 'approved';
+    if (step === 'need_more_info') return 'approved';
+    if (step === 'approved') return 'awaiting_return_shipment';
+    if (step === 'awaiting_return_shipment') return 'return_in_transit';
+    if (step === 'return_in_transit') return 'received_inspecting';
+    if (step === 'received_inspecting') return 'refund_processing';
+    if (step === 'refund_processing') return 'refunded';
+    if (step === 'refunded') return 'closed';
+    return null;
+  }
+
+  private canSalesTransitionTo(next: OrderStatus): boolean {
+    const current = this.selectedSalesDetail?.order_status;
+    if (!current) return false;
+    return (this.salesTransitions[current] || []).includes(next);
+  }
+
+  private canRentTransitionTo(next: RentStatus): boolean {
+    const current = this.selectedRentDetail?.rent_status;
+    if (!current) return false;
+    return (this.rentTransitions[current] || []).includes(next);
+  }
+
+  private canReturnTransitionTo(next: ReturnStatus): boolean {
+    const current = this.selectedReturnDetail?.status;
+    if (!current) return false;
+    return (this.returnTransitions[current] || []).includes(next);
+  }
+
+  protected salesProgressPercent(): number {
+    return this.getProgressPercent(this.salesProgressFlow.length, this.getSalesProgressIndex());
+  }
+
+  protected rentProgressPercent(): number {
+    return this.getProgressPercent(this.rentProgressFlow.length, this.getRentProgressIndex());
+  }
+
+  protected returnProgressPercent(): number {
+    return this.getProgressPercent(this.returnProgressFlow.length, this.getReturnProgressIndex());
+  }
+
+  protected isSalesProgressDone(index: number): boolean {
+    return this.getSalesProgressIndex() >= index;
+  }
+
+  protected isSalesProgressCurrent(index: number): boolean {
+    return this.salesProgressFlow[index] === this.salesFocusedStep();
+  }
+
+  protected isRentProgressDone(index: number): boolean {
+    return this.getRentProgressIndex() >= index;
+  }
+
+  protected isRentProgressCurrent(index: number): boolean {
+    return this.rentProgressFlow[index] === this.rentFocusedStep();
+  }
+
+  protected isReturnProgressDone(index: number): boolean {
+    return this.getReturnProgressIndex() >= index;
+  }
+
+  protected isReturnProgressCurrent(index: number): boolean {
+    return this.returnProgressFlow[index] === this.returnFocusedStep();
+  }
+
+  protected salesProgressTime(status: OrderStatus): string {
+    const order = this.selectedSalesDetail;
+    if (!order) return '-';
+
+    const explicitTimestamp: Partial<Record<OrderStatus, string | null | undefined>> = {
+      pending: order.created_at,
+      confirmed: order.confirmed_at,
+      processing: order.processing_at,
+      shipping: order.shipped_at,
+      completed: order.customer_received_at || order.delivered_at,
+      cancelled: order.cancelled_at,
+    };
+
+    const timestamp =
+      explicitTimestamp[status] || this.getStatusHistoryTimestamp(order.status_history, status);
+    return this.formatDateTime(timestamp);
+  }
+
+  protected rentProgressTime(status: RentStatus): string {
+    const order = this.selectedRentDetail;
+    if (!order) return '-';
+
+    const explicitTimestamp: Partial<Record<RentStatus, string | null | undefined>> = {
+      booked: order.created_at,
+      ongoing: order.confirmed_at || order.shipping_out?.delivered_at,
+      return_requested: order.return_request?.requested_at,
+      returning: order.shipping_back?.shipped_at,
+      returned: order.shipping_back?.delivered_at,
+      closed: order.settlement?.refunded_at,
+      cancelled: null,
+      violated: null,
+    };
+
+    const timestamp =
+      explicitTimestamp[status] || this.getStatusHistoryTimestamp(order.status_history, status);
+    return this.formatDateTime(timestamp);
+  }
+
+  protected returnProgressTime(status: ReturnStatus): string {
+    const request = this.selectedReturnDetail;
+    if (!request) return '-';
+
+    const explicitTimestamp: Partial<Record<ReturnStatus, string | null | undefined>> = {
+      submitted: request.requested_at || request.created_at,
+      need_more_info: null,
+      approved: null,
+      awaiting_return_shipment:
+        request.return_shipping?.created_at || request.return_shipping?.received_label_at,
+      return_in_transit: request.return_shipping?.shipped_at,
+      received_inspecting: request.return_shipping?.received_at,
+      refund_processing: null,
+      refunded: request.refund?.processed_at,
+      closed: request.updated_at,
+    };
+
+    const timestamp =
+      explicitTimestamp[status] || this.getStatusHistoryTimestamp(request.status_history, status);
+    return this.formatDateTime(timestamp);
+  }
+
   protected isGuestSalesDetail(): boolean {
     return Boolean(this.selectedSalesDetail?.guest_id);
   }
@@ -1606,6 +2217,107 @@ export class OrderListComponent implements OnInit {
 
   protected formatCurrency(value: number): string {
     return `${new Intl.NumberFormat('vi-VN').format(value)} đ`;
+  }
+
+  private getSalesProgressIndex(): number {
+    return this.getProgressIndex(
+      this.salesProgressFlow,
+      this.selectedSalesDetail?.order_status,
+      this.selectedSalesDetail?.status_history,
+    );
+  }
+
+  private getRentProgressIndex(): number {
+    return this.getProgressIndex(
+      this.rentProgressFlow,
+      this.selectedRentDetail?.rent_status,
+      this.selectedRentDetail?.status_history,
+    );
+  }
+
+  private getReturnProgressIndex(): number {
+    return this.getProgressIndex(
+      this.returnProgressFlow,
+      this.selectedReturnDetail?.status,
+      this.selectedReturnDetail?.status_history,
+    );
+  }
+
+  private isSalesTerminalStatus(): boolean {
+    return this.selectedSalesDetail?.order_status === 'cancelled';
+  }
+
+  private isRentTerminalStatus(): boolean {
+    const status = this.selectedRentDetail?.rent_status;
+    return status === 'cancelled' || status === 'violated';
+  }
+
+  private getProgressPercent(totalSteps: number, activeIndex: number): number {
+    if (totalSteps <= 0 || activeIndex < 0) {
+      return 0;
+    }
+    return Math.round(((activeIndex + 1) / totalSteps) * 100);
+  }
+
+  private getProgressIndex<TStatus extends string>(
+    flow: readonly TStatus[],
+    currentStatus?: string | null,
+    history?: StatusHistory[],
+  ): number {
+    if (currentStatus) {
+      const currentIndex = flow.indexOf(currentStatus as TStatus);
+      if (currentIndex >= 0) {
+        return currentIndex;
+      }
+    }
+    return this.getLastHistoryFlowIndex(flow, history);
+  }
+
+  private resolveFlowStep<TStatus extends string>(
+    flow: readonly TStatus[],
+    currentStatus?: string | null,
+    history?: StatusHistory[],
+  ): TStatus {
+    if (currentStatus) {
+      const currentIndex = flow.indexOf(currentStatus as TStatus);
+      if (currentIndex >= 0) {
+        return flow[currentIndex];
+      }
+    }
+    const historyIndex = this.getLastHistoryFlowIndex(flow, history);
+    if (historyIndex >= 0) {
+      return flow[historyIndex];
+    }
+    return flow[0];
+  }
+
+  private getLastHistoryFlowIndex<TStatus extends string>(
+    flow: readonly TStatus[],
+    history?: StatusHistory[],
+  ): number {
+    if (!history?.length) return -1;
+
+    let lastIndex = -1;
+    for (const entry of history) {
+      if (!entry.to) continue;
+      const flowIndex = flow.indexOf(entry.to as TStatus);
+      if (flowIndex > lastIndex) {
+        lastIndex = flowIndex;
+      }
+    }
+    return lastIndex;
+  }
+
+  private getStatusHistoryTimestamp(history: StatusHistory[] | undefined, status: string): string | null {
+    if (!history?.length) return null;
+
+    for (let index = history.length - 1; index >= 0; index -= 1) {
+      const entry = history[index];
+      if (entry.to === status && entry.changed_at) {
+        return entry.changed_at;
+      }
+    }
+    return null;
   }
 
   private resolveSalesStatusMeta(

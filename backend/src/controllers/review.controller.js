@@ -1,5 +1,6 @@
 import { reviewService } from "../services/index.js";
 import {
+  ApiError,
   catchAsync,
   successResponse,
   successResponseWithPagination,
@@ -45,9 +46,42 @@ export const getProductRatings = catchAsync(async (req, res) => {
  */
 export const createReview = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const review = await reviewService.createReview(productId, req.body);
+  const review = await reviewService.createReview(productId, req.body, req.user);
 
   successResponse(res, review, "Tạo đánh giá thành công", 201);
+});
+
+export const uploadReviewMedia = catchAsync(async (req, res) => {
+  const files = Array.isArray(req.files) ? req.files : [];
+
+  if (!files.length) {
+    throw ApiError.badRequest("Vui lòng chọn ít nhất một ảnh hoặc video");
+  }
+
+  const images = [];
+  const videos = [];
+  const media = [];
+
+  for (const file of files) {
+    const url = file.path || file.secure_url;
+    if (!url) continue;
+
+    const isVideo = file.mimetype?.startsWith("video/");
+    if (isVideo) {
+      videos.push(url);
+    } else {
+      images.push(url);
+    }
+
+    media.push({
+      url,
+      type: isVideo ? "video" : "image",
+      original_name: file.originalname || "",
+      public_id: file.filename || "",
+    });
+  }
+
+  successResponse(res, { images, videos, media }, "Tải media đánh giá thành công");
 });
 
 /**
@@ -81,7 +115,7 @@ export const deleteReview = catchAsync(async (req, res) => {
  */
 export const markReviewHelpful = catchAsync(async (req, res) => {
   const { reviewId } = req.params;
-  const { user_id } = req.body;
+  const user_id = req.user?.user_id || req.body?.user_id;
 
   const review = await reviewService.markReviewHelpful(reviewId, user_id);
 
@@ -95,7 +129,7 @@ export const markReviewHelpful = catchAsync(async (req, res) => {
  */
 export const getUserReviewForProduct = catchAsync(async (req, res) => {
   const { productId } = req.params;
-  const userId = req.user?.id; // Assuming auth middleware adds user to req
+  const userId = req.user?.user_id || req.user?.id;
 
   const review = await reviewService.getUserReviewForProduct(productId, userId);
 

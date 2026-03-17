@@ -189,8 +189,8 @@ GuestCustomerSchema.index({ last_order_at: -1 });
  * Virtual field: full_address - Địa chỉ đầy đủ dạng string
  */
 GuestCustomerSchema.virtual("full_address").get(function () {
-  const { detail, ward, district, province } = this.address;
-  const parts = [detail, ward, district, province]
+  const { detail, ward, province } = this.address;
+  const parts = [detail, ward, province]
     .map((part) => (typeof part === "string" ? part.trim() : ""))
     .filter(Boolean);
   return parts.join(", ");

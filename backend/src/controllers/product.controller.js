@@ -46,6 +46,11 @@ export const deleteProduct = catchAsync(async (req, res) => {
   successResponse(res, product, "Xóa sản phẩm thành công");
 });
 
+export const permanentDeleteProduct = catchAsync(async (req, res) => {
+  const product = await productService.permanentDeleteProduct(req.params.id);
+  successResponse(res, product, "Xóa vĩnh viễn sản phẩm thành công");
+});
+
 export const getRelatedProducts = catchAsync(async (req, res) => {
   const { id } = req.params;
   const limit = parseInt(req.query.limit) || 8;

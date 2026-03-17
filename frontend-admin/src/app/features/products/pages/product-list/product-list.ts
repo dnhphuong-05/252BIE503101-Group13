@@ -1,16 +1,17 @@
-import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { ApiResponse, BackendListResponse } from '../../../../models';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ApiResponse, BackendListResponse } from '../../../../models';
 import { environment } from '../../../../../environments/environment';
 
 type ProductStatus = 'draft' | 'active' | 'archived';
 type ProductStatusFilter = ProductStatus | 'all';
 type ProductApiStatus = 'draft' | 'active' | 'inactive' | 'archived';
+type ProductBulkAction = '' | 'activate' | 'draft' | 'archive' | 'delete_permanent';
 
 interface ProductRow {
   id: string;
@@ -71,16 +72,16 @@ export class ProductListComponent implements OnInit, OnDestroy {
   private searchTimer?: ReturnType<typeof setTimeout>;
 
   protected readonly statusMeta: Record<ProductStatus, { label: string; class: string }> = {
-    draft: { label: 'Draft', class: 'badge badge-warning' },
-    active: { label: 'Active', class: 'badge badge-success' },
-    archived: { label: 'Archived', class: 'badge badge-neutral' },
+    draft: { label: 'Nháp', class: 'badge badge-warning' },
+    active: { label: 'Đang bán', class: 'badge badge-success' },
+    archived: { label: 'Lưu trữ', class: 'badge badge-neutral' },
   };
 
   protected readonly statusOptions: Array<{ value: ProductStatusFilter; label: string }> = [
     { value: 'all', label: 'Tất cả trạng thái' },
-    { value: 'active', label: 'Active' },
-    { value: 'draft', label: 'Draft' },
-    { value: 'archived', label: 'Archived' },
+    { value: 'active', label: 'Đang bán' },
+    { value: 'draft', label: 'Nháp' },
+    { value: 'archived', label: 'Lưu trữ' },
   ];
 
   protected readonly sortOptions: Array<{
@@ -100,10 +101,13 @@ export class ProductListComponent implements OnInit, OnDestroy {
   protected products: ProductRow[] = [];
   protected isLoading = false;
   protected isLoadingMore = false;
+  protected isBulkRunning = false;
   protected loadError = '';
+  protected actionSuccess = '';
   protected total = 0;
   protected deletingIds = new Set<string>();
   protected statusUpdatingIds = new Set<string>();
+  protected selectedIds = new Set<string>();
   protected categories: ProductFilterCategory[] = [];
   protected filtersLoading = false;
   protected filtersError = '';
@@ -111,10 +115,36 @@ export class ProductListComponent implements OnInit, OnDestroy {
   protected statusFilter: ProductStatusFilter = 'all';
   protected categoryFilter = '';
   protected sortFilter = 'newest';
+  protected bulkAction: ProductBulkAction = '';
   protected currentPage = 0;
   protected readonly isSuperAdmin = computed(
     () => this.authService.currentUser()?.role === 'super_admin',
   );
+
+  protected get bulkActionOptions(): Array<{ value: ProductBulkAction; label: string }> {
+    const options: Array<{ value: ProductBulkAction; label: string; superAdminOnly?: boolean }> = [
+      { value: 'activate', label: 'Đăng bán' },
+      { value: 'draft', label: 'Chuyển nháp' },
+      { value: 'archive', label: 'Lưu trữ' },
+      { value: 'delete_permanent', label: 'Xóa vĩnh viễn', superAdminOnly: true },
+    ];
+
+    return options
+      .filter((option) => !option.superAdminOnly || this.isSuperAdmin())
+      .map(({ value, label }) => ({ value, label }));
+  }
+
+  protected get selectedCount(): number {
+    return this.selectedIds.size;
+  }
+
+  protected get allVisibleSelected(): boolean {
+    return this.products.length > 0 && this.products.every((product) => this.selectedIds.has(product.id));
+  }
+
+  protected get someVisibleSelected(): boolean {
+    return this.products.some((product) => this.selectedIds.has(product.id)) && !this.allVisibleSelected;
+  }
 
   ngOnInit(): void {
     this.loadFilters();
@@ -132,11 +162,13 @@ export class ProductListComponent implements OnInit, OnDestroy {
       clearTimeout(this.searchTimer);
     }
     this.searchTimer = setTimeout(() => {
+      this.actionSuccess = '';
       this.loadInitialProducts();
     }, 400);
   }
 
   protected applyFilters(): void {
+    this.actionSuccess = '';
     this.loadInitialProducts();
   }
 
@@ -145,7 +177,151 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.statusFilter = 'all';
     this.categoryFilter = '';
     this.sortFilter = 'newest';
+    this.bulkAction = '';
+    this.actionSuccess = '';
     this.loadInitialProducts();
+  }
+
+  protected loadMore(): void {
+    if (this.isLoading || this.isLoadingMore || this.products.length >= this.total) return;
+    this.loadNextPage();
+  }
+
+  protected onView(product: ProductRow): void {
+    const baseUrl = this.resolveUserBaseUrl();
+    window.open(`${baseUrl}/products/${product.id}`, '_blank', 'noopener');
+  }
+
+  protected onEdit(product: ProductRow): void {
+    this.router.navigate(['/products/edit', product.id]);
+  }
+
+  protected onArchive(product: ProductRow): void {
+    if (this.isBulkRunning || this.statusUpdatingIds.has(product.id)) return;
+    this.actionSuccess = '';
+    this.updateProductStatus(product, 'archived');
+  }
+
+  protected onRestore(product: ProductRow): void {
+    if (this.isBulkRunning || this.statusUpdatingIds.has(product.id)) return;
+    this.actionSuccess = '';
+    this.updateProductStatus(product, 'active');
+  }
+
+  protected onDelete(product: ProductRow): void {
+    if (!this.isSuperAdmin()) {
+      this.loadError = 'Chỉ super admin mới được xóa vĩnh viễn.';
+      return;
+    }
+    if (this.isBulkRunning || this.deletingIds.has(product.id)) return;
+
+    const confirmed = window.confirm(`Xóa vĩnh viễn sản phẩm "${product.name}"?`);
+    if (!confirmed) return;
+
+    this.actionSuccess = '';
+    this.deletingIds.add(product.id);
+    this.http.delete(`${this.apiUrl}/products/${product.id}/permanent`).subscribe({
+      next: () => {
+        this.products = this.products.filter((item) => item.id !== product.id);
+        this.selectedIds.delete(product.id);
+        this.total = Math.max(0, this.total - 1);
+        this.actionSuccess = 'Đã xóa vĩnh viễn sản phẩm.';
+      },
+      error: (error) => {
+        console.error('Failed to delete product:', error);
+        this.loadError = error?.error?.message || 'Không thể xóa sản phẩm';
+      },
+      complete: () => {
+        this.deletingIds.delete(product.id);
+      },
+    });
+  }
+
+  protected isSelected(productId: string): boolean {
+    return this.selectedIds.has(productId);
+  }
+
+  protected toggleSelectAll(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      this.products.forEach((product) => this.selectedIds.add(product.id));
+      return;
+    }
+    this.clearSelection();
+  }
+
+  protected toggleSelection(productId: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      this.selectedIds.add(productId);
+    } else {
+      this.selectedIds.delete(productId);
+    }
+  }
+
+  protected clearSelection(): void {
+    this.selectedIds.clear();
+    this.bulkAction = '';
+  }
+
+  protected async applyBulkAction(): Promise<void> {
+    if (!this.bulkAction || !this.selectedCount || this.isBulkRunning) return;
+
+    const action = this.bulkAction;
+    const selectedProducts = this.products.filter((product) => this.selectedIds.has(product.id));
+    if (!selectedProducts.length) {
+      this.clearSelection();
+      return;
+    }
+
+    if (action === 'delete_permanent' && !this.isSuperAdmin()) {
+      this.loadError = 'Chỉ super admin mới được xóa vĩnh viễn.';
+      return;
+    }
+
+    const confirmationMessage =
+      action === 'delete_permanent'
+        ? `Xóa vĩnh viễn ${selectedProducts.length} sản phẩm đã chọn?`
+        : `Áp dụng "${this.getBulkActionLabel(action)}" cho ${selectedProducts.length} sản phẩm đã chọn?`;
+    if (!window.confirm(confirmationMessage)) return;
+
+    this.isBulkRunning = true;
+    this.actionSuccess = '';
+    this.loadError = '';
+
+    let successCount = 0;
+    let firstError = '';
+
+    for (const product of selectedProducts) {
+      try {
+        await this.runBulkAction(product.id, action);
+        successCount += 1;
+      } catch (error: any) {
+        console.error('Failed to run product bulk action:', error);
+        if (!firstError) {
+          firstError =
+            error?.error?.message ||
+            `Không thể ${this.getBulkActionLabel(action).toLowerCase()} sản phẩm "${product.name}".`;
+        }
+      }
+    }
+
+    if (successCount > 0) {
+      await this.loadInitialProducts();
+      this.actionSuccess = `Đã ${this.getBulkActionLabel(action).toLowerCase()} ${successCount} sản phẩm.`;
+    }
+
+    if (firstError) {
+      const failedCount = selectedProducts.length - successCount;
+      this.loadError =
+        failedCount > 1 ? `${firstError} Còn ${failedCount - 1} sản phẩm xử lý thất bại.` : firstError;
+    }
+
+    if (!successCount) {
+      this.bulkAction = '';
+    }
+
+    this.isBulkRunning = false;
   }
 
   private loadFilters(): void {
@@ -167,55 +343,6 @@ export class ProductListComponent implements OnInit, OnDestroy {
       });
   }
 
-  protected loadMore(): void {
-    if (this.isLoading || this.isLoadingMore || this.products.length >= this.total) return;
-    this.loadNextPage();
-  }
-
-  protected onView(product: ProductRow): void {
-    const baseUrl = this.resolveUserBaseUrl();
-    window.open(`${baseUrl}/products/${product.id}`, '_blank', 'noopener');
-  }
-
-  protected onEdit(product: ProductRow): void {
-    this.router.navigate(['/products/edit', product.id]);
-  }
-
-  protected onArchive(product: ProductRow): void {
-    if (this.statusUpdatingIds.has(product.id)) return;
-    this.updateProductStatus(product, 'archived');
-  }
-
-  protected onRestore(product: ProductRow): void {
-    if (this.statusUpdatingIds.has(product.id)) return;
-    this.updateProductStatus(product, 'active');
-  }
-
-  protected onDelete(product: ProductRow): void {
-    if (!this.isSuperAdmin()) {
-      this.loadError = 'Chỉ super admin mới được xoá vĩnh viễn.';
-      return;
-    }
-    if (this.deletingIds.has(product.id)) return;
-    const confirmed = window.confirm(`Xoá vĩnh viễn sản phẩm "${product.name}"?`);
-    if (!confirmed) return;
-
-    this.deletingIds.add(product.id);
-    this.http.delete(`${this.apiUrl}/products/${product.id}/permanent`).subscribe({
-      next: () => {
-        this.products = this.products.filter((item) => item.id !== product.id);
-        this.total = Math.max(0, this.total - 1);
-      },
-      error: (error) => {
-        console.error('Failed to delete product:', error);
-        this.loadError = error?.error?.message || 'Không thể xoá sản phẩm';
-      },
-      complete: () => {
-        this.deletingIds.delete(product.id);
-      },
-    });
-  }
-
   private async loadInitialProducts(): Promise<void> {
     this.isLoading = true;
     this.isLoadingMore = false;
@@ -223,6 +350,8 @@ export class ProductListComponent implements OnInit, OnDestroy {
     this.products = [];
     this.total = 0;
     this.currentPage = 0;
+    this.selectedIds.clear();
+    this.bulkAction = '';
 
     try {
       for (let page = 1; page <= this.initialPageCount; page += 1) {
@@ -316,10 +445,9 @@ export class ProductListComponent implements OnInit, OnDestroy {
   ): Promise<ApiResponse<BackendListResponse<ProductApiItem>>> {
     const params = this.buildParams(page);
     return firstValueFrom(
-      this.http.get<ApiResponse<BackendListResponse<ProductApiItem>>>(
-        `${this.apiUrl}/products`,
-        { params },
-      ),
+      this.http.get<ApiResponse<BackendListResponse<ProductApiItem>>>(`${this.apiUrl}/products`, {
+        params,
+      }),
     );
   }
 
@@ -362,6 +490,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
         this.products = this.products.map((item) =>
           item.id === product.id ? { ...item, status, updatedAt } : item,
         );
+        this.actionSuccess = 'Đã cập nhật trạng thái sản phẩm.';
       },
       error: (error) => {
         console.error('Failed to update status:', error);
@@ -371,6 +500,40 @@ export class ProductListComponent implements OnInit, OnDestroy {
         this.statusUpdatingIds.delete(product.id);
       },
     });
+  }
+
+  private async runBulkAction(productId: string, action: ProductBulkAction): Promise<void> {
+    switch (action) {
+      case 'activate':
+        await firstValueFrom(this.http.put(`${this.apiUrl}/products/${productId}`, { status: 'active' }));
+        return;
+      case 'draft':
+        await firstValueFrom(this.http.put(`${this.apiUrl}/products/${productId}`, { status: 'draft' }));
+        return;
+      case 'archive':
+        await firstValueFrom(this.http.put(`${this.apiUrl}/products/${productId}`, { status: 'inactive' }));
+        return;
+      case 'delete_permanent':
+        await firstValueFrom(this.http.delete(`${this.apiUrl}/products/${productId}/permanent`));
+        return;
+      default:
+        return;
+    }
+  }
+
+  private getBulkActionLabel(action: ProductBulkAction): string {
+    switch (action) {
+      case 'activate':
+        return 'Đăng bán';
+      case 'draft':
+        return 'chuyển nháp';
+      case 'archive':
+        return 'lưu trữ';
+      case 'delete_permanent':
+        return 'xóa vĩnh viễn';
+      default:
+        return 'cập nhật';
+    }
   }
 
   private normalizeStatus(status?: ProductApiStatus): ProductStatus {

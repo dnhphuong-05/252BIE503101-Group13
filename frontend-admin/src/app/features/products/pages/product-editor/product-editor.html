@@ -1,19 +1,22 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">{{ isEditMode ? 'Edit product' : 'New product' }}</div>
-      <div class="page-subtitle">Tạo sản phẩm mới và cấu hình thông tin chi tiết</div>
+      <div class="page-title">{{ isEditMode ? 'Chỉnh sửa sản phẩm' : 'Sản phẩm mới' }}</div>
+      <div class="page-subtitle">Tạo sản phẩm mới và cấu hình thông tin chi tiết cho cửa hàng</div>
     </div>
     <div class="page-actions">
       <button class="btn btn-secondary" (click)="saveDraft()" [disabled]="isSaving">
-        Save draft
+        Lưu nháp
       </button>
       <button class="btn btn-primary" (click)="publishNow()" [disabled]="isSaving">
-        Publish now
+        Đăng ngay
       </button>
     </div>
   </div>
 
+  @if (isLoadingProduct) {
+    <div class="text-sm text-primary-500">Đang tải dữ liệu sản phẩm...</div>
+  }
   @if (loadError) {
     <div class="text-sm text-error">{{ loadError }}</div>
   }
@@ -29,8 +32,8 @@
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Name &amp; description</div>
-            <div class="section-subtitle">Tiêu đề, mô tả và đặc điểm nổi bật</div>
+            <div class="section-title">Tên &amp; mô tả</div>
+            <div class="section-subtitle">Tên hiển thị, mô tả ngắn và nội dung chi tiết</div>
           </div>
         </div>
         <div class="section-grid">
@@ -39,30 +42,49 @@
             <input
               class="input"
               [(ngModel)]="product.name"
-              placeholder="Tên sản phẩm"
+              placeholder="Ví dụ: Áo dài Nhật Bình đỏ"
               (input)="onNameInput()"
             />
           </div>
           <div>
             <label class="label">Slug</label>
-            <input class="input" [(ngModel)]="product.slug" placeholder="ao-dai-nhat-binh" />
+            <input class="input" [(ngModel)]="product.slug" placeholder="ao-dai-nhat-binh-do" />
           </div>
         </div>
         <div class="mt-3">
-          <label class="label">Mô tả</label>
-          <textarea class="textarea" rows="4" [(ngModel)]="product.description"></textarea>
+          <label class="label">Mô tả ngắn</label>
+          <textarea
+            class="textarea"
+            rows="2"
+            [(ngModel)]="product.shortDescription"
+            placeholder="Tóm tắt ngắn để hiển thị ở card và trang chi tiết"
+          ></textarea>
         </div>
         <div class="mt-3">
-          <label class="label">Key features</label>
-          <textarea class="textarea" rows="3" [(ngModel)]="product.features"></textarea>
+          <label class="label">Mô tả chi tiết</label>
+          <textarea
+            class="textarea"
+            rows="4"
+            [(ngModel)]="product.description"
+            placeholder="Mô tả chất liệu, kiểu dáng, dịp sử dụng..."
+          ></textarea>
+        </div>
+        <div class="mt-3">
+          <label class="label">Đặc điểm nổi bật</label>
+          <textarea
+            class="textarea"
+            rows="3"
+            [(ngModel)]="product.features"
+            placeholder="Mỗi dòng là một đặc điểm"
+          ></textarea>
         </div>
       </div>
 
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Images</div>
-            <div class="section-subtitle">Upload ảnh cover và gallery</div>
+            <div class="section-title">Hình ảnh</div>
+            <div class="section-subtitle">Tải ảnh bìa và ảnh gallery cho sản phẩm</div>
           </div>
         </div>
         <label
@@ -93,7 +115,7 @@
           @if (product.images.length) {
             @for (image of product.images; track image) {
               <div class="gallery-thumb filled">
-                <img [src]="image" alt="Product image" />
+                <img [src]="image" alt="Ảnh sản phẩm" />
               </div>
             }
           } @else {
@@ -107,41 +129,93 @@
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Price</div>
-            <div class="section-subtitle">Giá bán, giá thuê và tiền cọc</div>
+            <div class="section-title">Giá bán &amp; giảm giá</div>
+            <div class="section-subtitle">
+              Nhập giá gốc, phần trăm giảm và hệ thống sẽ tự tính giá sau giảm
+            </div>
           </div>
         </div>
         <div class="section-grid">
           <div>
-            <label class="label">Giá bán</label>
-            <input class="input" type="number" [(ngModel)]="product.salePrice" />
+            <label class="label">Giá gốc</label>
+            <input
+              class="input"
+              type="number"
+              min="0"
+              [(ngModel)]="product.priceBuy"
+              (ngModelChange)="onPriceBuyChange()"
+              placeholder="3500000"
+            />
+          </div>
+          <div>
+            <label class="label">Giảm giá (%)</label>
+            <input
+              class="input"
+              type="number"
+              min="0"
+              max="100"
+              [(ngModel)]="product.discountPercent"
+              (ngModelChange)="onDiscountPercentChange()"
+              placeholder="20"
+            />
+          </div>
+          <div>
+            <label class="label">Giá sau giảm</label>
+            <div class="price-result">
+              @if (product.discountPercent > 0) {
+                <strong>{{ product.priceSale | number }} đ</strong>
+              } @else {
+                <span>Không áp dụng</span>
+              }
+            </div>
           </div>
           <div>
             <label class="label">Giá thuê</label>
-            <input class="input" type="number" [(ngModel)]="product.rentPrice" />
+            <input
+              class="input"
+              type="number"
+              min="0"
+              [(ngModel)]="product.rentPrice"
+              placeholder="180000"
+            />
           </div>
           <div>
             <label class="label">Tiền cọc</label>
-            <input class="input" type="number" [(ngModel)]="product.deposit" />
+            <input
+              class="input"
+              type="number"
+              min="0"
+              [(ngModel)]="product.deposit"
+              placeholder="300000"
+            />
           </div>
+          <div>
+            <label class="label">Số tiền giảm</label>
+            <div class="price-result muted">{{ savingsAmount | number }} đ</div>
+          </div>
+        </div>
+        <div class="discount-hint mt-3">
+          Khi nhập phần trăm giảm giá, hệ thống sẽ lưu `price_buy` là giá gốc và `price_sale`
+          là giá sau giảm.
         </div>
       </div>
 
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Category &amp; attributes</div>
-            <div class="section-subtitle">Danh mục, tag và thuộc tính</div>
+            <div class="section-title">Danh mục &amp; thuộc tính</div>
+            <div class="section-subtitle">
+              Bổ sung các trường hiện có trong collection `products`
+            </div>
           </div>
         </div>
         <div class="section-grid">
           <div>
             <label class="label">Danh mục</label>
             <select class="select" [(ngModel)]="product.category">
-              <option>Áo dài truyền thống</option>
-              <option>Trang phục cung đình</option>
-              <option>Áo dài nam</option>
-              <option>May đo</option>
+              @for (category of categoryOptions; track category) {
+                <option [value]="category">{{ category }}</option>
+              }
             </select>
           </div>
           <div>
@@ -149,8 +223,8 @@
             <input class="input" [(ngModel)]="product.tags" placeholder="lụa, thêu tay" />
           </div>
           <div>
-            <label class="label">Size</label>
-            <input class="input" [(ngModel)]="product.size" placeholder="S/M/L" />
+            <label class="label">Kích cỡ</label>
+            <input class="input" [(ngModel)]="product.size" placeholder="S, M, L" />
           </div>
           <div>
             <label class="label">Màu sắc</label>
@@ -160,30 +234,54 @@
             <label class="label">Chất liệu</label>
             <input class="input" [(ngModel)]="product.material" placeholder="Lụa tơ tằm" />
           </div>
+          <div>
+            <label class="label">Niên đại</label>
+            <input class="input" [(ngModel)]="product.era" placeholder="Triều Nguyễn" />
+          </div>
+          <div>
+            <label class="label">Kỹ thuật / chế tác</label>
+            <input
+              class="input"
+              [(ngModel)]="product.craftsmanship"
+              placeholder="Dệt chìm thủ công"
+            />
+          </div>
+          <div>
+            <label class="label">Xuất xứ</label>
+            <input class="input" [(ngModel)]="product.origin" placeholder="Việt Nam" />
+          </div>
+          <div>
+            <label class="label">Giới tính</label>
+            <select class="select" [(ngModel)]="product.gender">
+              @for (gender of genderOptions; track gender) {
+                <option [value]="gender">{{ gender }}</option>
+              }
+            </select>
+          </div>
         </div>
       </div>
 
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Inventory</div>
-            <div class="section-subtitle">SKU, tồn kho và trạng thái</div>
+            <div class="section-title">Kho hàng</div>
+            <div class="section-subtitle">SKU, tồn kho và trạng thái hiển thị</div>
           </div>
         </div>
         <div class="section-grid">
           <div>
             <label class="label">SKU</label>
-            <input class="input" [(ngModel)]="product.sku" />
+            <input class="input" [(ngModel)]="product.sku" placeholder="VP-AD-2401" />
           </div>
           <div>
             <label class="label">Tồn kho</label>
-            <input class="input" type="number" [(ngModel)]="product.stock" />
+            <input class="input" type="number" min="0" [(ngModel)]="product.stock" />
           </div>
           <div>
             <label class="label">Trạng thái</label>
             <select class="select" [(ngModel)]="product.status">
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
+              <option value="draft">Nháp</option>
+              <option value="published">Đăng bán</option>
             </select>
           </div>
         </div>
@@ -192,40 +290,63 @@
 
     <aside class="form-side">
       <div class="card preview-card">
-        <div class="section-title">Preview</div>
-        <div class="preview-media">
-          @if (previewImage) {
-            <img [src]="previewImage" alt="Preview" />
+        <div class="preview-header">
+          <div class="section-title">Xem trước</div>
+          @if (hasDiscount) {
+            <span class="discount-badge">-{{ product.discountPercent }}%</span>
           }
         </div>
-        <div class="item-title">{{ product.name || 'Product name' }}</div>
+        <div class="preview-media">
+          @if (previewImage) {
+            <img [src]="previewImage" alt="Xem trước sản phẩm" />
+          } @else {
+            <div class="preview-empty">Chưa có ảnh sản phẩm</div>
+          }
+        </div>
+        <div class="item-title">{{ product.name || 'Tên sản phẩm' }}</div>
+        <div class="preview-description">
+          {{ product.shortDescription || 'Mô tả ngắn sẽ hiển thị ở đây.' }}
+        </div>
         <div class="text-sm text-primary-500">
           {{ product.category || 'Chưa chọn danh mục' }}
         </div>
-        <div class="price-main">{{ product.salePrice | number }} đ</div>
-        <span class="badge badge-info">{{ product.status }}</span>
+        <div class="preview-pricing">
+          <div class="price-main">{{ previewCurrentPrice | number }} đ</div>
+          @if (hasDiscount) {
+            <div class="price-strike">{{ product.priceBuy | number }} đ</div>
+          }
+        </div>
+        <div class="preview-meta">
+          <span>{{ product.era || 'Chưa có niên đại' }}</span>
+          <span>{{ product.origin || 'Chưa có xuất xứ' }}</span>
+        </div>
+        <span class="badge badge-info">{{ product.status === 'published' ? 'Đăng bán' : 'Nháp' }}</span>
       </div>
 
       <div class="card section-card">
-        <div class="section-title">Status</div>
+        <div class="section-title">Tóm tắt</div>
         <div class="status-stack">
           <div class="status-row">
-            <span class="text-sm text-primary-600">Visibility</span>
-            <span class="chip chip-accent">{{
-              product.status === 'published' ? 'Published' : 'Draft'
-            }}</span>
+            <span class="text-sm text-primary-600">Giảm giá</span>
+            <span class="chip chip-accent">
+              {{ product.discountPercent > 0 ? product.discountPercent + '%' : 'Không có' }}
+            </span>
           </div>
           <div class="status-row">
-            <span class="text-sm text-primary-600">Inventory</span>
-            <span class="text-sm font-semibold">{{ product.stock }} items</span>
+            <span class="text-sm text-primary-600">Giá thuê</span>
+            <span class="text-sm font-semibold">{{ product.rentPrice | number }} đ</span>
+          </div>
+          <div class="status-row">
+            <span class="text-sm text-primary-600">Tồn kho</span>
+            <span class="text-sm font-semibold">{{ product.stock }} sản phẩm</span>
           </div>
         </div>
         <div class="mt-3">
           <button class="btn btn-secondary w-full" (click)="saveDraft()" [disabled]="isSaving">
-            Save draft
+            Lưu nháp
           </button>
           <button class="btn btn-primary w-full mt-2" (click)="publishNow()" [disabled]="isSaving">
-            Publish now
+            Đăng ngay
           </button>
         </div>
       </div>

@@ -6,6 +6,9 @@ import UserProfile from "../../models/user/UserProfile.js";
 import ApiError from "../../utils/ApiError.js";
 
 const buildCommentsId = (blogId, commentId) => `bc_${blogId}_${commentId}`;
+const PUBLIC_COMMENT_FILTER = {
+  $or: [{ status: "approved" }, { status: { $exists: false } }],
+};
 
 const normalizeParentId = (parentId, blogId) => {
   if (parentId === null || parentId === undefined || parentId === "") {
@@ -38,16 +41,24 @@ class BlogCommentService extends BaseService {
    * @param {Boolean} options.includeReplies - If true, return all comments including replies
    */
   async getByBlogId(blogId, options = {}) {
-    const { includeReplies = false, ...queryOptions } = options;
+    const {
+      includeReplies = false,
+      publicOnly = true,
+      ...queryOptions
+    } = options;
+    const visibilityFilter = publicOnly ? PUBLIC_COMMENT_FILTER : {};
 
     // If includeReplies is true, get all comments (root + replies)
     if (includeReplies) {
-      return await this.getAll({ blog_id: blogId }, queryOptions);
+      return await this.getAll(
+        { blog_id: blogId, ...visibilityFilter },
+        queryOptions,
+      );
     }
 
     // Otherwise, only get root comments (parent_id = null)
     return await this.getAll(
-      { blog_id: blogId, parent_id: null },
+      { blog_id: blogId, parent_id: null, ...visibilityFilter },
       queryOptions,
     );
   }
@@ -56,6 +67,7 @@ class BlogCommentService extends BaseService {
    * Get replies for a comment
    */
   async getReplies(parentId, options = {}) {
+    const { publicOnly = true, ...queryOptions } = options;
     let normalizedParentId = parentId;
 
     if (typeof parentId === "number" || /^\d+$/.test(parentId)) {
@@ -72,7 +84,13 @@ class BlogCommentService extends BaseService {
       }
     }
 
-    return await this.getAll({ parent_id: normalizedParentId }, options);
+    return await this.getAll(
+      {
+        parent_id: normalizedParentId,
+        ...(publicOnly ? PUBLIC_COMMENT_FILTER : {}),
+      },
+      queryOptions,
+    );
   }
 
   /**
@@ -146,6 +164,7 @@ class BlogCommentService extends BaseService {
       comments_id,
       comment_seq: nextSeq,
       is_author_reply: isAuthorReply,
+      status: isAuthorReply ? "approved" : "pending",
       created_at: new Date(),
     });
   }
@@ -257,8 +276,19 @@ class BlogCommentService extends BaseService {
   /**
    * Get comment count for blog
    */
-  async getCommentCount(blogId) {
-    return await this.count({ blog_id: blogId });
+  async getCommentCount(blogId, options = {}) {
+    const { includeReplies = false, publicOnly = true } = options;
+    const filter = { blog_id: blogId };
+
+    if (!includeReplies) {
+      filter.parent_id = null;
+    }
+
+    if (publicOnly) {
+      Object.assign(filter, PUBLIC_COMMENT_FILTER);
+    }
+
+    return await this.count(filter);
   }
 }
 

@@ -13,6 +13,7 @@ export const getReviewsSchema = Joi.object({
     .default("created_at"),
   sortOrder: Joi.string().valid("asc", "desc").default("desc"),
   rating: Joi.number().integer().min(1).max(5),
+  hasMedia: Joi.boolean().default(false),
 });
 
 // Schema cho params productId
@@ -47,13 +48,13 @@ export const reviewIdParamSchema = Joi.object({
 
 // Schema cho việc tạo review mới
 export const createReviewSchema = Joi.object({
-  product_id: Joi.number().integer().positive().required().messages({
+  product_id: Joi.number().integer().positive().optional().messages({
     "any.required": "ID sản phẩm là bắt buộc",
   }),
-  user_id: Joi.number().integer().positive().required().messages({
+  user_id: Joi.number().integer().positive().optional().messages({
     "any.required": "ID người dùng là bắt buộc",
   }),
-  user_name: Joi.string().required().trim().min(2).max(100).messages({
+  user_name: Joi.string().trim().min(2).max(100).optional().messages({
     "any.required": "Tên người dùng là bắt buộc",
   }),
   rating: Joi.number().integer().min(1).max(5).required().messages({
@@ -66,7 +67,8 @@ export const createReviewSchema = Joi.object({
     "any.required": "Nội dung đánh giá là bắt buộc",
     "string.min": "Nội dung đánh giá phải có ít nhất 10 ký tự",
   }),
-  images: Joi.array().items(Joi.string().uri()).max(5),
+  images: Joi.array().items(Joi.string().uri()).max(6),
+  videos: Joi.array().items(Joi.string().uri()).max(6),
   verified_purchase: Joi.boolean().default(false),
 });
 
@@ -75,12 +77,13 @@ export const updateReviewSchema = Joi.object({
   rating: Joi.number().integer().min(1).max(5),
   title: Joi.string().trim().max(200).allow(""),
   comment: Joi.string().trim().min(10).max(2000),
-  images: Joi.array().items(Joi.string().uri()).max(5),
+  images: Joi.array().items(Joi.string().uri()).max(6),
+  videos: Joi.array().items(Joi.string().uri()).max(6),
 }).min(1);
 
 // Schema cho mark helpful
 export const markHelpfulSchema = Joi.object({
-  user_id: Joi.number().integer().positive().required().messages({
+  user_id: Joi.number().integer().positive().optional().messages({
     "any.required": "ID người dùng là bắt buộc",
   }),
 });

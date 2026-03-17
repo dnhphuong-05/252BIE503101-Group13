@@ -30,6 +30,7 @@ export const getCommentsByBlogId = catchAsync(async (req, res) => {
     page: parseInt(page) || 1,
     limit: parseInt(limit) || 20,
     includeReplies: includeReplies === "true",
+    publicOnly: true,
   });
 
   paginatedResponse(
@@ -50,6 +51,7 @@ export const getReplies = catchAsync(async (req, res) => {
   const result = await blogCommentService.getReplies(commentId, {
     page: parseInt(page) || 1,
     limit: parseInt(limit) || 10,
+    publicOnly: true,
   });
 
   paginatedResponse(
@@ -106,7 +108,9 @@ export const likeComment = catchAsync(async (req, res) => {
 export const getCommentCount = catchAsync(async (req, res) => {
   const blogId = req.params.blogPostId || req.params.blogId;
 
-  const count = await blogCommentService.getCommentCount(blogId);
+  const count = await blogCommentService.getCommentCount(blogId, {
+    publicOnly: true,
+  });
 
   successResponse(res, { count }, "Comment count retrieved successfully");
 });

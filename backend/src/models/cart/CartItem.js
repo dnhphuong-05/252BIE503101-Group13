@@ -34,6 +34,16 @@ const cartItemSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    original_price_snapshot: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    product_discount_snapshot: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     size: {
       type: String,
       default: null,

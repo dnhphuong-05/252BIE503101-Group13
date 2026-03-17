@@ -34,9 +34,7 @@
               <h3>Địa chỉ nhận hàng</h3>
               @if (isLoggedIn) {
                 <div class="block-actions">
-                  <button class="text-btn" type="button" (click)="openAddressModal()">
-                    Thay đổi
-                  </button>
+                  <button class="text-btn" type="button" (click)="openAddressModal()">Thay đổi</button>
                   <button class="text-btn primary" type="button" (click)="openAddressForm()">
                     Thêm địa chỉ
                   </button>
@@ -69,34 +67,108 @@
               }
             } @else {
               <div class="address-form">
+                @if (administrativeNote) {
+                  <p class="administrative-note">{{ administrativeNote }}</p>
+                }
+
                 <div class="form-grid">
                   <div class="form-field">
                     <label>Họ và tên *</label>
-                    <input type="text" [(ngModel)]="guestInfo.full_name" placeholder="Nhập họ tên" />
+                    <input
+                      type="text"
+                      [(ngModel)]="guestInfo.full_name"
+                      (blur)="markGuestFieldTouched('full_name')"
+                      [class.is-invalid]="hasGuestFieldError('full_name')"
+                      placeholder="Nhập họ tên"
+                    />
+                    @if (getGuestFieldError('full_name')) {
+                      <span class="field-error">{{ getGuestFieldError('full_name') }}</span>
+                    }
                   </div>
+
                   <div class="form-field">
                     <label>Số điện thoại *</label>
-                    <input type="text" [(ngModel)]="guestInfo.phone" placeholder="Nhập số điện thoại" />
+                    <input
+                      type="text"
+                      [(ngModel)]="guestInfo.phone"
+                      (blur)="markGuestFieldTouched('phone')"
+                      [class.is-invalid]="hasGuestFieldError('phone')"
+                      placeholder="Nhập số điện thoại"
+                    />
+                    @if (getGuestFieldError('phone')) {
+                      <span class="field-error">{{ getGuestFieldError('phone') }}</span>
+                    }
                   </div>
+
                   <div class="form-field">
                     <label>Email</label>
-                    <input type="email" [(ngModel)]="guestInfo.email" placeholder="Email (không bắt buộc)" />
+                    <input
+                      type="email"
+                      [(ngModel)]="guestInfo.email"
+                      (blur)="markGuestFieldTouched('email')"
+                      [class.is-invalid]="hasGuestFieldError('email')"
+                      placeholder="Email (không bắt buộc)"
+                    />
+                    @if (getGuestFieldError('email')) {
+                      <span class="field-error">{{ getGuestFieldError('email') }}</span>
+                    }
                   </div>
+
                   <div class="form-field">
                     <label>Tỉnh/Thành phố *</label>
-                    <input type="text" [(ngModel)]="guestInfo.address.province" placeholder="Ví dụ: Hà Nội" />
+                    <select
+                      [ngModel]="guestProvinceCode"
+                      (ngModelChange)="onGuestProvinceChange($event)"
+                      (blur)="markGuestFieldTouched('province')"
+                      [class.is-invalid]="hasGuestFieldError('province')"
+                      [disabled]="isLoadingProvinces || provinces.length === 0"
+                    >
+                      <option value="">{{ getProvincePlaceholder() }}</option>
+                      @for (province of provinces; track province.code) {
+                        <option [value]="province.code">{{ province.name }}</option>
+                      }
+                    </select>
+                    @if (getGuestFieldError('province')) {
+                      <span class="field-error">{{ getGuestFieldError('province') }}</span>
+                    }
                   </div>
+
                   <div class="form-field">
-                    <label>Quận/Huyện</label>
-                    <input type="text" [(ngModel)]="guestInfo.address.district" placeholder="Ví dụ: Hoàn Kiếm" />
+                    <label>Xã/Phường/Đặc khu *</label>
+                    <select
+                      [ngModel]="guestWardCode"
+                      (ngModelChange)="onGuestWardChange($event)"
+                      (blur)="markGuestFieldTouched('ward')"
+                      [class.is-invalid]="hasGuestFieldError('ward')"
+                      [disabled]="!guestProvinceCode || isLoadingGuestWards"
+                    >
+                      <option value="">{{ getGuestWardPlaceholder() }}</option>
+                      @for (ward of guestWards; track ward.code) {
+                        <option [value]="ward.code">{{ ward.name }}</option>
+                      }
+                    </select>
+                    @if (guestProvinceCode && !isLoadingGuestWards && guestWards.length === 0) {
+                      <span class="field-hint">
+                        Chưa tải được danh sách xã/phường cho địa phương này.
+                      </span>
+                    }
+                    @if (getGuestFieldError('ward')) {
+                      <span class="field-error">{{ getGuestFieldError('ward') }}</span>
+                    }
                   </div>
-                  <div class="form-field">
-                    <label>Phường/Xã *</label>
-                    <input type="text" [(ngModel)]="guestInfo.address.ward" placeholder="Ví dụ: Hàng Bạc" />
-                  </div>
+
                   <div class="form-field full">
                     <label>Địa chỉ chi tiết *</label>
-                    <input type="text" [(ngModel)]="guestInfo.address.detail" placeholder="Số nhà, tên đường..." />
+                    <input
+                      type="text"
+                      [(ngModel)]="guestInfo.address.detail"
+                      (blur)="markGuestFieldTouched('detail')"
+                      [class.is-invalid]="hasGuestFieldError('detail')"
+                      placeholder="Số nhà, tên đường..."
+                    />
+                    @if (getGuestFieldError('detail')) {
+                      <span class="field-error">{{ getGuestFieldError('detail') }}</span>
+                    }
                   </div>
                 </div>
               </div>
@@ -182,25 +254,53 @@
             <div class="block-header">
               <h3>Tổng tiền</h3>
             </div>
-            <div class="summary-line">
-              <span>Tạm tính</span>
+            <div class="summary-line summary-group">
+              <span>Tổng phụ sản phẩm</span>
               <strong>{{ subtotal | number }}đ</strong>
             </div>
-            <div class="summary-line">
+            <div class="summary-line summary-detail">
+              <span>Giá gốc</span>
+              <strong>{{ productOriginalSubtotal | number }}đ</strong>
+            </div>
+            <div class="summary-line summary-detail">
+              <span>Giảm giá sản phẩm</span>
+              <strong>-{{ productDiscountAmount | number }}đ</strong>
+            </div>
+            <div class="summary-line summary-group">
+              <span>Tổng phụ vận chuyển</span>
+              <strong>{{ shippingSubtotal | number }}đ</strong>
+            </div>
+            <div class="summary-line summary-detail">
               <span>Phí vận chuyển</span>
               <strong>{{ shippingFee | number }}đ</strong>
             </div>
-            <div class="summary-line">
-              <span>Giảm giá</span>
-              <strong>-{{ discountAmount | number }}đ</strong>
+            <div class="summary-line summary-detail">
+              <span>Giảm giá vận chuyển</span>
+              <strong>-{{ shippingDiscountAmount | number }}đ</strong>
             </div>
             <div class="summary-total">
-              <span>Tổng thanh toán</span>
+              <span>TỔNG</span>
               <strong>{{ total | number }}đ</strong>
             </div>
             <div class="voucher-placeholder">
-              <span>Voucher</span>
-              <button type="button" class="text-btn">Chọn voucher</button>
+              <div class="voucher-copy">
+                <span>Voucher</span>
+                @if (hasVoucherApplied) {
+                  <small class="voucher-meta">Đã áp dụng: {{ appliedVoucherLabel }}</small>
+                } @else if (isLoggedIn) {
+                  <small class="voucher-meta">Dùng điểm thưởng để mở ưu đãi hiện có.</small>
+                } @else {
+                  <small class="voucher-meta">Đăng nhập để xem voucher theo điểm thưởng.</small>
+                }
+              </div>
+              <div class="voucher-action-group">
+                @if (hasVoucherApplied) {
+                  <button type="button" class="text-btn" (click)="removeVoucher()">Bỏ chọn</button>
+                }
+                <button type="button" class="text-btn" (click)="openVoucherModal()">
+                  {{ voucherButtonLabel }}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -237,12 +337,12 @@
           <button type="button" class="modal-close" (click)="closeAddressModal()">×</button>
         </div>
         <div class="modal-body">
-          @for (addr of addresses; track addr.address_id) {
+          @for (addr of addresses; track addr.address_id ?? addr._id ?? addr) {
             <label class="address-option">
               <input
                 type="radio"
                 name="address_pick"
-                [checked]="addr.address_id === selectedAddress?.address_id"
+                [checked]="(addr.address_id || addr._id) === (selectedAddress?.address_id || selectedAddress?._id)"
                 (change)="selectAddress(addr)"
               />
               <div class="address-option-body">
@@ -273,40 +373,103 @@
 
   @if (showAddressForm) {
     <div class="modal-overlay" (click)="closeAddressForm()">
-      <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal modal-address-form" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h4>Thêm địa chỉ</h4>
           <button type="button" class="modal-close" (click)="closeAddressForm()">×</button>
         </div>
         <div class="modal-body">
+          @if (administrativeNote) {
+            <p class="administrative-note">{{ administrativeNote }}</p>
+          }
+
           <div class="form-grid">
             <div class="form-field">
               <label>Người nhận *</label>
-              <input type="text" [(ngModel)]="newAddress.receiver_name" />
+              <input
+                type="text"
+                [(ngModel)]="newAddress.receiver_name"
+                (blur)="markNewAddressFieldTouched('receiver_name')"
+                [class.is-invalid]="hasNewAddressFieldError('receiver_name')"
+                placeholder="Nhập tên người nhận"
+              />
+              @if (getNewAddressFieldError('receiver_name')) {
+                <span class="field-error">{{ getNewAddressFieldError('receiver_name') }}</span>
+              }
             </div>
+
             <div class="form-field">
               <label>Số điện thoại *</label>
-              <input type="text" [(ngModel)]="newAddress.phone" />
+              <input
+                type="text"
+                [(ngModel)]="newAddress.phone"
+                (blur)="markNewAddressFieldTouched('phone')"
+                [class.is-invalid]="hasNewAddressFieldError('phone')"
+                placeholder="Nhập số điện thoại"
+              />
+              @if (getNewAddressFieldError('phone')) {
+                <span class="field-error">{{ getNewAddressFieldError('phone') }}</span>
+              }
             </div>
+
             <div class="form-field">
               <label>Tỉnh/Thành phố *</label>
-              <input type="text" [(ngModel)]="newAddress.province" />
+              <select
+                [ngModel]="newAddressProvinceCode"
+                (ngModelChange)="onNewAddressProvinceChange($event)"
+                (blur)="markNewAddressFieldTouched('province')"
+                [class.is-invalid]="hasNewAddressFieldError('province')"
+                [disabled]="isLoadingProvinces || provinces.length === 0"
+              >
+                <option value="">{{ getProvincePlaceholder() }}</option>
+                @for (province of provinces; track province.code) {
+                  <option [value]="province.code">{{ province.name }}</option>
+                }
+              </select>
+              @if (getNewAddressFieldError('province')) {
+                <span class="field-error">{{ getNewAddressFieldError('province') }}</span>
+              }
             </div>
+
             <div class="form-field">
-              <label>Quận/Huyện</label>
-              <input type="text" [(ngModel)]="newAddress.district" />
+              <label>Xã/Phường/Đặc khu *</label>
+              <select
+                [ngModel]="newAddressWardCode"
+                (ngModelChange)="onNewAddressWardChange($event)"
+                (blur)="markNewAddressFieldTouched('ward')"
+                [class.is-invalid]="hasNewAddressFieldError('ward')"
+                [disabled]="!newAddressProvinceCode || isLoadingNewAddressWards"
+              >
+                <option value="">{{ getNewAddressWardPlaceholder() }}</option>
+                @for (ward of newAddressWards; track ward.code) {
+                  <option [value]="ward.code">{{ ward.name }}</option>
+                }
+              </select>
+              @if (newAddressProvinceCode && !isLoadingNewAddressWards && newAddressWards.length === 0) {
+                <span class="field-hint">Chưa tải được danh sách xã/phường cho địa phương này.</span>
+              }
+              @if (getNewAddressFieldError('ward')) {
+                <span class="field-error">{{ getNewAddressFieldError('ward') }}</span>
+              }
             </div>
-            <div class="form-field">
-              <label>Phường/Xã *</label>
-              <input type="text" [(ngModel)]="newAddress.ward" />
-            </div>
+
             <div class="form-field full">
               <label>Địa chỉ chi tiết *</label>
-              <input type="text" [(ngModel)]="newAddress.address_detail" />
+              <input
+                type="text"
+                [(ngModel)]="newAddress.address_detail"
+                (blur)="markNewAddressFieldTouched('address_detail')"
+                [class.is-invalid]="hasNewAddressFieldError('address_detail')"
+                placeholder="Số nhà, tên đường, tòa nhà..."
+              />
+              @if (getNewAddressFieldError('address_detail')) {
+                <span class="field-error">{{ getNewAddressFieldError('address_detail') }}</span>
+              }
             </div>
+
             <div class="form-field full">
               <label>Ghi chú</label>
-              <input type="text" [(ngModel)]="newAddress.note" />
+              <input type="text" [(ngModel)]="newAddress.note" placeholder="Ví dụ: Giao giờ hành chính" />
             </div>
           </div>
         </div>
@@ -317,4 +480,80 @@
       </div>
     </div>
   }
+
+  @if (showVoucherModal) {
+    <div class="modal-overlay" (click)="closeVoucherModal()">
+      <div class="modal modal-voucher" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h4>Chọn voucher</h4>
+          <button type="button" class="modal-close" (click)="closeVoucherModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="voucher-points-panel">
+            <div>
+              <span class="voucher-panel-label">Điểm thưởng hiện có</span>
+              <strong>{{ loyaltyPoints | number }} điểm</strong>
+            </div>
+            <div class="voucher-tier-badge">{{ loyaltyTierName }}</div>
+          </div>
+
+          @if (loyaltyVoucherError) {
+            <p class="field-hint">{{ loyaltyVoucherError }}</p>
+          }
+
+          @if (isLoadingLoyaltyVouchers) {
+            <p class="voucher-empty">Đang tải danh sách voucher theo điểm thưởng...</p>
+          } @else {
+            <div class="voucher-list">
+              @for (voucher of loyaltyVouchers; track voucher.id) {
+                <div
+                  class="voucher-card"
+                  [class.locked]="!voucher.is_eligible"
+                  [class.selected]="selectedVoucher?.id === voucher.id"
+                >
+                  <div class="voucher-card-head">
+                    <div>
+                      <div class="voucher-card-title">{{ voucher.title }}</div>
+                      <div class="voucher-card-desc">{{ voucher.description }}</div>
+                    </div>
+                    <div class="voucher-discount-pill">
+                      {{ formatCurrency(getVoucherDiscountPreview(voucher)) }}
+                    </div>
+                  </div>
+
+                  <div class="voucher-card-meta">
+                    <span>Cần {{ voucher.required_points | number }} điểm</span>
+                    <span>{{ getVoucherStatusLabel(voucher) }}</span>
+                  </div>
+
+                  <div class="voucher-card-actions">
+                    <button
+                      type="button"
+                      [class]="selectedVoucher?.id === voucher.id ? 'btn-outline' : 'btn-primary'"
+                      [disabled]="!voucher.is_eligible"
+                      (click)="applyVoucher(voucher)"
+                    >
+                      {{ getVoucherActionLabel(voucher) }}
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+        <div class="modal-actions">
+          <button class="btn-outline" type="button" (click)="closeVoucherModal()">Đóng</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <app-login-prompt-modal
+    [show]="showVoucherLoginPrompt"
+    [title]="'Đăng nhập để dùng voucher điểm thưởng?'"
+    [message]="'Voucher checkout được mở theo điểm thưởng tài khoản. Bạn đăng nhập để xem và áp dụng voucher nhé.'"
+    (close)="closeVoucherLoginPrompt()"
+    (continueAsGuest)="continueWithoutVoucher()"
+    (goToLogin)="goToLoginForVoucher()"
+  ></app-login-prompt-modal>
 </div>

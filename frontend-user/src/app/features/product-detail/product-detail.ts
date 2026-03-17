@@ -9,10 +9,20 @@ import { GuestCustomerService, GuestCustomerPayload } from '../../services/guest
 import { QuickOrderService } from '../../services/quick-order.service';
 import { BuyOrderService, CreateBuyOrderPayload } from '../../services/buy-order.service';
 import { CartService, CartItem } from '../../services/cart.service';
+import { ToastService } from '../../services/toast.service';
 import { Subject, takeUntil } from 'rxjs';
 import { GuestFormComponent } from '../../shared/components/guest-form/guest-form';
 import { OrderSuccessModalComponent } from '../../shared/components/order-success-modal/order-success-modal';
 import { LoginPromptModalComponent } from '../../shared/components/login-prompt-modal/login-prompt-modal';
+
+type ReviewFilter = 'all' | 'media' | 1 | 2 | 3 | 4 | 5;
+
+interface PendingReviewMedia {
+  file: File;
+  previewUrl: string;
+  type: 'image' | 'video';
+  name: string;
+}
 
 @Component({
   selector: 'app-product-detail',
@@ -47,6 +57,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   reviewTotal: number = 0;
   reviewPages: number = 0;
   reviewFilterRating: number | null = null;
+  reviewHasMediaOnly: boolean = false;
   reviewSortBy: string = 'created_at';
   reviewSortOrder: 'asc' | 'desc' = 'desc';
 
@@ -74,16 +85,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   // Write review
   showReviewForm: boolean = false;
+  canWriteReview: boolean = false;
+  hasCompletedPurchase: boolean = false;
+  reviewEligibilityLoaded: boolean = false;
+  existingUserReview: Review | null = null;
+  reviewActionMessage: string = '';
+  reviewActionError: string = '';
+  isSubmittingReview: boolean = false;
+  selectedReviewMedia: PendingReviewMedia[] = [];
   newReview = {
-    rating: 5,
+    rating: 0,
     comment: '',
-    userName: '',
   };
 
   // Social sharing
   shareUrl: string = '';
 
   private destroy$ = new Subject<void>();
+  private pendingReviewPrompt: boolean = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -95,12 +114,23 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     private quickOrderService: QuickOrderService,
     private buyOrderService: BuyOrderService,
     private cartService: CartService,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit() {
     this.isLoggedIn = this.authService.isLoggedIn();
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe((user) => {
       this.isLoggedIn = !!user;
+      if (this.product) {
+        this.loadMyReviewEligibility(this.product.product_id.toString());
+      }
+    });
+
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      this.pendingReviewPrompt = params.get('writeReview') === '1';
+      if (params.get('tab') === 'reviews' || this.pendingReviewPrompt) {
+        this.activeTab = 'reviews';
+      }
     });
 
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -124,6 +154,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.clearSelectedReviewMedia();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -156,6 +187,8 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         ) {
           this.selectedColor = this.product.attributes.colors[0];
         }
+
+        this.loadMyReviewEligibility(this.product.product_id.toString());
 
         // Load related products
         this.loadRelatedProducts();
@@ -295,12 +328,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     if (!this.product) return;
 
     if (this.getProductSizes().length > 0 && !this.selectedSize) {
-      alert('Vui lòng chọn kích thước');
+      this.toastService.info('Vui lòng chọn kích thước trước khi thêm vào giỏ hàng.');
       return;
     }
 
     if (this.getProductColors().length > 0 && !this.selectedColor) {
-      alert('Vui lòng chọn màu sắc');
+      this.toastService.info('Vui lòng chọn màu sắc trước khi thêm vào giỏ hàng.');
       return;
     }
 
@@ -320,11 +353,11 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
             this.router.navigate(['/cart']);
             return;
           }
-          alert('Đã thêm vào giỏ hàng.');
+          this.toastService.success('Đã thêm sản phẩm vào giỏ hàng.');
         },
         error: (err) => {
           console.error('Add to cart failed:', err);
-          alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+          this.toastService.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
         },
       });
   }
@@ -333,12 +366,12 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     if (!this.product) return;
 
     if (this.getProductSizes().length > 0 && !this.selectedSize) {
-      alert('Vui l\u00F2ng ch\u1ECDn k\u00EDch th\u01B0\u1EDBc');
+      this.toastService.info('Vui lòng chọn kích thước trước khi mua ngay.');
       return;
     }
 
     if (this.getProductColors().length > 0 && !this.selectedColor) {
-      alert('Vui l\u00F2ng ch\u1ECDn m\u00E0u s\u1EAFc');
+      this.toastService.info('Vui lòng chọn màu sắc trước khi mua ngay.');
       return;
     }
 
@@ -376,7 +409,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     const productId = this.getProductId();
     if (!productId) {
       console.error('Product ID is missing');
-      alert('Có lỗi xảy ra: Không tìm thấy mã sản phẩm. Vui lòng tải lại trang.');
+      this.toastService.error('Không tìm thấy mã sản phẩm. Vui lòng tải lại trang.');
       return;
     }
 
@@ -437,7 +470,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           console.error('Validation errors:', error.error.errors);
         }
 
-        alert(errorMessage);
+        this.toastService.error(errorMessage);
       },
     });
   }
@@ -450,11 +483,16 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   private buildCartItem(): CartItem | null {
     if (!this.product) return null;
 
+    const finalPrice = this.getFinalPrice();
+    const originalPrice = this.getProductPrice() || finalPrice;
+
     return {
       product_id: Number(this.getProductId()),
       product_name_snapshot: this.product.name,
       thumbnail_snapshot: this.getImageUrl(this.product.thumbnail),
-      price_snapshot: this.getFinalPrice(),
+      price_snapshot: finalPrice,
+      original_price_snapshot: originalPrice,
+      product_discount_snapshot: Math.max(0, originalPrice - finalPrice),
       size: this.selectedSize || null,
       color: this.selectedColor || null,
       quantity: this.quantity,
@@ -468,13 +506,13 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       (this.getProductSizes().length > 0 && !this.selectedSize) ||
       (this.getProductColors().length > 0 && !this.selectedColor)
     ) {
-      alert('Vui lòng chọn đầy đủ thông tin sản phẩm');
+      this.toastService.info('Vui lòng chọn đầy đủ biến thể sản phẩm trước khi đặt thuê.');
       return;
     }
 
     const productId = this.getProductId();
     if (!productId) {
-      alert('Không tìm thấy mã sản phẩm. Vui lòng tải lại trang.');
+      this.toastService.error('Không tìm thấy mã sản phẩm. Vui lòng tải lại trang.');
       return;
     }
 
@@ -595,7 +633,9 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error creating buy order:', error);
-        alert(error.error?.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.');
+        this.toastService.error(
+          error.error?.message || 'Có lỗi xảy ra khi tạo đơn hàng. Vui lòng thử lại.',
+        );
       },
     });
   }
@@ -652,6 +692,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
         this.reviewSortBy,
         this.reviewSortOrder,
         this.reviewFilterRating || undefined,
+        this.reviewHasMediaOnly,
       )
       .subscribe({
         next: (response) => {
@@ -677,6 +718,38 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadMyReviewEligibility(productId: string) {
+    if (!this.isLoggedIn) {
+      this.reviewEligibilityLoaded = true;
+      this.canWriteReview = false;
+      this.hasCompletedPurchase = false;
+      this.existingUserReview = null;
+      this.handlePendingReviewPrompt();
+      return;
+    }
+
+    this.reviewService.getMyReviewEligibility(productId).subscribe({
+      next: (response) => {
+        const data = response?.data;
+        this.reviewEligibilityLoaded = true;
+        this.canWriteReview = !!data?.can_review;
+        this.hasCompletedPurchase = !!data?.has_completed_purchase;
+        this.existingUserReview = data?.review || null;
+        this.reviewActionError = '';
+
+        this.handlePendingReviewPrompt();
+      },
+      error: () => {
+        this.reviewEligibilityLoaded = true;
+        this.canWriteReview = false;
+        this.hasCompletedPurchase = false;
+        this.existingUserReview = null;
+        this.reviewActionError = '';
+        this.handlePendingReviewPrompt();
+      },
+    });
+  }
+
   onReviewPageChange(page: number) {
     if (page >= 1 && page <= this.reviewPages && this.product) {
       this.reviewPage = page;
@@ -687,7 +760,6 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   markReviewHelpful(reviewId: string) {
     this.reviewService.markReviewHelpful(reviewId).subscribe({
       next: () => {
-        // Reload reviews to show updated helpful count
         if (this.product) {
           this.loadReviews(this.product.product_id.toString());
         }
@@ -867,12 +939,26 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
   }
 
   // Review Filter & Sort Methods
-  filterByRating(rating: number | null) {
-    this.reviewFilterRating = this.reviewFilterRating === rating ? null : rating;
+  setReviewFilter(filter: ReviewFilter) {
     this.reviewPage = 1;
+    this.reviewFilterRating = typeof filter === 'number' ? filter : null;
+    this.reviewHasMediaOnly = filter === 'media';
+
     if (this.product) {
       this.loadReviews(this.product.product_id.toString());
     }
+  }
+
+  isReviewFilterActive(filter: ReviewFilter): boolean {
+    if (filter === 'all') {
+      return !this.reviewFilterRating && !this.reviewHasMediaOnly;
+    }
+
+    if (filter === 'media') {
+      return this.reviewHasMediaOnly;
+    }
+
+    return this.reviewFilterRating === filter && !this.reviewHasMediaOnly;
   }
 
   changeReviewSort(sortBy: string) {
@@ -888,18 +974,162 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  onReviewMediaSelected(event: Event) {
+    const input = event.target as HTMLInputElement | null;
+    const fileList = input?.files;
+    if (!fileList?.length) return;
+
+    const allowedMimeTypes = new Set([
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'video/mp4',
+      'video/webm',
+      'video/quicktime',
+      'video/x-m4v',
+    ]);
+    const incomingFiles = Array.from(fileList).filter((file) => allowedMimeTypes.has(file.type));
+    const remainingSlots = Math.max(0, 6 - this.selectedReviewMedia.length);
+
+    if (remainingSlots <= 0) {
+      this.reviewActionError = 'Bạn chỉ có thể tải tối đa 6 ảnh hoặc video.';
+      if (input) input.value = '';
+      return;
+    }
+
+    if (!incomingFiles.length) {
+      this.reviewActionError = 'Định dạng file không hợp lệ. Vui lòng chọn ảnh hoặc video được hỗ trợ.';
+      if (input) input.value = '';
+      return;
+    }
+
+    const acceptedFiles = incomingFiles.slice(0, remainingSlots);
+    const invalidFiles = incomingFiles.length - acceptedFiles.length;
+
+    acceptedFiles.forEach((file) => {
+      const type = file.type.startsWith('video/') ? 'video' : 'image';
+      const previewUrl = URL.createObjectURL(file);
+      this.selectedReviewMedia.push({
+        file,
+        previewUrl,
+        type,
+        name: file.name,
+      });
+    });
+
+    if (invalidFiles > 0) {
+      this.reviewActionError = 'Bạn chỉ có thể tải tối đa 6 ảnh hoặc video.';
+    } else {
+      this.reviewActionError = '';
+    }
+
+    if (input) input.value = '';
+  }
+
+  removeSelectedReviewMedia(index: number) {
+    const media = this.selectedReviewMedia[index];
+    if (!media) return;
+
+    URL.revokeObjectURL(media.previewUrl);
+    this.selectedReviewMedia.splice(index, 1);
+  }
+
+  private clearSelectedReviewMedia() {
+    this.selectedReviewMedia.forEach((media) => URL.revokeObjectURL(media.previewUrl));
+    this.selectedReviewMedia = [];
+  }
+
+  private handlePendingReviewPrompt() {
+    if (!this.pendingReviewPrompt) return;
+
+    this.activeTab = 'reviews';
+
+    if (!this.isLoggedIn) {
+      this.reviewActionError = 'Vui lòng đăng nhập để đánh giá sản phẩm.';
+      this.showLoginPrompt = true;
+      this.pendingReviewPrompt = false;
+      return;
+    }
+
+    if (!this.reviewEligibilityLoaded) return;
+
+    if (this.existingUserReview) {
+      this.reviewActionMessage = '';
+      this.reviewActionError = 'Bạn đã đánh giá sản phẩm này rồi.';
+      this.pendingReviewPrompt = false;
+      return;
+    }
+
+    if (!this.canWriteReview) {
+      this.reviewActionMessage = '';
+      this.reviewActionError = 'Chỉ có thể đánh giá khi đơn mua của bạn đã hoàn thành.';
+      this.pendingReviewPrompt = false;
+      return;
+    }
+
+    this.pendingReviewPrompt = false;
+    this.openReviewForm();
+  }
+
+  promptReviewLogin() {
+    this.reviewActionMessage = '';
+    this.reviewActionError = 'Vui lòng đăng nhập để đánh giá sản phẩm.';
+    this.showLoginPrompt = true;
+  }
+
+  getWriteReviewButtonLabel(): string {
+    if (!this.isLoggedIn) {
+      return 'Đăng nhập để đánh giá';
+    }
+
+    if (this.existingUserReview) {
+      return 'Bạn đã đánh giá';
+    }
+
+    return 'Viết đánh giá';
+  }
+
   // Write Review Methods
   openReviewForm() {
+    this.activeTab = 'reviews';
+    this.reviewActionMessage = '';
+
+    if (!this.isLoggedIn) {
+      this.promptReviewLogin();
+      return;
+    }
+
+    if (this.existingUserReview) {
+      this.reviewActionError = 'Bạn đã đánh giá sản phẩm này rồi.';
+      this.showReviewForm = false;
+      return;
+    }
+
+    if (!this.canWriteReview) {
+      this.reviewActionError = 'Chỉ có thể đánh giá khi đơn mua của bạn đã hoàn thành.';
+      this.showReviewForm = false;
+      return;
+    }
+
+    this.reviewActionError = '';
+    this.clearSelectedReviewMedia();
     this.showReviewForm = true;
     this.newReview = {
-      rating: 5,
+      rating: 0,
       comment: '',
-      userName: '',
     };
   }
 
   closeReviewForm() {
     this.showReviewForm = false;
+    this.reviewActionError = '';
+    this.clearSelectedReviewMedia();
+    this.newReview = {
+      rating: 0,
+      comment: '',
+    };
   }
 
   setNewReviewRating(rating: number) {
@@ -908,35 +1138,77 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   submitReview() {
     if (!this.product) return;
+    this.reviewActionMessage = '';
+    const normalizedComment = this.newReview.comment.trim();
 
-    if (!this.newReview.userName.trim()) {
-      alert('Vui lòng nhập tên của bạn');
-      return;
-    }
+    const createReview = (images: string[] = [], videos: string[] = []) => {
+      const reviewPayload = {
+        rating: this.newReview.rating,
+        comment: normalizedComment,
+        images,
+        videos,
+      };
 
-    if (!this.newReview.comment.trim()) {
-      alert('Vui lòng nhập nội dung đánh giá');
-      return;
-    }
-
-    const reviewData = {
-      user_name: this.newReview.userName,
-      rating: this.newReview.rating,
-      comment: this.newReview.comment,
+      this.reviewActionError = '';
+      this.isSubmittingReview = true;
+      this.reviewService.createReview(this.product!.product_id.toString(), reviewPayload).subscribe({
+        next: () => {
+          this.closeReviewForm();
+          this.isSubmittingReview = false;
+          this.reviewActionMessage = 'Đánh giá của bạn đã được gửi thành công.';
+          this.loadReviews(this.product!.product_id.toString());
+          this.loadReviewStats(this.product!.product_id.toString());
+          this.loadMyReviewEligibility(this.product!.product_id.toString());
+        },
+        error: (err: any) => {
+          console.error('Error submitting review:', err);
+          this.isSubmittingReview = false;
+          this.reviewActionError =
+            err?.error?.message || 'Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.';
+        },
+      });
     };
 
-    this.reviewService.createReview(this.product.product_id.toString(), reviewData).subscribe({
-      next: () => {
-        alert('Đánh giá của bạn đã được gửi thành công!');
-        this.closeReviewForm();
-        this.loadReviews(this.product!.product_id.toString());
-        this.loadReviewStats(this.product!.product_id.toString());
-      },
-      error: (err: any) => {
-        console.error('Error submitting review:', err);
-        alert('Có lỗi xảy ra khi gửi đánh giá. Vui lòng thử lại.');
-      },
-    });
+    if (!this.newReview.rating) {
+      this.reviewActionError = 'Vui lòng chọn số sao đánh giá.';
+      return;
+    }
+
+    if (!normalizedComment) {
+      this.reviewActionError = 'Vui lòng nhập nội dung đánh giá.';
+      return;
+    }
+
+    if (normalizedComment.length < 10) {
+      this.reviewActionError = 'Nội dung đánh giá phải có ít nhất 10 ký tự.';
+      return;
+    }
+
+    if (!this.canWriteReview || this.existingUserReview) {
+      this.reviewActionError = 'Bạn không đủ điều kiện để đánh giá sản phẩm này.';
+      return;
+    }
+
+    if (!this.selectedReviewMedia.length) {
+      createReview();
+      return;
+    }
+
+    this.isSubmittingReview = true;
+    this.reviewActionError = '';
+    this.reviewService
+      .uploadReviewMedia(this.selectedReviewMedia.map((media) => media.file))
+      .subscribe({
+        next: (response) => {
+          createReview(response.data?.images || [], response.data?.videos || []);
+        },
+        error: (err: any) => {
+          console.error('Error uploading review media:', err);
+          this.isSubmittingReview = false;
+          this.reviewActionError =
+            err?.error?.message || 'Không thể tải ảnh hoặc video đánh giá. Vui lòng thử lại.';
+        },
+      });
   }
 
   // Social Sharing Methods
@@ -953,7 +1225,7 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
 
   copyLink() {
     navigator.clipboard.writeText(this.shareUrl).then(() => {
-      alert('Đã sao chép link!');
+      this.toastService.success('Đã sao chép liên kết sản phẩm.');
     });
   }
 
@@ -1018,6 +1290,24 @@ export class ProductDetailComponent implements OnInit, OnDestroy {
           // Try different property names
           return img.secure_url || img.url || img.path || '';
         }
+        return '';
+      })
+      .filter((url) => url && url.trim() !== '');
+  }
+
+  getReviewVideos(review: Review): string[] {
+    if (!review?.videos) return [];
+
+    return review.videos
+      .map((video) => {
+        if (typeof video === 'string') {
+          return video;
+        }
+
+        if (typeof video === 'object' && video !== null) {
+          return video.secure_url || video.url || video.path || '';
+        }
+
         return '';
       })
       .filter((url) => url && url.trim() !== '');

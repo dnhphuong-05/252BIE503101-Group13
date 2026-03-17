@@ -3,6 +3,7 @@ import {
   getProductReviews,
   getProductRatings,
   createReview,
+  uploadReviewMedia,
   updateReview,
   deleteReview,
   markReviewHelpful,
@@ -10,6 +11,8 @@ import {
   getUserReviewForProduct,
   getUserReviews,
 } from "../controllers/review.controller.js";
+import { uploadReviewMedia as uploadReviewMediaMiddleware } from "../config/index.js";
+import { protect } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/index.js";
 import { reviewValidator } from "../validators/index.js";
 
@@ -47,6 +50,7 @@ router.get(
  */
 router.get(
   "/products/:productId/reviews/my-review",
+  protect,
   validate(reviewValidator.productIdParamSchema, "params"),
   getUserReviewForProduct,
 );
@@ -58,9 +62,17 @@ router.get(
  */
 router.post(
   "/products/:productId/reviews",
+  protect,
   validate(reviewValidator.productIdParamSchema, "params"),
   validate(reviewValidator.createReviewSchema, "body"),
   createReview,
+);
+
+router.post(
+  "/reviews/media",
+  protect,
+  uploadReviewMediaMiddleware.array("media", 6),
+  uploadReviewMedia,
 );
 
 // ========== Individual Review Routes ==========
@@ -95,6 +107,7 @@ router.delete(
  */
 router.post(
   "/reviews/:reviewId/helpful",
+  protect,
   validate(reviewValidator.reviewIdParamSchema, "params"),
   validate(reviewValidator.markHelpfulSchema, "body"),
   markReviewHelpful,

@@ -16,12 +16,14 @@ import meRoutes from "./user/me.routes.js";
 import buyOrderRoutes from "./order/buyOrder.routes.js";
 import rentOrderRoutes from "./order/rentOrder.routes.js";
 import returnRoutes from "./order/return.routes.js";
+import tailorOrderRoutes from "./order/tailorOrder.routes.js";
 import contactMessageRoutes from "./contact/contactMessage.routes.js";
 import guestCustomerRoutes from "./guest/guest-customer.routes.js";
 import quickOrderRoutes from "./guest/quick-order.routes.js";
 import cartRoutes from "./cart/cart.routes.js";
 import checkoutRoutes from "./checkout/checkout.routes.js";
 import notificationRoutes from "./notification.routes.js";
+import chatboxRoutes from "./chatbox.routes.js";
 
 const router = express.Router();
 
@@ -90,6 +92,11 @@ router.use("/rent-orders", rentOrderRoutes);
 router.use("/returns", returnRoutes);
 
 /**
+ * Tailor order routes
+ */
+router.use("/tailor-orders", tailorOrderRoutes);
+
+/**
  * Contact routes
  */
 router.use("/contact", contactMessageRoutes);
@@ -106,7 +113,7 @@ router.use("/quick-orders", quickOrderRoutes);
 
 /**
  * Cart routes
-  */
+ */
 router.use("/carts", cartRoutes);
 
 /**
@@ -118,6 +125,11 @@ router.use("/checkout", checkoutRoutes);
  * Notification routes
  */
 router.use("/notifications", notificationRoutes);
+
+/**
+ * AI chatbox routes
+ */
+router.use("/chatbox", chatboxRoutes);
 
 /**
  * 404 handler for undefined routes

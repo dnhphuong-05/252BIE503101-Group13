@@ -436,14 +436,7 @@
 
           @if (activeTab === 'reviews') {
             <div class="tab-panel reviews-panel">
-              @if (reviewTotal === 0) {
-                <div class="no-reviews">
-                  <i class="fas fa-comment-slash"></i>
-                  <p>Chưa có đánh giá nào cho sản phẩm này</p>
-                </div>
-              }
-
-              @if (reviewTotal > 0) {
+              @if (getRatingCount() > 0) {
                 <!-- Rating Summary -->
                 <div class="rating-summary">
                   <div class="rating-score-box">
@@ -456,9 +449,13 @@
                       }
                     </div>
                     <div class="score-count">{{ getRatingCount() }} lượt đánh giá</div>
-                    <button class="btn-write-review">
+                    <button
+                      class="btn-write-review"
+                      type="button"
+                      (click)="isLoggedIn ? openReviewForm() : promptReviewLogin()"
+                    >
                       <i class="fas fa-pen"></i>
-                      Viết đánh giá
+                      {{ getWriteReviewButtonLabel() }}
                     </button>
                   </div>
 
@@ -477,27 +474,183 @@
                     }
                   </div>
                 </div>
+              } @else {
+                <div class="review-empty-state">
+                  <div class="no-reviews">
+                    <i class="fas fa-comment-slash"></i>
+                    <p>Chưa có đánh giá nào cho sản phẩm này.</p>
+                    <span>Hãy trở thành người đầu tiên chia sẻ trải nghiệm thực tế về sản phẩm.</span>
+                  </div>
+                  <button
+                    class="btn-write-review"
+                    type="button"
+                    (click)="isLoggedIn ? openReviewForm() : promptReviewLogin()"
+                  >
+                    <i class="fas fa-pen"></i>
+                    {{ getWriteReviewButtonLabel() }}
+                  </button>
+                </div>
+              }
 
+              @if (reviewActionMessage || reviewActionError) {
+                <div class="review-status-banner" [class.error]="!!reviewActionError">
+                  {{ reviewActionError || reviewActionMessage }}
+                </div>
+              }
+
+              @if (showReviewForm) {
+                <div class="review-composer">
+                  <div class="review-composer-header">
+                    <div>
+                      <h3>Đánh giá sản phẩm</h3>
+                      <p>Chia sẻ cảm nhận thực tế của bạn sau khi nhận được sản phẩm.</p>
+                    </div>
+                    <button type="button" class="review-composer-close" (click)="closeReviewForm()">
+                      Đóng
+                    </button>
+                  </div>
+
+                  <div class="review-composer-stars">
+                    @for (star of [1, 2, 3, 4, 5]; track star) {
+                      <button
+                        type="button"
+                        class="review-composer-star"
+                        [class.active]="newReview.rating > 0 && star <= newReview.rating"
+                        (click)="setNewReviewRating(star)"
+                      >
+                        <i class="fas fa-star"></i>
+                      </button>
+                    }
+                  </div>
+
+                  <div class="review-composer-hint">
+                    {{ newReview.rating > 0 ? ('Bạn đã chọn ' + newReview.rating + ' sao') : 'Hãy chọn số sao trước khi gửi đánh giá' }}
+                  </div>
+
+                  <div class="review-media-upload">
+                    <label class="review-media-trigger" for="review-media-input">
+                      <i class="fas fa-camera-retro"></i>
+                      <span>Thêm ảnh/video thực tế</span>
+                    </label>
+                    <input
+                      id="review-media-input"
+                      type="file"
+                      accept="image/*,video/mp4,video/webm,video/quicktime,video/x-m4v"
+                      multiple
+                      (change)="onReviewMediaSelected($event)"
+                    />
+                    <p class="review-media-note">
+                      Tối đa 6 tệp. Hỗ trợ ảnh hoặc video thực tế sản phẩm.
+                    </p>
+                  </div>
+
+                  @if (selectedReviewMedia.length > 0) {
+                    <div class="review-media-preview-grid">
+                      @for (media of selectedReviewMedia; track media.previewUrl; let i = $index) {
+                        <div class="review-media-preview">
+                          @if (media.type === 'image') {
+                            <img [src]="media.previewUrl" [alt]="media.name" />
+                          } @else {
+                            <video [src]="media.previewUrl" controls preload="metadata"></video>
+                          }
+                          <button
+                            type="button"
+                            class="review-media-remove"
+                            (click)="removeSelectedReviewMedia(i)"
+                          >
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  <textarea
+                    class="review-composer-textarea"
+                    [(ngModel)]="newReview.comment"
+                    rows="5"
+                    maxlength="2000"
+                    placeholder="Hãy chia sẻ trải nghiệm thật của bạn về sản phẩm này..."
+                  ></textarea>
+
+                  <div class="review-composer-footer">
+                    <span class="review-composer-count">{{ newReview.comment.length }}/2000</span>
+                    <div class="review-composer-actions">
+                      <button type="button" class="btn-review-cancel" (click)="closeReviewForm()">
+                        Hủy
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-review-submit"
+                        [disabled]="isSubmittingReview"
+                        (click)="submitReview()"
+                      >
+                        {{ isSubmittingReview ? 'Đang gửi...' : 'Gửi đánh giá' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (getRatingCount() > 0) {
                 <!-- Review Filter Tabs -->
                 <div class="review-filters">
                   <span class="filter-label">Lọc đánh giá theo</span>
                   <div class="filter-tabs">
-                    <button class="filter-tab active" type="button">Tất cả</button>
-                    <button class="filter-tab" type="button">Có hình ảnh</button>
-                    <button class="filter-tab" type="button">Đã mua hàng</button>
-                    <button class="filter-tab" (click)="filterByRating(5)" type="button">
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive('all')"
+                      (click)="setReviewFilter('all')"
+                      type="button"
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive('media')"
+                      (click)="setReviewFilter('media')"
+                      type="button"
+                    >
+                      Ảnh/video
+                    </button>
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive(5)"
+                      (click)="setReviewFilter(5)"
+                      type="button"
+                    >
                       5 sao
                     </button>
-                    <button class="filter-tab" (click)="filterByRating(4)" type="button">
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive(4)"
+                      (click)="setReviewFilter(4)"
+                      type="button"
+                    >
                       4 sao
                     </button>
-                    <button class="filter-tab" (click)="filterByRating(3)" type="button">
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive(3)"
+                      (click)="setReviewFilter(3)"
+                      type="button"
+                    >
                       3 sao
                     </button>
-                    <button class="filter-tab" (click)="filterByRating(2)" type="button">
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive(2)"
+                      (click)="setReviewFilter(2)"
+                      type="button"
+                    >
                       2 sao
                     </button>
-                    <button class="filter-tab" (click)="filterByRating(1)" type="button">
+                    <button
+                      class="filter-tab"
+                      [class.active]="isReviewFilterActive(1)"
+                      (click)="setReviewFilter(1)"
+                      type="button"
+                    >
                       1 sao
                     </button>
                   </div>
@@ -516,11 +669,6 @@
                       <div class="review-content">
                         <div class="review-top">
                           <div class="user-name">{{ getReviewerName(review) }}</div>
-                          <div class="user-verified">
-                            @if (review.verified_purchase || review.verifiedPurchase) {
-                              <span class="verified-badge">Đã mua hàng</span>
-                            }
-                          </div>
                         </div>
                         <div class="review-head">
                           <div class="review-stars">
@@ -569,9 +717,18 @@
                                 />
                               </button>
                             }
-                            </div>
-                          }
+                          </div>
+                        }
 
+                        @if (getReviewVideos(review).length > 0) {
+                          <div class="review-videos">
+                            @for (video of getReviewVideos(review); track video) {
+                              <div class="review-video">
+                                <video [src]="video" controls preload="metadata"></video>
+                              </div>
+                            }
+                          </div>
+                        }
                         @if (getReviewReply(review); as reply) {
                           <div class="review-reply">
                             <div class="reply-header">
@@ -591,12 +748,18 @@
                             <i class="far fa-calendar"></i>
                             {{ getTimeAgo(review.created_at || review.createdAt) }}
                           </span>
-                          <button class="review-helpful">
+                          <button class="review-helpful" type="button" (click)="markReviewHelpful(review._id || review.id)">
                             <i class="far fa-thumbs-up"></i>
                             Hữu ích ({{ review.helpful_count || review.helpfulCount || 0 }})
                           </button>
                         </div>
                       </div>
+                    </div>
+                  }
+
+                  @if (!reviews.length) {
+                    <div class="no-filtered-reviews">
+                      Không có đánh giá phù hợp với bộ lọc hiện tại.
                     </div>
                   }
 

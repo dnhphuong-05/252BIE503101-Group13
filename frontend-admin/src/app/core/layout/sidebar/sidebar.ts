@@ -35,12 +35,21 @@ export class SidebarComponent {
   private readonly menuSections: MenuSection[] = [
     {
       label: 'Home',
-      items: [{ label: 'Dashboard', icon: 'fas fa-home', route: '/dashboard' }],
+      items: [
+        { label: 'Dashboard', icon: 'fas fa-home', route: '/dashboard' },
+        {
+          label: 'Notifications',
+          icon: 'fas fa-bell',
+          route: '/notifications',
+          roles: [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN],
+        },
+      ],
     },
     {
       label: 'Orders',
       items: [
         { label: 'Sales orders', icon: 'fas fa-shopping-bag', route: '/orders/sales' },
+        { label: 'Tailor orders', icon: 'fas fa-ruler-combined', route: '/orders/tailor' },
         { label: 'Rent orders', icon: 'fas fa-calendar', route: '/orders/rent' },
         { label: 'Returns & refunds', icon: 'fas fa-undo', route: '/orders/returns' },
       ],
@@ -68,7 +77,7 @@ export class SidebarComponent {
           label: 'Inbox',
           icon: 'fas fa-inbox',
           route: '/contacts',
-          roles: [UserRole.ADMIN, UserRole.SUPER_ADMIN],
+          roles: [UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN],
         },
       ],
     },

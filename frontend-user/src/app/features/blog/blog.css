@@ -190,11 +190,10 @@
   margin: 0;
   padding-left: 310px;
   color: var(--accent);
-  font-family: var(--blog-heading-font);
+  font-family: var(--blog-font);
   font-weight: 600;
-  font-size: 20px;
+  font-size: 24px;
   text-decoration: underline;
-  text-shadow: #3b010b 0px 4px 8px;
 }
 
 .search-bar {
@@ -272,12 +271,13 @@
 }
 
 .about-avatar {
+  display: block;
   width: 90px;
   height: 90px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid var(--accent-soft);
-  margin-bottom: 12px;
+  margin: 0 auto 12px;
 }
 
 .about-role {

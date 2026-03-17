@@ -5,6 +5,36 @@ import notificationService from "../notification.service.js";
 import User from "../../models/user/User.js";
 import GuestCustomer from "../../models/GuestCustomer.js";
 
+const buildAdminContactLink = (contactId) => `/contacts?contact=${contactId}`;
+
+const notifyAdmins = async ({ type, title, message, contactId }) => {
+  const admins = await User.find({
+    role: { $in: ["admin", "super_admin", "staff"] },
+    status: "active",
+  })
+    .select("user_id")
+    .lean();
+
+  const targets = (admins || []).map((admin) => admin.user_id).filter(Boolean);
+  await Promise.all(
+    targets.map((userId) =>
+      notificationService.createNotification(
+        {
+          user_id: userId,
+          type,
+          title,
+          message,
+          entity_type: "contact",
+          entity_id: String(contactId),
+          link: buildAdminContactLink(contactId),
+          is_read: false,
+        },
+        { silent: true },
+      ),
+    ),
+  );
+};
+
 /**
  * Contact Message Service
  * Xử lý business logic cho contact messages
@@ -82,6 +112,13 @@ class ContactMessageService extends BaseService {
     });
 
     await contactMessage.save();
+
+    await notifyAdmins({
+      type: "contact_created",
+      title: "Liên hệ mới",
+      message: `${fullName.trim()} vừa gửi một yêu cầu liên hệ mới.`,
+      contactId: contactMessage.contact_id,
+    });
 
     return contactMessage;
   }

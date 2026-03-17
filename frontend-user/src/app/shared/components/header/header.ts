@@ -2,7 +2,18 @@ import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { Subscription, forkJoin, map, of, switchMap } from 'rxjs';
+import {
+  Subject,
+  Subscription,
+  catchError,
+  debounceTime,
+  forkJoin,
+  map,
+  of,
+  switchMap,
+  takeUntil,
+  tap,
+} from 'rxjs';
 import { AuthService } from '../../../services/auth.service';
 import { CartService } from '../../../services/cart.service';
 import {
@@ -10,6 +21,33 @@ import {
   NotificationService,
 } from '../../../services/notification.service';
 import { NotificationPanelComponent } from '../notification-panel/notification-panel';
+import { Product, ProductService } from '../../../services/product.service';
+
+type SearchSurface = 'desktop' | 'mobile';
+
+interface SearchSuggestionItem {
+  label: string;
+  type: 'product' | 'category' | 'keyword';
+  meta?: string;
+}
+
+interface SearchKeyboardOption {
+  label: string;
+}
+
+const SEARCH_HISTORY_STORAGE_KEY = 'vietphuc.search.history';
+const SEARCH_HISTORY_LIMIT = 6;
+const SEARCH_SUGGESTION_LIMIT = 6;
+const FALLBACK_SEARCH_KEYWORDS = [
+  'Áo ngũ thân',
+  'Áo tấc',
+  'Nhật bình',
+  'Áo tứ thân',
+  'Hài Nam',
+  'Thêu hoa',
+  'Phụ kiện Việt phục',
+  'Việt phục trẻ em',
+];
 
 @Component({
   selector: 'app-header',
@@ -27,6 +65,12 @@ import { NotificationPanelComponent } from '../notification-panel/notification-p
 export class HeaderComponent implements OnInit, OnDestroy {
   menuOpen = false;
   searchQuery = '';
+  searchSuggestions: SearchSuggestionItem[] = [];
+  searchHistory: string[] = [];
+  showSearchDropdown = false;
+  isSearchingSuggestions = false;
+  activeSearchSurface: SearchSurface | null = null;
+  activeSearchOptionIndex = -1;
   currentUser: any = null;
   showUserMenu = false;
   public showNotificationPanel = false;
@@ -38,16 +82,22 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private userSubscription?: Subscription;
   private cartSubscription?: Subscription;
   private unreadTimer?: ReturnType<typeof setInterval>;
+  private readonly destroy$ = new Subject<void>();
+  private readonly searchInput$ = new Subject<string>();
   cartCount = 0;
 
   constructor(
     private authService: AuthService,
     private cartService: CartService,
     private notificationService: NotificationService,
+    private productService: ProductService,
     private router: Router,
   ) {}
 
   ngOnInit() {
+    this.loadSearchHistory();
+    this.setupSearchSuggestions();
+
     // Subscribe to current user changes
     this.userSubscription = this.authService.currentUser$.subscribe((user) => {
       this.currentUser = user;
@@ -77,6 +127,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       this.cartSubscription.unsubscribe();
     }
     this.stopUnreadPolling();
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.searchInput$.complete();
   }
 
   @HostListener('document:click', ['$event'])
@@ -84,6 +137,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     const target = event.target as HTMLElement;
     const userMenu = target.closest('.user-menu-container');
     const notificationPanel = target.closest('.notification-wrapper');
+    const searchShell = target.closest('.search-shell');
 
     if (!userMenu && this.showUserMenu) {
       this.showUserMenu = false;
@@ -92,10 +146,17 @@ export class HeaderComponent implements OnInit, OnDestroy {
     if (!notificationPanel && this.showNotificationPanel) {
       this.showNotificationPanel = false;
     }
+
+    if (!searchShell && this.showSearchDropdown) {
+      this.hideSearchDropdown();
+    }
   }
 
   toggleMenu() {
     this.menuOpen = !this.menuOpen;
+    if (!this.menuOpen && this.activeSearchSurface === 'mobile') {
+      this.hideSearchDropdown();
+    }
   }
 
   toggleUserMenu() {
@@ -112,11 +173,126 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   };
 
-  onSearchSubmit() {
+  onSearchFocus(surface: SearchSurface) {
+    this.activeSearchSurface = surface;
+    this.showSearchDropdown = true;
+    this.activeSearchOptionIndex = -1;
+
     const query = this.searchQuery.trim();
+    if (!query) {
+      this.searchSuggestions = [];
+      return;
+    }
+
+    this.searchInput$.next(query);
+  }
+
+  onSearchQueryChange(value: string) {
+    this.searchQuery = value;
+    this.activeSearchOptionIndex = -1;
+
+    if (!this.activeSearchSurface) {
+      return;
+    }
+
+    this.showSearchDropdown = true;
+    const query = value.trim();
+
+    if (!query) {
+      this.isSearchingSuggestions = false;
+      this.searchSuggestions = [];
+      return;
+    }
+
+    this.searchInput$.next(query);
+  }
+
+  onSearchKeydown(event: KeyboardEvent) {
+    if (!this.hasSearchDropdownContent) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        this.onSearchSubmit();
+        return;
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.hideSearchDropdown();
+      }
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.moveActiveSearchOption(1);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.moveActiveSearchOption(-1);
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      const selectedOption = this.visibleSearchOptions[this.activeSearchOptionIndex];
+      if (selectedOption) {
+        event.preventDefault();
+        this.applySuggestedSearch(selectedOption.label);
+        return;
+      }
+
+      this.onSearchSubmit();
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.hideSearchDropdown();
+    }
+  }
+
+  onSearchSubmit(term: string = this.searchQuery) {
+    const query = term.trim();
+
+    if (query) {
+      this.searchQuery = query;
+      this.persistSearchHistory(query);
+    }
+
     const queryParams = query ? { search: query } : {};
+    this.hideSearchDropdown();
     this.router.navigate(['/products'], { queryParams });
     this.menuOpen = false;
+  }
+
+  applySuggestedSearch(term: string) {
+    this.searchQuery = term;
+    this.onSearchSubmit(term);
+  }
+
+  isSearchSurfaceOpen(surface: SearchSurface): boolean {
+    return this.showSearchDropdown && this.activeSearchSurface === surface;
+  }
+
+  get filteredSearchHistory(): string[] {
+    const query = this.normalizeSearchText(this.searchQuery);
+    if (!query) {
+      return this.searchHistory.slice(0, SEARCH_HISTORY_LIMIT);
+    }
+
+    return this.searchHistory
+      .filter((term) => this.normalizeSearchText(term).includes(query))
+      .slice(0, SEARCH_HISTORY_LIMIT);
+  }
+
+  get hasSearchDropdownContent(): boolean {
+    return (
+      this.isSearchingSuggestions ||
+      this.searchSuggestions.length > 0 ||
+      this.filteredSearchHistory.length > 0 ||
+      this.searchQuery.trim().length > 0
+    );
   }
 
   closeUserMenu() {
@@ -238,5 +414,234 @@ export class HeaderComponent implements OnInit, OnDestroy {
     // Default avatar with first letter of name
     const firstLetter = this.currentUser?.fullName?.charAt(0).toUpperCase() || 'U';
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(firstLetter)}&background=8B2635&color=fff&size=40`;
+  }
+
+  get visibleSearchOptions(): SearchKeyboardOption[] {
+    return [
+      ...this.searchSuggestions.map((item) => ({ label: item.label })),
+      ...this.filteredSearchHistory.map((item) => ({ label: item })),
+    ];
+  }
+
+  isSearchOptionActive(section: 'suggestion' | 'history', index: number): boolean {
+    return this.activeSearchOptionIndex === this.getSearchOptionIndex(section, index);
+  }
+
+  private setupSearchSuggestions() {
+    this.searchInput$
+      .pipe(
+        map((value) => value.trim()),
+        debounceTime(180),
+        tap((query) => {
+          this.isSearchingSuggestions = query.length > 0;
+        }),
+        switchMap((query) => {
+          if (!query) {
+            return of({ query, suggestions: [] as SearchSuggestionItem[] });
+          }
+
+          return this.productService
+            .getAllProducts({
+              search: query,
+              limit: SEARCH_SUGGESTION_LIMIT,
+              status: 'active',
+            })
+            .pipe(
+              map((response) => ({
+                query,
+                suggestions: this.buildSearchSuggestions(query, response?.data?.items || []),
+              })),
+              catchError(() =>
+                of({
+                  query,
+                  suggestions: this.buildSearchSuggestions(query, []),
+                }),
+              ),
+            );
+        }),
+        takeUntil(this.destroy$),
+      )
+        .subscribe(({ query, suggestions }) => {
+          if (query === this.searchQuery.trim()) {
+            this.searchSuggestions = suggestions;
+            this.activeSearchOptionIndex = -1;
+          }
+          this.isSearchingSuggestions = false;
+        });
+  }
+
+  private buildSearchSuggestions(query: string, products: Product[]): SearchSuggestionItem[] {
+    const normalizedQuery = this.normalizeSearchText(query);
+    const seen = new Set<string>();
+    const suggestions: SearchSuggestionItem[] = [];
+
+    const pushSuggestion = (
+      label: string | undefined,
+      type: SearchSuggestionItem['type'],
+      meta?: string,
+    ) => {
+      const trimmed = String(label || '').trim();
+      if (!trimmed) {
+        return;
+      }
+
+      const normalized = this.normalizeSearchText(trimmed);
+      if (!normalized || normalized === normalizedQuery || seen.has(normalized)) {
+        return;
+      }
+
+      seen.add(normalized);
+      suggestions.push({ label: trimmed, type, meta });
+    };
+
+    products.forEach((product) => {
+      if (this.matchesSearchQuery(product.name, normalizedQuery)) {
+        pushSuggestion(product.name, 'product', product.category_name || 'Sản phẩm');
+      }
+    });
+
+    products.forEach((product) => {
+      const relatedTerms = [
+        product.category_name,
+        product.category,
+        ...(product.categories || []),
+        ...(product.tags || []),
+      ];
+
+      relatedTerms.forEach((term) => {
+        if (this.matchesSearchQuery(term, normalizedQuery)) {
+          pushSuggestion(term, 'category', 'Liên quan');
+        }
+      });
+    });
+
+    FALLBACK_SEARCH_KEYWORDS.forEach((keyword) => {
+      if (this.matchesSearchQuery(keyword, normalizedQuery)) {
+        pushSuggestion(keyword, 'keyword', 'Gợi ý');
+      }
+    });
+
+    return suggestions.slice(0, SEARCH_SUGGESTION_LIMIT);
+  }
+
+  private matchesSearchQuery(term: string | undefined, query: string): boolean {
+    if (!term || !query) {
+      return false;
+    }
+
+    return this.normalizeSearchText(term).includes(query);
+  }
+
+  private normalizeSearchText(value: string): string {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private loadSearchHistory() {
+    if (!this.canUseBrowserStorage()) {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(SEARCH_HISTORY_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+
+      if (!Array.isArray(parsed)) {
+        this.searchHistory = [];
+        return;
+      }
+
+      this.searchHistory = parsed
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .slice(0, SEARCH_HISTORY_LIMIT);
+    } catch {
+      this.searchHistory = [];
+    }
+  }
+
+  private persistSearchHistory(term: string) {
+    const query = term.trim();
+    if (!query) {
+      return;
+    }
+
+    const normalizedQuery = this.normalizeSearchText(query);
+    this.searchHistory = [
+      query,
+      ...this.searchHistory.filter(
+        (item) => this.normalizeSearchText(item) !== normalizedQuery,
+      ),
+    ].slice(0, SEARCH_HISTORY_LIMIT);
+
+    if (!this.canUseBrowserStorage()) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        SEARCH_HISTORY_STORAGE_KEY,
+        JSON.stringify(this.searchHistory),
+      );
+    } catch {}
+  }
+
+  private hideSearchDropdown() {
+    this.showSearchDropdown = false;
+    this.activeSearchSurface = null;
+    this.isSearchingSuggestions = false;
+    this.activeSearchOptionIndex = -1;
+  }
+
+  private canUseBrowserStorage(): boolean {
+    return typeof window !== 'undefined' && !!window.localStorage;
+  }
+
+  private moveActiveSearchOption(direction: -1 | 1) {
+    const optionCount = this.visibleSearchOptions.length;
+    if (!optionCount) {
+      return;
+    }
+
+    if (!this.showSearchDropdown) {
+      this.showSearchDropdown = true;
+    }
+
+    const nextIndex =
+      this.activeSearchOptionIndex < 0
+        ? direction > 0
+          ? 0
+          : optionCount - 1
+        : (this.activeSearchOptionIndex + direction + optionCount) % optionCount;
+
+    this.activeSearchOptionIndex = nextIndex;
+    this.scrollActiveSearchOptionIntoView();
+  }
+
+  private getSearchOptionIndex(section: 'suggestion' | 'history', index: number): number {
+    if (section === 'suggestion') {
+      return index;
+    }
+
+    return this.searchSuggestions.length + index;
+  }
+
+  private scrollActiveSearchOptionIntoView() {
+    if (typeof document === 'undefined' || this.activeSearchOptionIndex < 0) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const activeOption = document.querySelector<HTMLElement>(
+        `.search-shell.is-open [data-search-option-index="${this.activeSearchOptionIndex}"]`,
+      );
+
+      activeOption?.scrollIntoView({
+        block: 'nearest',
+      });
+    });
   }
 }

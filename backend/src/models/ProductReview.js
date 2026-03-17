@@ -47,6 +47,7 @@ const productReviewSchema = new mongoose.Schema(
       default: false,
     },
     images: [String],
+    videos: [String],
     admin_reply: {
       reply_text: { type: String, default: "" },
       replied_by: {

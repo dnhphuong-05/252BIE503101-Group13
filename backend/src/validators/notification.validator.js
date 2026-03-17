@@ -23,12 +23,14 @@ export const createNotification = {
       .required(),
     type: Joi.string()
       .valid(
+        "order_placed",
         "order_confirmed",
         "order_shipped",
         "order_delivered",
         "order_received",
         "order_cancelled",
         "return_requested",
+        "rent_created",
         "rent_confirmed",
         "rent_out_for_delivery",
         "rent_ongoing",
@@ -41,6 +43,7 @@ export const createNotification = {
         "rent_cancelled",
         "rent_violated",
         "deposit_refunded",
+        "contact_created",
         "contact_received",
         "contact_handled",
       )

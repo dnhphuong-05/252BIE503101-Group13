@@ -4,37 +4,60 @@
       class="product-modal"
       role="dialog"
       aria-modal="true"
+      aria-label="Thêm sản phẩm vào giỏ hàng"
       (click)="$event.stopPropagation()"
     >
       <button
         class="product-modal-close"
         type="button"
         (click)="onClose()"
-        aria-label="&#x110;&#xF3;ng"
+        aria-label="Đóng"
       >
-        &times;
+        ×
       </button>
 
       <div class="product-modal-body">
-        <div class="product-modal-media">
-          <img [src]="getMainImage()" [alt]="product.name" />
+        <div class="product-modal-showcase">
+          <div class="showcase-card">
+            <div class="showcase-badges">
+              <span class="showcase-chip neutral">Chọn nhanh</span>
+              @if (hasSale()) {
+                <span class="showcase-chip accent">-{{ getDiscountPercentage() }}%</span>
+              }
+            </div>
+
+            <img [src]="getMainImage()" [alt]="product.name" />
+
+            <div class="showcase-caption">
+              <span>{{ getCategoryLabel() }}</span>
+              <strong>{{ getStockLabel() }}</strong>
+            </div>
+          </div>
         </div>
 
-        <div class="product-modal-info">
-          <div>
-            <div class="product-modal-category">{{ product.category_name }}</div>
-            <h3 class="product-modal-title">{{ product.name }}</h3>
-          </div>
+        <div class="product-modal-panel">
+          <div class="panel-kicker">Thêm vào giỏ hàng</div>
 
-          <div class="product-modal-price">
-            <span class="price-sale">{{ getFinalPrice() | number }}&#x20AB;</span>
-            @if (hasSale()) {
-              <span class="price-old">{{ product.price_buy | number }}&#x20AB;</span>
-            }
+          <div class="panel-header">
+            <div>
+              <div class="product-modal-category">{{ getCategoryLabel() }}</div>
+              <h3 class="product-modal-title">{{ product.name }}</h3>
+            </div>
+
+            <div class="product-modal-price">
+              <span class="price-sale">{{ getFinalPrice() | number }}₫</span>
+              @if (hasSale()) {
+                <span class="price-old">{{ product.price_buy | number }}₫</span>
+              }
+            </div>
           </div>
 
           <div class="product-modal-section" *ngIf="getColors().length > 0">
-            <div class="section-label">M&#xE0;u s&#x1EAF;c</div>
+            <div class="section-header">
+              <div class="section-label">Màu sắc</div>
+              <span class="section-note">{{ selectedColor || 'Chưa chọn' }}</span>
+            </div>
+
             <div class="option-list">
               <button
                 class="option-btn"
@@ -49,7 +72,11 @@
           </div>
 
           <div class="product-modal-section" *ngIf="getSizes().length > 0">
-            <div class="section-label">K&#xED;ch th&#x1B0;&#x1EDB;c</div>
+            <div class="section-header">
+              <div class="section-label">Kích thước</div>
+              <span class="section-note">{{ selectedSize || 'Chưa chọn' }}</span>
+            </div>
+
             <div class="option-list">
               <button
                 class="option-btn"
@@ -64,25 +91,38 @@
           </div>
 
           <div class="product-modal-section">
-            <div class="section-label">S&#x1ED1; l&#x1B0;&#x1EE3;ng</div>
+            <div class="section-header">
+              <div class="section-label">Số lượng</div>
+              <span class="section-note">{{ quantity }} sản phẩm</span>
+            </div>
+
             <div class="qty-control">
-              <button class="qty-btn" type="button" (click)="decrease()">-</button>
+              <button class="qty-btn" type="button" (click)="decrease()">−</button>
               <input class="qty-input" type="number" [value]="quantity" readonly />
               <button class="qty-btn" type="button" (click)="increase()">+</button>
             </div>
           </div>
 
           @if (errorMessage) {
-            <p class="product-modal-error">{{ errorMessage }}</p>
+            <div class="product-modal-error">
+              <strong>Cần hoàn tất lựa chọn</strong>
+              <span>{{ errorMessage }}</span>
+            </div>
           }
 
-          <div class="product-modal-actions">
-            <button class="btn-ghost" type="button" (click)="onClose()">
-              H&#x1EE7;y
-            </button>
-            <button class="btn-primary" type="button" (click)="onAdd()">
-              Th&#xEA;m v&#xE0;o gi&#x1ECF; h&#xE0;ng
-            </button>
+          <div class="product-modal-footer">
+            <p class="footer-note">
+              Bạn có thể điều chỉnh màu, size và số lượng trước khi thêm vào giỏ.
+            </p>
+
+            <div class="product-modal-actions">
+              <button class="btn-ghost" type="button" (click)="onClose()">
+                Hủy
+              </button>
+              <button class="btn-primary" type="button" (click)="onAdd()">
+                Thêm vào giỏ hàng
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,0 +1,590 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Chi tiết đơn may đo</div>
+      @if (selectedOrder) {
+        <div class="page-subtitle">{{ selectedOrder.tailor_order_id }}</div>
+      }
+    </div>
+    <a class="btn btn-ghost btn-sm" [routerLink]="['/orders/tailor']">Quay lại danh sách</a>
+  </div>
+
+  @if (detailLoading) {
+    <div class="card loading-state">Đang tải chi tiết đơn may đo...</div>
+  } @else if (detailError && !selectedOrder) {
+    <div class="card empty-state">{{ detailError }}</div>
+  } @else if (selectedOrder) {
+    <div class="card detail-page">
+      <div class="detail-header">
+        <div>
+          <div class="section-title">Đơn #{{ selectedOrder.tailor_order_id }}</div>
+          <div class="item-meta">
+            Nguồn inbox #{{ selectedOrder.source_contact_id }} - {{ formatDateTime(orderCreatedAt) }}
+          </div>
+        </div>
+        <div class="header-badges">
+          @if (selectedOrder.customer?.user_id) {
+            <span class="chip chip-teal">USER</span>
+          } @else {
+            <span class="chip chip-warning">GUEST</span>
+          }
+          @if (selectedStatusMeta) {
+            <span [class]="selectedStatusMeta.class">{{ selectedStatusMeta.label }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="progress-card" [class.cancelled]="isCancelled">
+        <div class="progress-top">
+          <div class="progress-title">Tiến trình đơn may đo</div>
+          <div class="progress-percent">{{ progressPercent }}%</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" [style.width.%]="progressPercent"></div>
+        </div>
+        <div class="flow-list">
+          @for (step of progressSteps; track step; let i = $index) {
+            <button
+              type="button"
+              class="flow-step flow-step-btn"
+              [class.done]="isStepDone(i)"
+              [class.current]="isStepCurrent(i)"
+              [class.selected]="isStepSelected(step)"
+              [class.locked]="!canReviewProgressSteps"
+              [disabled]="!canReviewProgressSteps"
+              (click)="selectStep(step)"
+            >
+              <div class="flow-dot">{{ i + 1 }}</div>
+              <div class="flow-label">{{ progressLabel(step) }}</div>
+              <div class="flow-time">{{ progressTime(step) }}</div>
+            </button>
+          }
+        </div>
+        @if (isCancelled) {
+          <div class="cancel-note">Đơn đã hủy: {{ form.cancelReason || selectedOrder.cancel_reason || '-' }}</div>
+        }
+      </div>
+
+      <div class="step-guide">
+        <div class="step-guide-title">{{ progressStepMeta[selectedStep].label }}</div>
+        <div class="step-guide-list">
+          @for (hint of stepFieldHints(selectedStep); track hint) {
+            <span>{{ hint }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="detail-layout">
+        <div class="detail-main">
+          @if (selectedStep === 'created') {
+            <div class="detail-section">
+              <div class="section-title">Thông tin khách hàng</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Mã khách hàng</span>
+                  <input class="input" [(ngModel)]="form.customerCode" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Họ tên</span>
+                  <input class="input" [(ngModel)]="form.fullName" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Số điện thoại</span>
+                  <input class="input" [(ngModel)]="form.phone" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Email</span>
+                  <input class="input" type="email" [(ngModel)]="form.email" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Zalo / SĐT Zalo</span>
+                  <input class="input" [(ngModel)]="form.zaloContact" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Địa chỉ nhận hàng</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.address"></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú khách hàng</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.customerNote"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Thông tin đơn hàng</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Mã đơn may đo</span>
+                  <input class="input" [value]="selectedOrder.tailor_order_id" disabled />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Ngày tạo đơn</span>
+                  <input class="input" [value]="formatDateTime(orderCreatedAt)" disabled />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Kênh bán</span>
+                  <select class="select" [(ngModel)]="form.channel">
+                    @for (channel of channelOptions; track channel.value) {
+                      <option [value]="channel.value">{{ channel.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Nhân viên phụ trách/chốt đơn</span>
+                  <input class="input" [(ngModel)]="form.handledBy" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Loại đơn</span>
+                  <input class="input" value="May đo" disabled />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Khách xác nhận lúc</span>
+                  <input class="input" type="datetime-local" [(ngModel)]="form.customerConfirmedAt" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú tư vấn ban đầu</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.communicationNote"></textarea>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                @if (canMoveTo('consulted')) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmAndMove('consulted', 'Đã tư vấn khách hàng.', 'Xác nhận chuyển sang bước Đã tư vấn?')">
+                    Xác nhận Đã tư vấn
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'consulted') {
+            <div class="detail-section">
+              <div class="section-title">Sản phẩm gốc / mẫu gốc</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Mẫu tham chiếu</span>
+                  <select class="select" [(ngModel)]="form.referenceProductId" (change)="onReferenceProductChange()">
+                    <option value="">Chọn mẫu</option>
+                    @for (product of productOptions; track product.id) {
+                      <option [value]="product.id">
+                        {{ product.tailorAvailable ? 'May đo - ' : '' }}{{ product.name }}{{ product.sku ? ' - ' + product.sku : '' }}
+                      </option>
+                    }
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Mã mẫu</span>
+                  <input class="input" [(ngModel)]="form.referenceModelCode" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Tên mẫu</span>
+                  <input class="input" [(ngModel)]="form.referenceProductName" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Danh mục</span>
+                  <input class="input" [(ngModel)]="form.categoryName" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Mô tả cơ bản</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.baseDescription"></textarea>
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Giá tham khảo / giá nền</span>
+                  <input class="input" type="number" min="0" [(ngModel)]="form.basePrice" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Giá báo khách</span>
+                  <input class="input" type="number" min="0" [(ngModel)]="form.quotedPrice" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú chốt qua Zalo</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.communicationNote"></textarea>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                @if (canMoveTo('sample_confirmed')) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmAndMove('sample_confirmed', 'Đã chốt mẫu may đo.', 'Xác nhận chuyển sang bước Đã chốt mẫu?')">
+                    Xác nhận Đã chốt mẫu
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'sample_confirmed') {
+            <div class="detail-section">
+              <div class="section-title">Chi tiết may đo của đơn</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Tên hiển thị</span>
+                  <input class="input" [(ngModel)]="form.title" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Loại vải</span>
+                  <input class="input" [(ngModel)]="form.material" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Màu sắc</span>
+                  <input class="input" [(ngModel)]="form.colorPalette" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Họa tiết/thêu/in</span>
+                  <input class="input" [(ngModel)]="form.patternNote" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Phụ thu phát sinh</span>
+                  <input class="input" type="number" min="0" [(ngModel)]="form.extraPrice" />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Số lượng</span>
+                  <input class="input" type="number" min="1" [(ngModel)]="form.quantity" />
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Kiểu dáng chỉnh sửa</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.styleAdjustments"></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Yêu cầu riêng</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.customRequest"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <div class="section-title">Thông số cơ thể</div>
+              <div class="form-grid measurement-grid">
+                <div class="filter-field"><span class="filter-label">Chiều cao</span><input class="input" type="number" [(ngModel)]="form.height" /></div>
+                <div class="filter-field"><span class="filter-label">Cân nặng</span><input class="input" type="number" [(ngModel)]="form.weight" /></div>
+                <div class="filter-field"><span class="filter-label">Vòng ngực</span><input class="input" type="number" [(ngModel)]="form.chest" /></div>
+                <div class="filter-field"><span class="filter-label">Vòng eo</span><input class="input" type="number" [(ngModel)]="form.waist" /></div>
+                <div class="filter-field"><span class="filter-label">Vòng mông</span><input class="input" type="number" [(ngModel)]="form.hip" /></div>
+                <div class="filter-field"><span class="filter-label">Ngang vai</span><input class="input" type="number" [(ngModel)]="form.shoulder" /></div>
+                <div class="filter-field"><span class="filter-label">Dài tay</span><input class="input" type="number" [(ngModel)]="form.sleeveLength" /></div>
+                <div class="filter-field"><span class="filter-label">Dài áo</span><input class="input" type="number" [(ngModel)]="form.topLength" /></div>
+                <div class="filter-field"><span class="filter-label">Dài váy/quần</span><input class="input" type="number" [(ngModel)]="form.bottomLength" /></div>
+                <div class="filter-field full-width"><span class="filter-label">Số đo khác</span><textarea class="input textarea" rows="2" [(ngModel)]="form.otherMeasurements"></textarea></div>
+              </div>
+              <div class="form-grid">
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ảnh mẫu khách gửi</span>
+                  <div class="upload-panel">
+                    <input #customerReferenceUpload class="file-upload-input" type="file" accept="image/*" multiple (change)="onAttachmentFilesSelected($event, 'customer_reference')" />
+                    <div class="upload-actions">
+                      <button class="btn btn-sm upload-btn" type="button" (click)="customerReferenceUpload.click()" [disabled]="isUploadingAttachment('customer_reference')">
+                        {{ isUploadingAttachment('customer_reference') ? '\u0110ang t\u1ea3i...' : 'Upload \u1ea3nh' }}
+                      </button>
+                      @if (customerReferenceImages.length) {
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="clearAttachments('customer_reference')">X&#243;a h&#7871;t</button>
+                      }
+                    </div>
+                    @if (customerReferenceImages.length) {
+                      <div class="attachment-grid">
+                        @for (url of customerReferenceImages; track url) {
+                          <div class="attachment-card">
+                            <img [src]="url" alt="&#7842;nh m&#7851;u kh&#225;ch g&#7917;i" />
+                            <div class="attachment-actions">
+                              <a class="btn btn-ghost btn-sm" [href]="url" target="_blank" rel="noopener noreferrer">Xem</a>
+                              <button class="btn btn-ghost btn-sm" type="button" (click)="removeAttachment('customer_reference', url)">X&#243;a</button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="empty-state soft">Ch&#432;a c&#243; &#7843;nh.</div>
+                    }
+                  </div>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ảnh vải</span>
+                  <div class="upload-panel">
+                    <input #fabricUpload class="file-upload-input" type="file" accept="image/*" multiple (change)="onAttachmentFilesSelected($event, 'fabric')" />
+                    <div class="upload-actions">
+                      <button class="btn btn-sm upload-btn" type="button" (click)="fabricUpload.click()" [disabled]="isUploadingAttachment('fabric')">
+                        {{ isUploadingAttachment('fabric') ? '\u0110ang t\u1ea3i...' : 'Upload \u1ea3nh' }}
+                      </button>
+                      @if (fabricImages.length) {
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="clearAttachments('fabric')">X&#243;a h&#7871;t</button>
+                      }
+                    </div>
+                    @if (fabricImages.length) {
+                      <div class="attachment-grid">
+                        @for (url of fabricImages; track url) {
+                          <div class="attachment-card">
+                            <img [src]="url" alt="&#7842;nh v&#7843;i" />
+                            <div class="attachment-actions">
+                              <a class="btn btn-ghost btn-sm" [href]="url" target="_blank" rel="noopener noreferrer">Xem</a>
+                              <button class="btn btn-ghost btn-sm" type="button" (click)="removeAttachment('fabric', url)">X&#243;a</button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="empty-state soft">Ch&#432;a c&#243; &#7843;nh.</div>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                @if (canMoveTo('tailoring')) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmAndMove('tailoring', 'Đã bắt đầu may.', 'Xác nhận chuyển sang bước Đang may?')">
+                    Xác nhận Đang may
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'tailoring') {
+            <div class="detail-section">
+              <div class="section-title">Theo dõi sản xuất</div>
+              <div class="form-grid">
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú từ thợ may/admin</span>
+                  <textarea class="input textarea" rows="3" [(ngModel)]="form.tailorNote"></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ảnh thiết kế chốt cuối</span>
+                  <div class="upload-panel">
+                    <input #finalDesignUpload class="file-upload-input" type="file" accept="image/*" multiple (change)="onAttachmentFilesSelected($event, 'final_design')" />
+                    <div class="upload-actions">
+                      <button class="btn btn-sm upload-btn" type="button" (click)="finalDesignUpload.click()" [disabled]="isUploadingAttachment('final_design')">
+                        {{ isUploadingAttachment('final_design') ? '\u0110ang t\u1ea3i...' : 'Upload \u1ea3nh' }}
+                      </button>
+                      @if (finalDesignImages.length) {
+                        <button class="btn btn-ghost btn-sm" type="button" (click)="clearAttachments('final_design')">X&#243;a h&#7871;t</button>
+                      }
+                    </div>
+                    @if (finalDesignImages.length) {
+                      <div class="attachment-grid">
+                        @for (url of finalDesignImages; track url) {
+                          <div class="attachment-card">
+                            <img [src]="url" alt="&#7842;nh thi&#7871;t k&#7871; ch&#7889;t cu&#7889;i" />
+                            <div class="attachment-actions">
+                              <a class="btn btn-ghost btn-sm" [href]="url" target="_blank" rel="noopener noreferrer">Xem</a>
+                              <button class="btn btn-ghost btn-sm" type="button" (click)="removeAttachment('final_design', url)">X&#243;a</button>
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <div class="empty-state soft">Ch&#432;a c&#243; &#7843;nh.</div>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                @if (canMoveTo('fitting_adjustment')) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmAndMove('fitting_adjustment', 'Đã chuyển bước thử/chỉnh sửa.', 'Xác nhận chuyển sang bước Chờ thử/chỉnh sửa?')">
+                    Xác nhận Chờ thử/chỉnh sửa
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'fitting_adjustment') {
+            <div class="detail-section">
+              <div class="section-title">Thử / chỉnh sửa</div>
+              <div class="form-grid">
+                <div class="filter-field full-width">
+                  <span class="filter-label">Yêu cầu chỉnh sửa theo ảnh mẫu</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.customRequest"></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú số đo chỉnh sửa</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.measurementNote"></textarea>
+                </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú nội bộ giai đoạn thử</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.tailorNote"></textarea>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                @if (canMoveTo('tailoring')) {
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="confirmAndMove('tailoring', 'Quay lại bước may để chỉnh sửa.', 'Xác nhận quay lại bước Đang may?')">
+                    Quay lại Đang may
+                  </button>
+                }
+                @if (canMoveTo('completed')) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmAndMove('completed', 'Đã hoàn thành sản phẩm.', 'Xác nhận chuyển sang bước Hoàn thành?')">
+                    Xác nhận Hoàn thành
+                  </button>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'completed') {
+            <div class="detail-section">
+              <div class="section-title">Hoàn thành</div>
+              <div class="completed-layout">
+                <div class="completed-card">
+                  <div class="completed-card-title">Sẵn sàng chuyển sang giao hàng</div>
+                  <ul class="completed-checklist">
+                    <li>Đã hoàn tất may đo và kiểm tra sản phẩm.</li>
+                    <li>Đã rà soát thông tin thanh toán và công nợ.</li>
+                    <li>Bước tiếp theo: tạo vận đơn ở tab Đang giao.</li>
+                  </ul>
+                  <div class="field-hint">Xác nhận bước này để chuyển sang tab Đang giao.</div>
+                </div>
+                <div class="completed-card">
+                  <div class="completed-card-title">Tóm tắt trước bàn giao</div>
+                  <div class="info-list">
+                    <div><span>Khách hàng</span><strong>{{ form.fullName || '-' }}</strong></div>
+                    <div><span>Mẫu</span><strong>{{ form.referenceProductName || form.title || '-' }}</strong></div>
+                    <div><span>Tổng tiền</span><strong>{{ formatCurrency(totalAmount) }}</strong></div>
+                    <div><span>Đã thanh toán</span><strong>{{ formatCurrency(form.paidAmount) }}</strong></div>
+                    <div><span>Còn nợ</span><strong>{{ formatCurrency(balanceDue) }}</strong></div>
+                    <div><span>Hoàn thành lúc</span><strong>{{ progressTime('completed') }}</strong></div>
+                  </div>
+                </div>
+              </div>
+              <div class="status-actions">
+                @if (canConfirmCompletedStep) {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmCompletedAndOpenDelivery()">
+                    Xác nhận
+                  </button>
+                } @else {
+                  <span class="field-hint">Đơn đã qua bước Hoàn thành, tiếp tục xử lý tại tab Đang giao.</span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (selectedStep === 'delivered') {
+            <div class="detail-section">
+              <div class="section-title">Đang giao</div>
+              <div class="form-grid">
+                <div class="filter-field">
+                  <span class="filter-label">Hình thức nhận</span>
+                  <select class="select" [(ngModel)]="form.receiveMethod">
+                    @for (method of receiveMethodOptions; track method.value) {
+                      <option [value]="method.value">{{ method.label }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Đơn vị vận chuyển</span>
+                  <select class="select" [(ngModel)]="form.carrierName">
+                    <option value="">Chọn đơn vị vận chuyển</option>
+                    @for (carrier of shipmentCarrierOptions; track carrier.value) {
+                      <option [value]="carrier.value">{{ carrier.label }}</option>
+                    }
+                    @if (form.carrierName && !isShipmentCarrierOption(form.carrierName)) {
+                      <option [value]="form.carrierName">{{ form.carrierName }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="filter-field"><span class="filter-label">Mã vận đơn</span><input class="input" [(ngModel)]="form.trackingCode" /></div>
+                <div class="filter-field"><span class="filter-label">Mã nhãn</span><input class="input" [(ngModel)]="form.labelCode" /></div>
+                <div class="filter-field"><span class="filter-label">Ngày giao dự kiến</span><input class="input" type="date" [(ngModel)]="form.estimatedDeliveryDate" /></div>
+                <div class="filter-field"><span class="filter-label">Ngày giao thực tế</span><input class="input" type="date" [(ngModel)]="form.actualDeliveryDate" /></div>
+                <div class="filter-field full-width"><span class="filter-label">Ghi chú giao hàng</span><textarea class="input textarea" rows="2" [(ngModel)]="form.shipmentNote"></textarea></div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
+                <button class="btn btn-secondary btn-sm" type="button" (click)="createShipment()" [disabled]="shipmentLoading">
+                  {{ shipmentLoading ? 'Đang tạo...' : 'Tạo vận đơn' }}
+                </button>
+                @if (canMoveTo('delivered')) {
+                  <button class="btn btn-primary btn-sm" type="button" [disabled]="!canConfirmDelivered" (click)="confirmAndMove('delivered', 'Đã giao hàng cho khách.', 'Xác nhận đã giao?')">
+                    Xác nhận đã giao
+                  </button>
+                }
+              </div>
+              @if (!hasShipmentUpdated) {
+                <div class="field-hint">Vui lòng bấm "Tạo vận đơn" trước khi xác nhận đã giao.</div>
+              }
+            </div>
+          }
+
+          @if (selectedStep === 'finalized') {
+            <div class="detail-section">
+              <div class="section-title">Hoàn tất đơn may đo</div>
+              <div class="info-list finalized-list">
+                <div><span>Mã đơn</span><strong>{{ selectedOrder.tailor_order_id }}</strong></div>
+                <div><span>Khách hàng</span><strong>{{ form.fullName || '-' }}</strong></div>
+                <div><span>Thanh toán</span><strong>{{ paymentStatusLabel(form.paymentStatus) }}</strong></div>
+                <div><span>Vận đơn</span><strong>{{ form.trackingCode || '-' }}</strong></div>
+                <div><span>Ngày hoàn tất</span><strong>{{ progressTime('finalized') }}</strong></div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu ghi chú</button>
+              </div>
+            </div>
+          }
+
+          <div class="detail-section">
+            <div class="section-title">Ghi chú nội bộ</div>
+            <textarea class="input textarea" rows="3" [(ngModel)]="form.adminNote"></textarea>
+            @if (canMoveTo('cancelled')) {
+              <div class="form-grid">
+                <div class="filter-field full-width">
+                  <span class="filter-label">Lý do hủy</span>
+                  <textarea class="input textarea" rows="2" [(ngModel)]="form.cancelReason"></textarea>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button class="btn btn-ghost btn-sm" type="button" (click)="moveTo('cancelled', 'Đã hủy đơn may đo.')">
+                  Hủy đơn
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="detail-side">
+          <div class="side-card side-card-compact">
+            <div class="side-title">Tổng quan</div>
+            <div class="info-list">
+              <div><span>Khách hàng</span><strong>{{ form.fullName || '-' }}</strong></div>
+              <div><span>Mã khách</span><strong>{{ form.customerCode || '-' }}</strong></div>
+              <div><span>Mẫu</span><strong>{{ form.referenceProductName || form.title || '-' }}</strong></div>
+              <div><span>Tổng tiền</span><strong>{{ formatCurrency(totalAmount) }}</strong></div>
+              <div><span>Đã thanh toán</span><strong>{{ formatCurrency(form.paidAmount) }}</strong></div>
+              <div><span>Còn nợ</span><strong>{{ formatCurrency(balanceDue) }}</strong></div>
+            </div>
+          </div>
+
+          <div class="side-card side-card-compact">
+            <div class="side-title">Thanh toán & giao hàng</div>
+            <div class="info-list">
+              <div><span>Trạng thái</span><strong>{{ paymentStatusLabel(form.paymentStatus) }}</strong></div>
+              <div><span>Phương thức</span><strong>{{ paymentMethodLabel(form.paymentMethod) }}</strong></div>
+              <div><span>Hình thức nhận</span><strong>{{ receiveMethodLabel(form.receiveMethod) }}</strong></div>
+              <div><span>Vận chuyển</span><strong>{{ form.carrierName || '-' }}</strong></div>
+              <div><span>Mã vận đơn</span><strong>{{ form.trackingCode || '-' }}</strong></div>
+            </div>
+          </div>
+
+          <div class="side-card side-card-history">
+            <div class="side-title">Lịch sử trạng thái</div>
+            @if (selectedOrder.status_history?.length) {
+              <div class="history-list">
+                @for (entry of selectedOrder.status_history; track $index) {
+                  <div class="history-row">
+                    <div>
+                      <div class="font-semibold">{{ formatHistoryStatus(entry.from) }} -> {{ formatHistoryStatus(entry.to) }}</div>
+                      <div class="item-meta">{{ entry.note || '-' }}</div>
+                    </div>
+                    <div class="item-meta">{{ formatDateTime(entry.changed_at) }}</div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state soft">Chưa có lịch sử.</div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+
+

@@ -1,26 +1,51 @@
+export interface BlogAuthor {
+  id?: string;
+  author_id?: number;
+  name: string;
+  role?: string;
+  avatar?: string;
+  bio?: string;
+}
+
+export interface BlogSeo {
+  meta_title?: string;
+  meta_description?: string;
+  meta_keywords?: string | string[];
+  og_image?: string;
+}
+
 export interface BlogPost {
   id: string;
+  blog_id?: number;
   title: string;
   slug: string;
   excerpt: string;
   content: string;
   featuredImage?: string;
+  thumbnail?: string;
   categoryId: string;
+  category_id?: number;
   category?: BlogCategory;
   authorId: string;
-  author?: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
+  author?: BlogAuthor;
   status: BlogPostStatus;
+  is_featured?: boolean;
+  is_published?: boolean;
+  is_archived?: boolean;
   publishedAt?: Date;
+  published_at?: string | Date;
   viewCount: number;
+  views?: number;
+  readingTime?: number;
+  reading_time?: number;
   tags: string[];
   seoTitle?: string;
   seoDescription?: string;
+  seo?: BlogSeo;
   createdAt: Date;
   updatedAt: Date;
+  created_at?: string | Date;
+  updated_at?: string | Date;
 }
 
 export enum BlogPostStatus {
@@ -68,15 +93,22 @@ export enum CommentStatus {
 
 export interface CreateBlogPostRequest {
   title: string;
+  slug?: string;
   excerpt: string;
   content: string;
   featuredImage?: string;
+  thumbnail?: string;
   categoryId: string;
+  category_id?: number;
   status: BlogPostStatus;
   tags: string[];
+  reading_time?: number;
+  is_featured?: boolean;
+  published_at?: string | Date;
+  author?: BlogAuthor;
   seoTitle?: string;
   seoDescription?: string;
-  publishedAt?: Date;
+  seo?: BlogSeo;
 }
 
 export interface UpdateBlogPostRequest extends Partial<CreateBlogPostRequest> {

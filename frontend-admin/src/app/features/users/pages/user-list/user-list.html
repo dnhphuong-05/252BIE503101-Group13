@@ -1,12 +1,16 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Users</div>
-      <div class="page-subtitle">Quản lý tài khoản đăng ký, phân quyền và lịch sử giao dịch.</div>
+      <div class="page-title">Người dùng</div>
+      <div class="page-subtitle">{{ detailMode ? 'Chi tiết người dùng' : 'Danh sách, lọc và tìm kiếm' }}</div>
     </div>
+    @if (detailMode) {
+      <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Quay lại danh sách</button>
+    }
   </div>
 
   <div class="card table-card">
+    @if (!detailMode) {
     <div class="table-toolbar user-toolbar">
       <div class="toolbar-group flex-1">
         <div class="toolbar-search">
@@ -145,7 +149,9 @@
         </button>
       </div>
     </div>
+    }
 
+    @if (detailMode) {
     @if (detailLoading) {
       <div class="detail-loading">Đang tải chi tiết user...</div>
     } @else if (selectedUser) {
@@ -453,6 +459,7 @@
           </button>
         </div>
       </div>
+    }
     }
   </div>
 </div>

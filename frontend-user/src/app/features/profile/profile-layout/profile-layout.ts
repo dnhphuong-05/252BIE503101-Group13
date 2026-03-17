@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService, User } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-profile-layout',
@@ -18,6 +19,7 @@ export class ProfileLayoutComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit() {
@@ -76,8 +78,11 @@ export class ProfileLayoutComponent implements OnInit {
   }
 
   onLogout() {
-    if (confirm('Bạn có chắc chắn muốn đăng xuất?')) {
+    this.toastService.confirm('Bạn có chắc chắn muốn đăng xuất?', () => {
       this.authService.logout();
-    }
+    }, {
+      confirmText: 'Đăng xuất',
+      confirmVariant: 'danger',
+    });
   }
 }

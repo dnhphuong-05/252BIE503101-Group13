@@ -60,6 +60,27 @@ export interface LoyaltyTransactionResponse {
   };
 }
 
+export interface LoyaltyVoucher {
+  id: string;
+  title: string;
+  description: string;
+  required_points: number;
+  discount_type: 'product' | 'shipping';
+  discount_value: number;
+  tier_name: string;
+  is_eligible: boolean;
+  points_shortfall: number;
+}
+
+export interface LoyaltyVoucherSummary {
+  loyalty?: {
+    total_points?: number;
+    tier_name?: string;
+    tier_level?: number;
+  };
+  vouchers: LoyaltyVoucher[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -78,5 +99,9 @@ export class AccountService {
     return this.http.get<LoyaltyTransactionResponse>(`${this.apiUrl}/me/loyalty-transactions`, {
       params: { page: page.toString(), limit: limit.toString() },
     });
+  }
+
+  getLoyaltyVouchers(): Observable<ApiResponse<LoyaltyVoucherSummary>> {
+    return this.http.get<ApiResponse<LoyaltyVoucherSummary>>(`${this.apiUrl}/me/loyalty-vouchers`);
   }
 }

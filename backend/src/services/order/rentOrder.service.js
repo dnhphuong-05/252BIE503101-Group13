@@ -7,6 +7,7 @@ import User from "../../models/user/User.js";
 import Counter from "../../models/Counter.js";
 
 const buildRentLink = (rentOrderId) => `/profile/rentals/${rentOrderId}`;
+const buildAdminRentLink = (rentOrderId) => `/orders/rent?order=${rentOrderId}`;
 
 const formatCurrency = (value) =>
   `${new Intl.NumberFormat("vi-VN").format(Number(value) || 0)} đ`;
@@ -264,11 +265,11 @@ class RentOrderService extends BaseService {
     }
 
     await notifyAdmins({
-      type: "rent_confirmed",
+      type: "rent_created",
       title: "Đơn thuê mới",
       message: `Có đơn thuê mới ${order.rent_order_code} cần xác nhận.`,
       entityId: order.rent_order_id,
-      link: buildRentLink(order.rent_order_id),
+      link: buildAdminRentLink(order.rent_order_id),
     });
 
     return { order };
@@ -343,7 +344,7 @@ class RentOrderService extends BaseService {
       title: "Yêu cầu trả hàng",
       message: `Khách vừa yêu cầu trả đơn ${order.rent_order_code}.`,
       entityId: order.rent_order_id,
-      link: buildRentLink(order.rent_order_id),
+      link: buildAdminRentLink(order.rent_order_id),
     });
 
     return order.toObject();
@@ -392,7 +393,7 @@ class RentOrderService extends BaseService {
       title: "Khách đã gửi hàng",
       message: `Khách đã gửi hàng trả cho đơn ${order.rent_order_code}.`,
       entityId: order.rent_order_id,
-      link: buildRentLink(order.rent_order_id),
+      link: buildAdminRentLink(order.rent_order_id),
     });
 
     return order.toObject();
@@ -438,7 +439,7 @@ class RentOrderService extends BaseService {
       title: "Đơn thuê bị hủy",
       message: `Khách đã hủy đơn thuê ${order.rent_order_code}.`,
       entityId: order.rent_order_id,
-      link: buildRentLink(order.rent_order_id),
+      link: buildAdminRentLink(order.rent_order_id),
     });
 
     return order.toObject();

@@ -13,7 +13,7 @@ const slugify = (value = "") =>
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[đĐ]/g, "d")
+    .replace(/[\u0111\u0110]/g, "d")
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-")
@@ -30,6 +30,155 @@ const normalizeTags = (value) => {
       .filter(Boolean);
   }
   return [];
+};
+
+const normalizeBoolean = (value) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0") return false;
+  }
+  return undefined;
+};
+
+const normalizePositiveNumber = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const nextValue = Number(value);
+  if (!Number.isFinite(nextValue) || nextValue <= 0) {
+    return undefined;
+  }
+
+  return Math.round(nextValue);
+};
+
+const applyStatusFlags = (payload) => {
+  const status =
+    typeof payload.status === "string" ? payload.status.trim().toLowerCase() : "";
+  if (!status) return;
+
+  if (status === "published") {
+    payload.is_published = true;
+    payload.is_archived = false;
+  } else if (status === "archived") {
+    payload.is_published = false;
+    payload.is_archived = true;
+  } else {
+    payload.is_published = false;
+    payload.is_archived = false;
+  }
+
+  delete payload.status;
+};
+
+const normalizeAuthor = (value) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+
+  const author = { ...value };
+  const authorId = normalizePositiveNumber(author.author_id);
+
+  if (authorId !== undefined) {
+    author.author_id = authorId;
+  } else {
+    delete author.author_id;
+  }
+
+  return author;
+};
+
+const normalizeSeo = (value, fallbackImage = "") => {
+  const source =
+    value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const seo = { ...source };
+
+  if (seo.meta_keywords !== undefined) {
+    seo.meta_keywords = normalizeTags(seo.meta_keywords);
+  }
+
+  if (fallbackImage && !seo.og_image) {
+    seo.og_image = fallbackImage;
+  }
+
+  return seo;
+};
+
+const preparePostPayload = (payload, { isCreate = false } = {}) => {
+  applyStatusFlags(payload);
+
+  const normalizedFeatured = normalizeBoolean(payload.is_featured);
+  if (normalizedFeatured !== undefined) {
+    payload.is_featured = normalizedFeatured;
+  }
+
+  const normalizedPublished = normalizeBoolean(payload.is_published);
+  if (normalizedPublished !== undefined) {
+    payload.is_published = normalizedPublished;
+  }
+
+  const normalizedArchived = normalizeBoolean(payload.is_archived);
+  if (normalizedArchived !== undefined) {
+    payload.is_archived = normalizedArchived;
+  }
+
+  if (payload.is_published === undefined && isCreate) {
+    payload.is_published = false;
+  }
+  if (payload.is_archived === undefined && isCreate) {
+    payload.is_archived = false;
+  }
+  if (payload.is_archived) {
+    payload.is_published = false;
+  }
+
+  if (payload.categoryId && !payload.category_id) {
+    payload.category_id = Number(payload.categoryId);
+  }
+
+  if (payload.category && !payload.category_id) {
+    payload.category_id = Number(payload.category);
+  }
+
+  if (payload.tags !== undefined) {
+    payload.tags = normalizeTags(payload.tags);
+  }
+
+  const readingTime = normalizePositiveNumber(payload.reading_time);
+  if (readingTime !== undefined) {
+    payload.reading_time = readingTime;
+  } else if (payload.reading_time !== undefined) {
+    delete payload.reading_time;
+  }
+
+  if (payload.author) {
+    payload.author = normalizeAuthor(payload.author);
+  } else if (isCreate) {
+    payload.author = { name: payload.author_name || "Admin" };
+  }
+
+  if (payload.seo) {
+    payload.seo = normalizeSeo(payload.seo, payload.thumbnail);
+  } else if (isCreate && payload.thumbnail) {
+    payload.seo = normalizeSeo({}, payload.thumbnail);
+  } else if (payload.thumbnail) {
+    payload["seo.og_image"] = payload.thumbnail;
+  }
+
+  if (payload.published_at === "") {
+    delete payload.published_at;
+  }
+
+  if (payload.is_published && !payload.published_at) {
+    payload.published_at = new Date();
+  }
+
+  return payload;
 };
 
 /**
@@ -163,33 +312,7 @@ export const createPost = catchAsync(async (req, res) => {
     payload.slug = slugify(payload.title || `blog-${payload.blog_id}`);
   }
 
-  if (payload.status) {
-    payload.is_published = payload.status === "published";
-    delete payload.status;
-  }
-
-  if (payload.is_published === undefined) {
-    payload.is_published = false;
-  }
-
-  if (payload.categoryId && !payload.category_id) {
-    payload.category_id = Number(payload.categoryId);
-  }
-
-  if (payload.category && !payload.category_id) {
-    payload.category_id = Number(payload.category);
-  }
-
-  payload.tags = normalizeTags(payload.tags);
-  payload.is_archived = false;
-
-  if (!payload.author) {
-    payload.author = { name: payload.author_name || "Admin" };
-  }
-
-  if (payload.is_published && !payload.published_at) {
-    payload.published_at = new Date();
-  }
+  preparePostPayload(payload, { isCreate: true });
 
   const post = await blogPostService.create(payload);
 
@@ -202,26 +325,11 @@ export const createPost = catchAsync(async (req, res) => {
 export const updatePost = catchAsync(async (req, res) => {
   const payload = { ...req.body };
 
-  if (payload.status) {
-    payload.is_published = payload.status === "published";
-    delete payload.status;
-  }
-
   if (payload.title && !payload.slug) {
     payload.slug = slugify(payload.title);
   }
 
-  if (payload.categoryId && !payload.category_id) {
-    payload.category_id = Number(payload.categoryId);
-  }
-
-  if (payload.category && !payload.category_id) {
-    payload.category_id = Number(payload.category);
-  }
-
-  if (payload.tags) {
-    payload.tags = normalizeTags(payload.tags);
-  }
+  preparePostPayload(payload);
 
   const post = await blogPostService.update(req.params.id, payload);
 
@@ -302,7 +410,7 @@ export const uploadBlogImages = catchAsync(async (req, res) => {
     throw ApiError.badRequest("Blog image upload failed");
   }
 
-  successResponse(res, { urls, files }, "Upload images thành công");
+  successResponse(res, { urls, files }, "Upload images th\u00e0nh c\u00f4ng");
 });
 
 /**

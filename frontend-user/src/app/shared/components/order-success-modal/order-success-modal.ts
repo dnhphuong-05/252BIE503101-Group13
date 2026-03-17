@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-order-success-modal',
@@ -17,6 +18,8 @@ export class OrderSuccessModalComponent {
 
   @Output() close = new EventEmitter<void>();
 
+  constructor(private toastService: ToastService) {}
+
   closeModal(): void {
     this.close.emit();
   }
@@ -27,7 +30,7 @@ export class OrderSuccessModalComponent {
 
   copyOrderCode(): void {
     navigator.clipboard.writeText(this.orderCode).then(() => {
-      alert('Đã sao chép mã đơn hàng!');
+      this.toastService.success('Đã sao chép mã đơn hàng.');
     });
   }
 

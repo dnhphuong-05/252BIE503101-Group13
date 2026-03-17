@@ -30,6 +30,7 @@ export const createCheckout = {
     shipping_method: Joi.string().trim().allow(null, ""),
     shipping_fee: Joi.number().min(0).optional(),
     discount_amount: Joi.number().min(0).optional(),
+    loyalty_voucher_id: Joi.string().trim().allow(null, "").optional(),
     payment_method: Joi.string()
       .valid("cod", "bank_transfer", "vnpay", "momo")
       .required(),

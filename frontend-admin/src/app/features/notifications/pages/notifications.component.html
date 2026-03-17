@@ -1,0 +1,154 @@
+<div class="page-shell notifications-page">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Thông báo admin</div>
+      <div class="page-subtitle">
+        Theo dõi đơn mới, yêu cầu hoàn trả, liên hệ và các thao tác từ phía người dùng.
+      </div>
+    </div>
+
+    <div class="page-actions">
+      <button class="btn btn-ghost" type="button" (click)="refresh()">
+        <i class="fas fa-rotate-right"></i>
+        <span>Làm mới</span>
+      </button>
+      <button
+        class="btn btn-secondary"
+        type="button"
+        [disabled]="!unreadCount() || isMarkingAll()"
+        (click)="markAllAsRead()"
+      >
+        @if (isMarkingAll()) {
+          <span class="spinner"></span>
+        }
+        <span>Đánh dấu đã đọc</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stats-card accent-sales">
+      <div class="stats-label">Chưa đọc</div>
+      <div class="stats-value">{{ unreadCount() }}</div>
+      <div class="stats-note">Cần xử lý ngay</div>
+    </div>
+
+    <div class="stats-card accent-rent">
+      <div class="stats-label">Đơn thuê</div>
+      <div class="stats-value">{{ rentCount() }}</div>
+      <div class="stats-note">Bao gồm trả hàng và hoàn cọc</div>
+    </div>
+
+    <div class="stats-card accent-returns">
+      <div class="stats-label">Đơn mua và hoàn trả</div>
+      <div class="stats-value">{{ salesCount() + returnsCount() }}</div>
+      <div class="stats-note">Đơn mới, xác nhận nhận hàng, hoàn trả</div>
+    </div>
+
+    <div class="stats-card accent-contact">
+      <div class="stats-label">Liên hệ</div>
+      <div class="stats-value">{{ contactCount() }}</div>
+      <div class="stats-note">Tin nhắn cần phản hồi</div>
+    </div>
+  </div>
+
+  <div class="card notification-board">
+    <div class="notification-toolbar">
+      <div class="toolbar-search notification-search">
+        <i class="fas fa-search"></i>
+        <input
+          class="input"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="onSearch($event)"
+          placeholder="Tìm theo tiêu đề, nội dung hoặc mã liên quan"
+        />
+      </div>
+
+      <div class="filter-pills">
+        @for (filter of filterOptions; track filter.value) {
+          <button
+            class="filter-pill"
+            type="button"
+            [class.active]="activeFilter() === filter.value"
+            (click)="setFilter(filter.value)"
+          >
+            {{ filter.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (isLoading()) {
+      <div class="notification-empty">
+        <span class="spinner"></span>
+        <span>Đang tải thông báo...</span>
+      </div>
+    } @else if (!filteredNotifications().length) {
+      <div class="notification-empty">
+        <i class="fas fa-bell-slash"></i>
+        <span>Không có thông báo phù hợp với bộ lọc hiện tại.</span>
+      </div>
+    } @else {
+      <div class="notification-list">
+        @for (notification of filteredNotifications(); track trackByNotification($index, notification)) {
+          <article
+            class="notification-card"
+            [class.is-unread]="!notification.is_read"
+            [class.category-sales]="notificationMeta(notification).category === 'sales'"
+            [class.category-rent]="notificationMeta(notification).category === 'rent'"
+            [class.category-returns]="notificationMeta(notification).category === 'returns'"
+            [class.category-contact]="notificationMeta(notification).category === 'contact'"
+            (click)="openNotification(notification)"
+          >
+            <div class="notification-icon">
+              <i [class]="notificationMeta(notification).icon"></i>
+            </div>
+
+            <div class="notification-content">
+              <div class="notification-head">
+                <div class="notification-head-main">
+                  <span class="notification-badge">
+                    {{ notificationMeta(notification).badge }}
+                  </span>
+                  @if (!notification.is_read) {
+                    <span class="notification-status">Mới</span>
+                  }
+                </div>
+
+                <div class="notification-time">
+                  <span>{{ formatRelativeTime(notification.created_at) }}</span>
+                  <span>{{ formatDateTime(notification.created_at) }}</span>
+                </div>
+              </div>
+
+              <div class="notification-title">{{ notification.title }}</div>
+              <div class="notification-message">{{ notification.message }}</div>
+
+              <div class="notification-foot">
+                <div class="notification-entity">
+                  <i class="fas fa-link"></i>
+                  <span>{{ notification.entity_id }}</span>
+                </div>
+
+                <div class="notification-actions">
+                  @if (!notification.is_read) {
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      type="button"
+                      (click)="markAsRead(notification, $event)"
+                    >
+                      Đã đọc
+                    </button>
+                  }
+                  <button class="btn btn-secondary btn-sm" type="button">
+                    Mở trang liên quan
+                  </button>
+                </div>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </div>
+</div>

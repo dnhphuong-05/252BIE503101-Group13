@@ -1,29 +1,25 @@
-﻿<div class="page-shell">
+<div class="page-shell">
   <div class="page-header">
     <div class="title-block">
       <div class="page-title">
         @if (view() === 'rent') {
           Đơn thuê
         } @else if (view() === 'returns') {
-          Hoàn trả &amp; hoàn tiền
+          Returns & refunds
         } @else {
-          Đơn mua
+          Sales orders
         }
       </div>
-      <div class="page-subtitle">
-        @if (view() === 'rent') {
-          Quản lý đơn thuê, yêu cầu trả và hoàn cọc
-        } @else if (view() === 'returns') {
-          Theo dõi hoàn trả &amp; hoàn tiền
-        } @else {
-          Quản lý đơn mua và cập nhật trạng thái giao hàng
-        }
-      </div>
+      <div class="page-subtitle">{{ detailMode ? 'Chi tiết đơn hàng' : 'Danh sách, lọc và tìm kiếm' }}</div>
     </div>
+    @if (detailMode) {
+      <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Quay lại danh sách</button>
+    }
   </div>
 
   <div class="split-layout order-layout">
     <div class="card table-card">
+      @if (!detailMode) {
       <div class="table-toolbar order-toolbar">
         <div class="toolbar-group flex-1">
           <div class="toolbar-search">
@@ -148,9 +144,9 @@
         }
 
         <div class="filter-actions">
-          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
           <button class="btn btn-secondary btn-sm" type="button" (click)="refreshOrders()">
-            Refresh
+            Làm mới
           </button>
         </div>
       </div>
@@ -173,11 +169,7 @@
           </thead>
           <tbody>
             @for (order of rentOrders; track order.id) {
-              <tr
-                class="order-row"
-                [class.active]="selectedId() === order.id"
-                (click)="selectOrder(order.id)"
-              >
+              <tr class="order-row">
                 <td>
                   <div class="rent-code">
                     <div class="font-semibold text-primary-900">{{ order.code }}</div>
@@ -251,16 +243,12 @@
               <th>Trạng thái</th>
               <th>Số tiền</th>
               <th>Ngày</th>
-              <th>Action</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             @for (request of returnOrders; track request.id) {
-              <tr
-                class="order-row"
-                [class.active]="selectedId() === request.id"
-                (click)="selectOrder(request.id)"
-              >
+              <tr class="order-row">
                 <td class="font-semibold text-primary-900">{{ request.code }}</td>
                 <td>
                   <div class="item-meta">{{ request.orderCode }}</div>
@@ -274,7 +262,7 @@
                 <td class="text-sm text-primary-500">{{ request.requestedAt }}</td>
                 <td>
                   <div class="table-actions table-actions-tight">
-                    <button class="btn btn-ghost btn-sm" (click)="selectOrder(request.id)">
+                    <button class="btn btn-ghost btn-sm" (click)="onViewReturn(request, $event)">
                       Xem
                     </button>
                   </div>
@@ -299,11 +287,7 @@
           </thead>
           <tbody>
             @for (order of salesOrders; track order.id) {
-              <tr
-                class="order-row"
-                [class.active]="selectedId() === order.id"
-                (click)="selectOrder(order.id)"
-              >
+              <tr class="order-row">
                 <td class="font-semibold text-primary-900">{{ order.code }}</td>
                 <td>
                   <div class="customer-stack">
@@ -356,7 +340,9 @@
         </span>
         <button class="btn btn-secondary btn-sm">Tải thêm</button>
       </div>
+      }
 
+      @if (detailMode) {
       @if (view() === 'rent') {
         @if (rentDetailLoading) {
           <div class="detail-loading">Đang tải chi tiết đơn thuê...</div>
@@ -381,6 +367,57 @@
                 <span [class]="getRentDetailStatusMeta(selectedRentDetail).class">
                   {{ getRentDetailStatusMeta(selectedRentDetail).label }}
                 </span>
+              </div>
+            </div>
+
+            <div class="progress-card">
+              <div class="progress-top">
+                <div class="progress-title">Tiến trình đơn thuê</div>
+                <div class="progress-percent">{{ rentProgressPercent() }}%</div>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" [style.width.%]="rentProgressPercent()"></div>
+              </div>
+              <div class="flow-list">
+                @for (step of rentProgressFlow; track step; let i = $index) {
+                  <div
+                    class="flow-step"
+                    [class.done]="isRentProgressDone(i)"
+                    [class.current]="isRentProgressCurrent(i)"
+                    (click)="selectRentProgressStep(step)"
+                  >
+                    <div class="flow-dot">{{ i + 1 }}</div>
+                    <div class="flow-label">{{ rentProgressLabel(step) }}</div>
+                    <div class="flow-time">{{ rentProgressTime(step) }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="step-overview-card">
+              <div class="section-title">{{ rentCurrentStepLabel() }}</div>
+              <div class="item-meta">{{ rentProgressTime(rentFocusedStep()) }}</div>
+              <div class="step-overview-hints">
+                @for (hint of rentStepFieldHints(); track hint) {
+                  <span class="chip chip-teal">{{ hint }}</span>
+                }
+              </div>
+              <div class="status-actions">
+                @if (rentStepPrimaryActionLabel()) {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="!canRunRentStepAction()"
+                    (click)="runRentStepAction()"
+                  >
+                    {{ rentStepPrimaryActionLabel() }}
+                  </button>
+                  @if (!canRunRentStepAction()) {
+                    <span class="item-meta">Chỉ thao tác ở bước hiện tại.</span>
+                  }
+                } @else {
+                  <span class="item-meta">Bước này không cần thao tác thêm.</span>
+                }
               </div>
             </div>
 
@@ -887,7 +924,7 @@
               <div>
                 <div class="section-title">{{ selectedReturnDetail.return_id }}</div>
                 <div class="item-meta">
-                  Đơn: {{ selectedReturnDetail.order_code }} ·
+                  Đơn: {{ selectedReturnDetail.order_code }} &middot;
                   {{ formatDateTime(selectedReturnDetail.requested_at || selectedReturnDetail.created_at) }}
                 </div>
               </div>
@@ -1090,6 +1127,57 @@
               </div>
             </div>
 
+            <div class="progress-card">
+              <div class="progress-top">
+                <div class="progress-title">Tiến trình hoàn trả</div>
+                <div class="progress-percent">{{ returnProgressPercent() }}%</div>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" [style.width.%]="returnProgressPercent()"></div>
+              </div>
+              <div class="flow-list">
+                @for (step of returnProgressFlow; track step; let i = $index) {
+                  <div
+                    class="flow-step"
+                    [class.done]="isReturnProgressDone(i)"
+                    [class.current]="isReturnProgressCurrent(i)"
+                    (click)="selectReturnProgressStep(step)"
+                  >
+                    <div class="flow-dot">{{ i + 1 }}</div>
+                    <div class="flow-label">{{ returnProgressLabel(step) }}</div>
+                    <div class="flow-time">{{ returnProgressTime(step) }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="step-overview-card">
+              <div class="section-title">{{ returnCurrentStepLabel() }}</div>
+              <div class="item-meta">{{ returnProgressTime(returnFocusedStep()) }}</div>
+              <div class="step-overview-hints">
+                @for (hint of returnStepFieldHints(); track hint) {
+                  <span class="chip chip-teal">{{ hint }}</span>
+                }
+              </div>
+              <div class="status-actions">
+                @if (returnStepPrimaryActionLabel()) {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="!canRunReturnStepAction()"
+                    (click)="runReturnStepAction()"
+                  >
+                    {{ returnStepPrimaryActionLabel() }}
+                  </button>
+                  @if (!canRunReturnStepAction()) {
+                    <span class="item-meta">Chỉ thao tác ở bước hiện tại.</span>
+                  }
+                } @else {
+                  <span class="item-meta">Bước này không cần thao tác thêm.</span>
+                }
+              </div>
+            </div>
+
             <div class="detail-section">
               <div class="section-title">Vận đơn trả</div>
               <div class="form-grid">
@@ -1142,7 +1230,7 @@
             </div>
 
             <div class="detail-section">
-              <div class="section-title">Timeline</div>
+              <div class="section-title">Lịch sử trạng thái</div>
               @if (selectedReturnDetail.status_history?.length) {
                 <div class="history-list">
                   @for (entry of selectedReturnDetail.status_history; track $index) {
@@ -1187,6 +1275,57 @@
                 <span [class]="getSalesDetailStatusMeta(selectedSalesDetail).class">
                   {{ getSalesDetailStatusMeta(selectedSalesDetail).label }}
                 </span>
+              </div>
+            </div>
+
+            <div class="progress-card">
+              <div class="progress-top">
+                <div class="progress-title">Tiến trình đơn mua</div>
+                <div class="progress-percent">{{ salesProgressPercent() }}%</div>
+              </div>
+              <div class="progress-track">
+                <div class="progress-fill" [style.width.%]="salesProgressPercent()"></div>
+              </div>
+              <div class="flow-list">
+                @for (step of salesProgressFlow; track step; let i = $index) {
+                  <div
+                    class="flow-step"
+                    [class.done]="isSalesProgressDone(i)"
+                    [class.current]="isSalesProgressCurrent(i)"
+                    (click)="selectSalesProgressStep(step)"
+                  >
+                    <div class="flow-dot">{{ i + 1 }}</div>
+                    <div class="flow-label">{{ salesProgressLabel(step) }}</div>
+                    <div class="flow-time">{{ salesProgressTime(step) }}</div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="step-overview-card">
+              <div class="section-title">{{ salesCurrentStepLabel() }}</div>
+              <div class="item-meta">{{ salesProgressTime(salesFocusedStep()) }}</div>
+              <div class="step-overview-hints">
+                @for (hint of salesStepFieldHints(); track hint) {
+                  <span class="chip chip-teal">{{ hint }}</span>
+                }
+              </div>
+              <div class="status-actions">
+                @if (salesStepPrimaryActionLabel()) {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="!canRunSalesStepAction()"
+                    (click)="runSalesStepAction()"
+                  >
+                    {{ salesStepPrimaryActionLabel() }}
+                  </button>
+                  @if (!canRunSalesStepAction()) {
+                    <span class="item-meta">Chỉ thao tác ở bước hiện tại.</span>
+                  }
+                } @else {
+                  <span class="item-meta">Bước này không cần thao tác thêm.</span>
+                }
               </div>
             </div>
 
@@ -1579,8 +1718,8 @@
           </div>
         }
       }
+      }
     </div>
   </div>
 </div>
-
 

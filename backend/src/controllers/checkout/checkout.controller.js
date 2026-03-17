@@ -5,6 +5,7 @@ import Product from "../../models/Product.js";
 import UserAddress from "../../models/user/UserAddress.js";
 import buyOrderService from "../../services/order/buyOrder.service.js";
 import guestCustomerService from "../../services/user/guestCustomer.service.js";
+import loyaltyService from "../../services/user/loyalty.service.js";
 import ApiError from "../../utils/ApiError.js";
 import catchAsync from "../../utils/catchAsync.js";
 import { createdResponse } from "../../utils/response.js";
@@ -38,6 +39,7 @@ const mapCartItemsToOrderItems = (cartItems, productMap) => {
       (product?.price_sale && product.price_sale > 0
         ? product.price_sale
         : product?.price_buy || 0);
+
     return {
       product_id: item.product_id,
       sku: buildSku(product, item.size, item.color) || `${item.product_id}`,
@@ -56,10 +58,12 @@ const mapGuestItemsToOrderItems = (items, productMap) => {
     if (!product) {
       throw ApiError.notFound(`Không tìm thấy sản phẩm ${item.product_id}`);
     }
+
     const price =
       product.price_sale && product.price_sale > 0
         ? product.price_sale
         : product.price_buy || 0;
+
     return {
       product_id: product.product_id,
       sku: buildSku(product, item.size, item.color) || `${item.product_id}`,
@@ -71,6 +75,29 @@ const mapGuestItemsToOrderItems = (items, productMap) => {
     };
   });
 };
+
+const getItemsSubtotal = (items = []) => {
+  return items.reduce((sum, item) => {
+    const lineTotal = Number(item.total_price);
+    if (Number.isFinite(lineTotal)) {
+      return sum + lineTotal;
+    }
+
+    const price = Number(item.price) || 0;
+    const quantity = Number(item.quantity) || 0;
+    return sum + price * quantity;
+  }, 0);
+};
+
+const shippingFeeByMethod = {
+  standard: 30000,
+  express: 50000,
+};
+
+const buildOrderResult = (result, loyaltyVoucher) => ({
+  ...result,
+  applied_loyalty_voucher: loyaltyVoucher || null,
+});
 
 export const createCheckout = catchAsync(async (req, res) => {
   const {
@@ -84,18 +111,16 @@ export const createCheckout = catchAsync(async (req, res) => {
     note,
     cart_item_ids,
     items: guestItems,
+    loyalty_voucher_id,
   } = req.body;
 
-  const shippingFeeByMethod = {
-    standard: 30000,
-    express: 50000,
-  };
   const resolvedShippingFee =
     shipping_method && shippingFeeByMethod[shipping_method] !== undefined
       ? shippingFeeByMethod[shipping_method]
       : typeof shipping_fee === "number"
         ? shipping_fee
         : 30000;
+
   const resolvedDiscount = typeof discount_amount === "number" ? discount_amount : 0;
   const normalizedShippingProvider =
     typeof shipping_provider === "string" && shipping_provider.trim()
@@ -121,13 +146,13 @@ export const createCheckout = catchAsync(async (req, res) => {
       }
       address = await UserAddress.findOne(lookup).lean();
     }
+
     if (!address) {
       address = await UserAddress.findOne({ user_id, is_default: true }).lean();
     }
     if (!address) {
       address = await UserAddress.findOne({ user_id }).sort({ created_at: 1 }).lean();
     }
-
     if (!address) {
       throw ApiError.badRequest("Vui lòng thêm địa chỉ nhận hàng");
     }
@@ -148,22 +173,31 @@ export const createCheckout = catchAsync(async (req, res) => {
       const productIds = [...new Set(guestItems.map((item) => item.product_id))];
       const products = await Product.find({ product_id: { $in: productIds } }).lean();
       const productMap = new Map(products.map((product) => [product.product_id, product]));
-
       const orderItems = mapGuestItemsToOrderItems(guestItems, productMap);
+      const loyaltyVoucher = await loyaltyService.resolveVoucherSelection({
+        userId: user_id,
+        voucherId: loyalty_voucher_id,
+        subtotalAmount: getItemsSubtotal(orderItems),
+        shippingFee: resolvedShippingFee,
+      });
 
       const result = await buyOrderService.createBuyOrder({
         user_id,
         customer_info: customerInfo,
         items: orderItems,
         shipping_fee: resolvedShippingFee,
-        discount_amount: resolvedDiscount,
+        discount_amount: loyaltyVoucher?.discount_amount ?? resolvedDiscount,
         payment_method,
         shipping_provider: normalizedShippingProvider,
         shipping_method: normalizedShippingMethod,
         note: note || "",
       });
 
-      return createdResponse(res, result, "Äáº·t hÃ ng thÃ nh cÃ´ng");
+      return createdResponse(
+        res,
+        buildOrderResult(result, loyaltyVoucher),
+        "Đặt hàng thành công",
+      );
     }
 
     const cart = await Cart.findOne({ user_id, status: "active" })
@@ -179,6 +213,7 @@ export const createCheckout = catchAsync(async (req, res) => {
       : cart_item_ids
         ? [cart_item_ids]
         : [];
+
     if (cartItemIds.length > 0) {
       filter.cart_item_id = { $in: cartItemIds };
     }
@@ -191,15 +226,20 @@ export const createCheckout = catchAsync(async (req, res) => {
     const productIds = [...new Set(cartItems.map((item) => item.product_id))];
     const products = await Product.find({ product_id: { $in: productIds } }).lean();
     const productMap = new Map(products.map((product) => [product.product_id, product]));
-
     const orderItems = mapCartItemsToOrderItems(cartItems, productMap);
+    const loyaltyVoucher = await loyaltyService.resolveVoucherSelection({
+      userId: user_id,
+      voucherId: loyalty_voucher_id,
+      subtotalAmount: getItemsSubtotal(orderItems),
+      shippingFee: resolvedShippingFee,
+    });
 
     const result = await buyOrderService.createBuyOrder({
       user_id,
       customer_info: customerInfo,
       items: orderItems,
       shipping_fee: resolvedShippingFee,
-      discount_amount: resolvedDiscount,
+      discount_amount: loyaltyVoucher?.discount_amount ?? resolvedDiscount,
       payment_method,
       shipping_provider: normalizedShippingProvider,
       shipping_method: normalizedShippingMethod,
@@ -209,7 +249,15 @@ export const createCheckout = catchAsync(async (req, res) => {
     await CartItem.deleteMany(filter);
     await Cart.updateOne({ cart_id: cart.cart_id }, { $set: { updated_at: new Date() } });
 
-    return createdResponse(res, result, "Đặt hàng thành công");
+    return createdResponse(
+      res,
+      buildOrderResult(result, loyaltyVoucher),
+      "Đặt hàng thành công",
+    );
+  }
+
+  if (loyalty_voucher_id) {
+    throw ApiError.badRequest("Khách vãng lai chưa thể dùng voucher điểm thưởng");
   }
 
   if (!customer_info) {
@@ -231,7 +279,6 @@ export const createCheckout = catchAsync(async (req, res) => {
   const productIds = [...new Set(guestItems.map((item) => item.product_id))];
   const products = await Product.find({ product_id: { $in: productIds } }).lean();
   const productMap = new Map(products.map((product) => [product.product_id, product]));
-
   const orderItems = mapGuestItemsToOrderItems(guestItems, productMap);
 
   const result = await buyOrderService.createBuyOrder({

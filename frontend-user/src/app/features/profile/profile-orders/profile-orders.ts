@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -27,6 +27,7 @@ interface Order {
 
 interface OrderItem {
   id: string;
+  productId: string;
   productName: string;
   productImage: string;
   size?: string;
@@ -77,6 +78,7 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
     private buyOrderService: BuyOrderService,
     private authService: AuthService,
     private toastService: ToastService,
+    private router: Router,
   ) {}
 
   ngOnInit() {
@@ -120,6 +122,7 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
             returnStatus: order.return_request?.status || null,
             items: (order.items || []).map((item: BuyOrderItemList) => ({
               id: item.order_item_id || item.product_id?.toString() || '',
+              productId: item.product_id?.toString() || '',
               productName: item.name || 'Sản phẩm',
               productImage: item.thumbnail || this.placeholderImage,
               size: item.size || '',
@@ -263,27 +266,47 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
     return order.status === 'shipping' && !order.returnStatus && !order.customerReceivedAt;
   }
 
+  canReviewItem(order: Order, item: OrderItem): boolean {
+    return order.status === 'completed' && !!item.productId;
+  }
+
+  goToReview(order: Order, item: OrderItem): void {
+    if (!this.canReviewItem(order, item)) return;
+
+    this.router.navigate(['/products', item.productId], {
+      queryParams: {
+        tab: 'reviews',
+        writeReview: '1',
+        orderCode: order.orderCode,
+      },
+    });
+  }
+
   confirmReceived(order: Order) {
     if (!this.canConfirmReceived(order) || this.confirmingOrderId) return;
-    if (!confirm('Xác nhận bạn đã nhận được hàng?')) return;
-    this.confirmingOrderId = order.id;
-    this.buyOrderService.confirmReceived(order.id).subscribe({
-      next: () => {
-        this.orders = this.orders.map((item) =>
-          item.id === order.id ? { ...item, customerReceivedAt: new Date().toISOString() } : item,
-        );
-        this.filteredOrders = this.filteredOrders.map((item) =>
-          item.id === order.id ? { ...item, customerReceivedAt: new Date().toISOString() } : item,
-        );
-        this.toastService.success('Đã xác nhận nhận hàng. Chờ admin hoàn tất.');
-        this.confirmingOrderId = null;
-      },
-      error: (error: HttpErrorResponse) => {
-        const message =
-          error?.error?.message || 'Không thể xác nhận nhận hàng. Vui lòng thử lại.';
-        this.toastService.error(message);
-        this.confirmingOrderId = null;
-      },
+
+    this.toastService.confirm('Xác nhận bạn đã nhận được hàng?', () => {
+      this.confirmingOrderId = order.id;
+      this.buyOrderService.confirmReceived(order.id).subscribe({
+        next: () => {
+          this.orders = this.orders.map((item) =>
+            item.id === order.id ? { ...item, customerReceivedAt: new Date().toISOString() } : item,
+          );
+          this.filteredOrders = this.filteredOrders.map((item) =>
+            item.id === order.id ? { ...item, customerReceivedAt: new Date().toISOString() } : item,
+          );
+          this.toastService.success('Đã xác nhận nhận hàng. Chờ admin hoàn tất.');
+          this.confirmingOrderId = null;
+        },
+        error: (error: HttpErrorResponse) => {
+          const message =
+            error?.error?.message || 'Không thể xác nhận nhận hàng. Vui lòng thử lại.';
+          this.toastService.error(message);
+          this.confirmingOrderId = null;
+        },
+      });
+    }, {
+      confirmText: 'Đã nhận hàng',
     });
   }
 

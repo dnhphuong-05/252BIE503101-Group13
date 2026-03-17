@@ -19,6 +19,8 @@ export interface CartItem {
   product_name_snapshot: string;
   thumbnail_snapshot?: string;
   price_snapshot: number;
+  original_price_snapshot?: number | null;
+  product_discount_snapshot?: number;
   size?: string | null;
   color?: string | null;
   quantity: number;
