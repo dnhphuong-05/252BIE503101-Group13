@@ -427,50 +427,56 @@ export class ProfileRentalsComponent implements OnInit, OnDestroy {
 
   requestReturn(order: RentalOrder) {
     if (!this.canRequestReturn(order) || this.requestingReturnId) return;
-    if (!confirm('Bạn muốn gửi yêu cầu trả hàng cho đơn này?')) return;
 
-    this.requestingReturnId = order.id;
-    this.rentOrderService.requestReturn(order.id).subscribe({
-      next: () => {
-        const requestedAt = new Date().toISOString();
-        this.rentalOrders = this.rentalOrders.map((item) =>
-          item.id === order.id ? { ...item, returnRequestedAt: requestedAt } : item,
-        );
-        this.applyFilter();
-        this.updateSummary();
-        this.updateTabCounts();
-        this.toastService.success('Đã gửi yêu cầu trả hàng.');
-        this.requestingReturnId = null;
-      },
-      error: (error: HttpErrorResponse) => {
-        const message = error?.error?.message || 'Không thể gửi yêu cầu trả hàng.';
-        this.toastService.error(message);
-        this.requestingReturnId = null;
-      },
+    this.toastService.confirm('Bạn muốn gửi yêu cầu trả hàng cho đơn này?', () => {
+      this.requestingReturnId = order.id;
+      this.rentOrderService.requestReturn(order.id).subscribe({
+        next: () => {
+          const requestedAt = new Date().toISOString();
+          this.rentalOrders = this.rentalOrders.map((item) =>
+            item.id === order.id ? { ...item, returnRequestedAt: requestedAt } : item,
+          );
+          this.applyFilter();
+          this.updateSummary();
+          this.updateTabCounts();
+          this.toastService.success('Đã gửi yêu cầu trả hàng.');
+          this.requestingReturnId = null;
+        },
+        error: (error: HttpErrorResponse) => {
+          const message = error?.error?.message || 'Không thể gửi yêu cầu trả hàng.';
+          this.toastService.error(message);
+          this.requestingReturnId = null;
+        },
+      });
+    }, {
+      confirmText: 'Gửi yêu cầu',
     });
   }
 
   confirmReturnShipment(order: RentalOrder) {
     if (!this.canConfirmReturn(order) || this.confirmingReturnId) return;
-    if (!confirm('Xác nhận bạn đã gửi hàng trả?')) return;
 
-    this.confirmingReturnId = order.id;
-    this.rentOrderService.confirmReturnShipment(order.id).subscribe({
-      next: () => {
-        this.rentalOrders = this.rentalOrders.map((item) =>
-          item.id === order.id ? { ...item, status: 'returning' } : item,
-        );
-        this.applyFilter();
-        this.updateSummary();
-        this.updateTabCounts();
-        this.toastService.success('Đã xác nhận gửi hàng trả.');
-        this.confirmingReturnId = null;
-      },
-      error: (error: HttpErrorResponse) => {
-        const message = error?.error?.message || 'Không thể xác nhận gửi hàng.';
-        this.toastService.error(message);
-        this.confirmingReturnId = null;
-      },
+    this.toastService.confirm('Xác nhận bạn đã gửi hàng trả?', () => {
+      this.confirmingReturnId = order.id;
+      this.rentOrderService.confirmReturnShipment(order.id).subscribe({
+        next: () => {
+          this.rentalOrders = this.rentalOrders.map((item) =>
+            item.id === order.id ? { ...item, status: 'returning' } : item,
+          );
+          this.applyFilter();
+          this.updateSummary();
+          this.updateTabCounts();
+          this.toastService.success('Đã xác nhận gửi hàng trả.');
+          this.confirmingReturnId = null;
+        },
+        error: (error: HttpErrorResponse) => {
+          const message = error?.error?.message || 'Không thể xác nhận gửi hàng.';
+          this.toastService.error(message);
+          this.confirmingReturnId = null;
+        },
+      });
+    }, {
+      confirmText: 'Đã gửi hàng',
     });
   }
 
@@ -490,25 +496,29 @@ export class ProfileRentalsComponent implements OnInit, OnDestroy {
 
   cancelRental(order: RentalOrder) {
     if (order.status !== 'booked' || this.cancelingOrderId) return;
-    if (!confirm('Bạn có chắc chắn muốn hủy đơn thuê này?')) return;
 
-    this.cancelingOrderId = order.id;
-    this.rentOrderService.cancelRentOrder(order.id).subscribe({
-      next: () => {
-        this.rentalOrders = this.rentalOrders.map((item) =>
-          item.id === order.id ? { ...item, status: 'cancelled' } : item,
-        );
-        this.applyFilter();
-        this.updateSummary();
-        this.updateTabCounts();
-        this.toastService.success('Đã hủy đơn thuê.');
-        this.cancelingOrderId = null;
-      },
-      error: (error: HttpErrorResponse) => {
-        const message = error?.error?.message || 'Không thể hủy đơn thuê.';
-        this.toastService.error(message);
-        this.cancelingOrderId = null;
-      },
+    this.toastService.confirm('Bạn có chắc chắn muốn hủy đơn thuê này?', () => {
+      this.cancelingOrderId = order.id;
+      this.rentOrderService.cancelRentOrder(order.id).subscribe({
+        next: () => {
+          this.rentalOrders = this.rentalOrders.map((item) =>
+            item.id === order.id ? { ...item, status: 'cancelled' } : item,
+          );
+          this.applyFilter();
+          this.updateSummary();
+          this.updateTabCounts();
+          this.toastService.success('Đã hủy đơn thuê.');
+          this.cancelingOrderId = null;
+        },
+        error: (error: HttpErrorResponse) => {
+          const message = error?.error?.message || 'Không thể hủy đơn thuê.';
+          this.toastService.error(message);
+          this.cancelingOrderId = null;
+        },
+      });
+    }, {
+      confirmText: 'Hủy đơn thuê',
+      confirmVariant: 'danger',
     });
   }
 

@@ -83,6 +83,23 @@ const buildShortDescription = (description = "") => {
   return text.length > 160 ? `${text.slice(0, 157)}...` : text;
 };
 
+const normalizeSalePrice = (priceBuy, priceSale) => {
+  if (priceSale === null) return null;
+
+  const normalizedPriceBuy = toNumber(priceBuy);
+  const normalizedPriceSale = toNumber(priceSale);
+
+  if (normalizedPriceSale === undefined || normalizedPriceSale < 0) {
+    return null;
+  }
+
+  if (normalizedPriceBuy !== undefined && normalizedPriceSale >= normalizedPriceBuy) {
+    return null;
+  }
+
+  return normalizedPriceSale;
+};
+
 class ProductService {
   async getProducts(queryParams) {
     const {
@@ -155,8 +172,15 @@ class ProductService {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
+    const productsQuery = Product.find(filter);
+
+    // Use Vietnamese collation so name sorting matches user expectation (A-Z / Z-A)
+    if (sortBy === "name") {
+      productsQuery.collation({ locale: "vi", strength: 1, numericOrdering: true });
+    }
+
     const [products, total] = await Promise.all([
-      Product.find(filter).sort(sortOptions).skip(skip).limit(limitNum).lean(),
+      productsQuery.sort(sortOptions).skip(skip).limit(limitNum).lean(),
       Product.countDocuments(filter),
     ]);
 
@@ -385,7 +409,8 @@ class ProductService {
     const categoryId = await this.resolveCategoryId(categoryName, productData?.category_id);
 
     const priceBuy = pickNumber(productData?.price_buy, productData?.salePrice) ?? 0;
-    const priceSale = pickNumber(productData?.price_sale, productData?.price_sell);
+    const rawPriceSale = pickNumber(productData?.price_sale, productData?.price_sell);
+    const priceSale = normalizeSalePrice(priceBuy, rawPriceSale);
     const priceRent = pickNumber(productData?.price_rent, productData?.rentPrice) ?? 0;
     const depositAmount =
       pickNumber(productData?.deposit_amount, productData?.deposit) ?? 0;
@@ -431,8 +456,9 @@ class ProductService {
       short_description: shortDescription,
       category_id: categoryId,
       category_name: categoryName || "Uncategorized",
+      era: productData?.era || "",
       price_buy: priceBuy,
-      price_sale: priceSale ?? null,
+      price_sale: priceSale,
       price_rent: priceRent,
       deposit_amount: depositAmount,
       thumbnail,
@@ -447,6 +473,7 @@ class ProductService {
       tags,
       material: productData?.material || "",
       origin: productData?.origin || "Việt Nam",
+      craftsmanship: productData?.craftsmanship || "",
       gender: normalizeGender(productData?.gender) || "Unisex",
       stock_quantity: stockQty,
       stock_status: productData?.stock_status || (stockQty > 0 ? "in_stock" : "out_of_stock"),
@@ -496,8 +523,16 @@ class ProductService {
     const priceBuy = pickNumber(updateData?.price_buy, updateData?.salePrice);
     if (priceBuy !== undefined) payload.price_buy = priceBuy;
 
-    const priceSale = pickNumber(updateData?.price_sale, updateData?.price_sell);
-    if (priceSale !== undefined) payload.price_sale = priceSale;
+    const shouldClearSalePrice =
+      updateData?.price_sale === null ||
+      updateData?.price_sell === null ||
+      updateData?.salePrice === null;
+    const rawPriceSale = pickNumber(updateData?.price_sale, updateData?.price_sell);
+    if (shouldClearSalePrice) {
+      payload.price_sale = null;
+    } else if (rawPriceSale !== undefined) {
+      payload.price_sale = normalizeSalePrice(priceBuy, rawPriceSale);
+    }
 
     const priceRent = pickNumber(updateData?.price_rent, updateData?.rentPrice);
     if (priceRent !== undefined) payload.price_rent = priceRent;
@@ -534,12 +569,20 @@ class ProductService {
       if (features.length) payload.attributes.features = features;
     }
 
+    if (updateData?.era !== undefined) {
+      payload.era = updateData.era;
+    }
+
     if (updateData?.material !== undefined) {
       payload.material = updateData.material;
     }
 
     if (updateData?.origin !== undefined) {
       payload.origin = updateData.origin;
+    }
+
+    if (updateData?.craftsmanship !== undefined) {
+      payload.craftsmanship = updateData.craftsmanship;
     }
 
     if (updateData?.gender !== undefined) {

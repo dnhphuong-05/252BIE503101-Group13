@@ -164,6 +164,9 @@
             <p class="guest-desc">
               Thông tin này dùng để xác nhận đơn và tạo hồ sơ khách hàng.
             </p>
+            @if (administrativeNote) {
+              <div class="form-alert subtle">{{ administrativeNote }}</div>
+            }
             <div class="guest-grid">
               <label class="input-group">
                 <span>Họ và tên *</span>
@@ -180,16 +183,33 @@
             </div>
             <div class="guest-grid">
               <label class="input-group">
-                <span>Tỉnh/Thành *</span>
-                <input type="text" [(ngModel)]="guestForm.address.province" placeholder="TP. Hồ Chí Minh" />
+                <span>Tỉnh/Thành phố *</span>
+                <select
+                  [value]="guestProvinceCode"
+                  (change)="onGuestProvinceChange($any($event.target).value)"
+                  [disabled]="isLoadingProvinces || provinces.length === 0"
+                >
+                  <option value="">{{ getProvincePlaceholder() }}</option>
+                  @for (province of provinces; track province.code) {
+                    <option [value]="province.code">{{ province.name }}</option>
+                  }
+                </select>
               </label>
               <label class="input-group">
-                <span>Quận/Huyện</span>
-                <input type="text" [(ngModel)]="guestForm.address.district" placeholder="Quận 1" />
-              </label>
-              <label class="input-group">
-                <span>Phường/Xã *</span>
-                <input type="text" [(ngModel)]="guestForm.address.ward" placeholder="Phường Bến Nghé" />
+                <span>Xã/Phường/Đặc khu *</span>
+                <select
+                  [value]="guestWardCode"
+                  (change)="onGuestWardChange($any($event.target).value)"
+                  [disabled]="!guestProvinceCode || isLoadingGuestWards || guestWards.length === 0"
+                >
+                  <option value="">{{ getGuestWardPlaceholder() }}</option>
+                  @for (ward of guestWards; track ward.code) {
+                    <option [value]="ward.code">{{ ward.name }}</option>
+                  }
+                </select>
+                @if (showGuestWardHint()) {
+                  <span class="input-hint">Chưa tải được danh sách xã/phường cho địa phương này.</span>
+                }
               </label>
             </div>
             <label class="input-group full-width">
@@ -262,11 +282,18 @@
           <span class="block-hint">Bạn đang thanh toán: Cọc thuê</span>
         </div>
         <div class="payment-options">
-          @for (option of paymentOptions; track option.id) {
-            <label class="payment-card" [class.active]="paymentMethod === option.id">
+          @for (option of onlinePaymentOptions; track option.id) {
+            <label
+              class="payment-card"
+              [class.active]="paymentMethod === option.id"
+              [attr.data-method]="option.id"
+            >
               <input type="radio" name="paymentMethod" [value]="option.id" [(ngModel)]="paymentMethod" />
-              <div>
-                <div class="payment-title">{{ option.label }}</div>
+              <div class="payment-body">
+                <div class="payment-meta">
+                  <div class="payment-title">{{ option.label }}</div>
+                  <span class="payment-badge">{{ option.badge }}</span>
+                </div>
                 <div class="payment-desc">{{ option.description }}</div>
               </div>
               @if (option.recommended) {

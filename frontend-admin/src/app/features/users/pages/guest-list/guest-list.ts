@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BackendListResponse, BackendPagination } from '../../../../models';
 import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -71,6 +72,8 @@ export class GuestListComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
   private readonly notification = inject(NotificationService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly statusMeta: Record<GuestStatus, { label: string; class: string }> = {
     new: { label: 'Mới', class: 'badge badge-warning' },
@@ -115,11 +118,28 @@ export class GuestListComponent implements OnInit {
   protected ordersLoading = false;
   protected buyOrders: OrderRow[] = [];
   protected rentOrders: OrderRow[] = [];
+  protected detailMode = false;
 
   private searchTimer?: ReturnType<typeof setTimeout>;
+  private pendingGuestId: string | null = null;
 
   ngOnInit(): void {
-    this.loadGuests();
+    this.route.data.subscribe((data) => {
+      this.detailMode = Boolean(data['detail']);
+      if (!this.detailMode) {
+        this.selectedGuest = null;
+        this.buyOrders = [];
+        this.rentOrders = [];
+      }
+      this.loadGuests();
+    });
+
+    this.route.paramMap.subscribe((params) => {
+      this.pendingGuestId = params.get('id');
+      if (this.detailMode && this.pendingGuestId && this.guests.length > 0) {
+        this.fetchGuestDetail(this.pendingGuestId);
+      }
+    });
   }
 
   protected applyFilters(): void {
@@ -150,7 +170,15 @@ export class GuestListComponent implements OnInit {
   }
 
   protected onView(guest: GuestRow): void {
+    if (!this.detailMode) {
+      this.router.navigate(['/users/guests', guest.id]);
+      return;
+    }
     this.fetchGuestDetail(guest.id);
+  }
+
+  protected backToList(): void {
+    this.router.navigate(['/users/guests']);
   }
 
   protected inviteToRegister(): void {
@@ -216,6 +244,11 @@ export class GuestListComponent implements OnInit {
         this.guests = items.map((guest) => this.mapGuestRow(guest));
         this.total = response.pagination?.total ?? this.guests.length;
         this.pages = response.pagination?.pages ?? 1;
+        if (this.detailMode && this.pendingGuestId) {
+          this.fetchGuestDetail(this.pendingGuestId);
+        } else if (!this.detailMode) {
+          this.selectedGuest = null;
+        }
         this.isLoading = false;
       },
       error: (error) => {

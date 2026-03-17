@@ -1,6 +1,8 @@
 import Joi from "joi";
 
 const idSchema = Joi.string().required();
+const vietnamPhoneSchema = Joi.string().pattern(/^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/);
+const addressDetailSchema = Joi.string().trim().min(6);
 const paginationSchema = {
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
@@ -12,7 +14,7 @@ export const createUser = {
     full_name: Joi.string().trim().max(100).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).max(100).required(),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+    phone: vietnamPhoneSchema.required(),
     avatar: Joi.string().uri().allow(""),
     gender: Joi.string().valid("male", "female", "other").allow(null),
     birthday: Joi.date().iso().allow(null),
@@ -30,7 +32,7 @@ export const updateProfile = {
   body: Joi.object({
     full_name: Joi.string().trim().max(100),
     email: Joi.string().email(),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/),
+    phone: vietnamPhoneSchema,
     avatar: Joi.string().uri().allow(""),
     gender: Joi.string().valid("male", "female", "other").allow(null),
     birthday: Joi.date().iso().allow(null),
@@ -58,11 +60,11 @@ export const addAddress = {
   }),
   body: Joi.object({
     receiver_name: Joi.string().trim().max(100).required(),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+    phone: vietnamPhoneSchema.required(),
     province: Joi.string().trim().required(),
     district: Joi.string().trim().allow("", null),
     ward: Joi.string().trim().required(),
-    address_detail: Joi.string().trim().required(),
+    address_detail: addressDetailSchema.required(),
     note: Joi.string().trim().max(300).allow(null, ""),
     is_default: Joi.boolean().default(false),
   }),
@@ -76,11 +78,11 @@ export const updateAddress = {
   }),
   body: Joi.object({
     receiver_name: Joi.string().trim().max(100),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/),
+    phone: vietnamPhoneSchema,
     province: Joi.string().trim(),
     district: Joi.string().trim().allow("", null),
     ward: Joi.string().trim(),
-    address_detail: Joi.string().trim(),
+    address_detail: addressDetailSchema,
     note: Joi.string().trim().max(300).allow(null, ""),
     is_default: Joi.boolean(),
   }).min(1),

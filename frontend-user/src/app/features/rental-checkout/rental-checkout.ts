@@ -15,6 +15,11 @@ import {
   CreateRentOrderPayload,
   RentOrderService,
 } from '../../services/rent-order.service';
+import {
+  AdministrativeOption,
+  VietnamAdministrativeService,
+} from '../../services/vietnam-administrative.service';
+import { ToastService } from '../../services/toast.service';
 import { RentalSuccessModal } from '../../shared/components/rental-success-modal/rental-success-modal';
 
 @Component({
@@ -50,12 +55,12 @@ export class RentalCheckout implements OnInit, OnDestroy {
 
   storeInfo = {
     name: 'Phúc Heritage',
-    address: '12 Trần Phú, Quận 5, TP. Hồ Chí Minh',
+    address: '12 Trần Phú, Thành phố Hồ Chí Minh',
     hours: '08:30 - 20:30 (T2 - CN)',
   };
 
   deliveryMethod: 'ship' | 'pickup' = 'ship';
-  paymentMethod: 'cod' | 'bank' | 'momo' | 'vnpay' = 'bank';
+  paymentMethod: 'momo' | 'vnpay' = 'momo';
   agreeTerms = false;
   showTerms = false;
   showSuccessModal = false;
@@ -75,10 +80,20 @@ export class RentalCheckout implements OnInit, OnDestroy {
     },
   };
 
+  provinces: AdministrativeOption[] = [];
+  guestWards: AdministrativeOption[] = [];
+  guestProvinceCode = '';
+  guestWardCode = '';
+  isLoadingProvinces = false;
+  isLoadingGuestWards = false;
+  administrativeNote = '';
+
   minDays = 1;
   maxDays = 30;
   shippingFeeShip = 30000;
   discountAmount = 0;
+  private readonly vietnamPhonePattern = /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/;
+  private readonly emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   private today = new Date();
   startDate = this.toDateInputValue(this.today);
@@ -105,6 +120,23 @@ export class RentalCheckout implements OnInit, OnDestroy {
     },
   ] as const;
 
+  onlinePaymentOptions = [
+    {
+      id: 'momo',
+      label: 'Ví MoMo',
+      description: 'Thanh toán cọc nhanh qua ví MoMo',
+      badge: 'MOMO',
+      recommended: false,
+    },
+    {
+      id: 'vnpay',
+      label: 'VNPay',
+      description: 'Thanh toán cọc qua VNPay, QR hoặc thẻ ngân hàng',
+      badge: 'VNPAY',
+      recommended: false,
+    },
+  ] as const;
+
   rentOrderResult: {
     orderCode: string;
     startDate: string;
@@ -124,9 +156,13 @@ export class RentalCheckout implements OnInit, OnDestroy {
     private authService: AuthService,
     private guestCustomerService: GuestCustomerService,
     private rentOrderService: RentOrderService,
+    private vietnamAdministrativeService: VietnamAdministrativeService,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit(): void {
+    this.loadAdministrativeOptions();
+
     this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe((user) => {
       this.isLoggedIn = !!user;
       if (user) this.loadAddresses();
@@ -232,6 +268,46 @@ export class RentalCheckout implements OnInit, OnDestroy {
     });
   }
 
+  onGuestProvinceChange(provinceCode: string): void {
+    this.guestProvinceCode = provinceCode;
+    this.guestWardCode = '';
+    this.guestWards = [];
+    this.guestForm.address.province = this.getOptionNameByCode(this.provinces, provinceCode);
+    this.guestForm.address.district = '';
+    this.guestForm.address.ward = '';
+
+    if (!provinceCode) {
+      return;
+    }
+
+    this.loadGuestWards(provinceCode);
+  }
+
+  onGuestWardChange(wardCode: string): void {
+    this.guestWardCode = wardCode;
+    this.guestForm.address.ward = this.getOptionNameByCode(this.guestWards, wardCode);
+  }
+
+  getProvincePlaceholder(): string {
+    return this.isLoadingProvinces ? 'Đang tải tỉnh/thành phố...' : 'Chọn tỉnh/thành phố';
+  }
+
+  getGuestWardPlaceholder(): string {
+    if (!this.guestProvinceCode) {
+      return 'Chọn tỉnh/thành phố trước';
+    }
+
+    if (this.isLoadingGuestWards) {
+      return 'Đang tải xã/phường/đặc khu...';
+    }
+
+    return 'Chọn xã/phường/đặc khu';
+  }
+
+  showGuestWardHint(): boolean {
+    return Boolean(this.guestProvinceCode && !this.isLoadingGuestWards && !this.guestWards.length);
+  }
+
   openTerms(): void {
     this.showTerms = true;
   }
@@ -243,6 +319,8 @@ export class RentalCheckout implements OnInit, OnDestroy {
   closeSuccessModal(): void {
     this.showSuccessModal = false;
     this.rentOrderResult = null;
+    this.clearStoredRentalState();
+    this.navigateToCurrentProductDetail();
   }
 
   confirmRental(): void {
@@ -308,16 +386,19 @@ export class RentalCheckout implements OnInit, OnDestroy {
     this.rentOrderService.createRentOrder(payload).subscribe({
       next: (response) => {
         const data: any = response?.data?.order || response?.data || {};
+        const orderCode =
+          data?.rent_order_code || data?.rentOrderCode || this.generateFallbackCode();
         this.rentOrderResult = {
-          orderCode:
-            data?.rent_order_code || data?.rentOrderCode || this.generateFallbackCode(),
+          orderCode,
           startDate: data?.rental_period?.start_date || this.startDate,
           endDate: data?.rental_period?.end_date || this.endDate,
           rentFeeExpected: data?.pricing?.rent_fee_expected ?? this.rentFeeExpected,
           depositPaid: data?.payment?.deposit_paid ?? this.totalDueToday,
           status: data?.rent_status || 'booked',
         };
-        this.showSuccessModal = true;
+        this.clearStoredRentalState();
+        this.toastService.success(`Đặt thuê thành công! Mã đơn: ${orderCode}`);
+        this.navigateToCurrentProductDetail();
       },
       error: (error) => {
         console.error('Create rent order failed:', error);
@@ -344,6 +425,10 @@ export class RentalCheckout implements OnInit, OnDestroy {
     } catch {
       return null;
     }
+  }
+
+  private clearStoredRentalState(): void {
+    sessionStorage.removeItem('rentalCheckout');
   }
 
   private applyRentalState(state: any): void {
@@ -437,12 +522,7 @@ export class RentalCheckout implements OnInit, OnDestroy {
   }
 
   private formatAddress(address: Address): string {
-    const parts = [
-      address.address_detail || address.address || '',
-      address.ward || '',
-      address.district || '',
-      address.province || '',
-    ]
+    const parts = [address.address_detail || address.address || '', address.ward || '', address.province || '']
       .map((part) => part.toString().trim())
       .filter(Boolean);
     return parts.join(', ') || 'Chưa có địa chỉ';
@@ -479,21 +559,21 @@ export class RentalCheckout implements OnInit, OnDestroy {
         ? isGuest
           ? {
               province: guest?.address?.province || '',
-              district: guest?.address?.district || '',
+              district: '',
               ward: guest?.address?.ward || '',
               address_detail: guest?.address?.detail || '',
             }
           : {
               province: this.selectedAddress?.province || '',
-              district: this.selectedAddress?.district || '',
+              district: '',
               ward: this.selectedAddress?.ward || '',
               address_detail:
                 this.selectedAddress?.address_detail || this.selectedAddress?.address || '',
             }
         : null;
 
-    const depositPaid = this.paymentMethod === 'cod' ? 0 : this.totalDueToday;
-    const paymentStatus = this.paymentMethod === 'cod' ? 'unpaid' : 'paid';
+    const depositPaid = this.totalDueToday;
+    const paymentStatus = 'paid';
 
     return {
       user_id: userId,
@@ -553,11 +633,15 @@ export class RentalCheckout implements OnInit, OnDestroy {
       return 'Vui lòng điền đầy đủ thông tin khách thuê.';
     }
 
-    if (!/^\d{10,11}$/.test(phone)) {
-      return 'Số điện thoại phải gồm 10-11 chữ số.';
+    if (!this.vietnamPhonePattern.test(phone)) {
+      return 'Số điện thoại chưa đúng định dạng Việt Nam.';
     }
 
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (address.detail.trim().length < 6) {
+      return 'Địa chỉ chi tiết cần có ít nhất 6 ký tự.';
+    }
+
+    if (email && !this.emailPattern.test(email)) {
       return 'Email không hợp lệ.';
     }
 
@@ -571,7 +655,7 @@ export class RentalCheckout implements OnInit, OnDestroy {
       email: this.guestForm.email?.trim() || '',
       address: {
         province: this.guestForm.address.province.trim(),
-        district: this.guestForm.address.district?.trim() || '',
+        district: '',
         ward: this.guestForm.address.ward.trim(),
         detail: this.guestForm.address.detail.trim(),
       },
@@ -586,9 +670,108 @@ export class RentalCheckout implements OnInit, OnDestroy {
     return `PHUC-RNT-${datePart}0001`;
   }
 
+  private navigateToCurrentProductDetail(): void {
+    const productId = String(this.product.id || '').trim();
+    if (productId) {
+      this.router.navigate(['/products', productId]);
+      return;
+    }
+
+    this.router.navigate(['/products']);
+  }
+
   private resolveImage(image?: string): string {
     if (!image) return '';
     return image;
+  }
+
+  private loadAdministrativeOptions(): void {
+    this.isLoadingProvinces = true;
+
+    this.vietnamAdministrativeService.getProvinces().subscribe({
+      next: (provinces) => {
+        this.provinces = provinces;
+        this.isLoadingProvinces = false;
+
+        if (!provinces.length) {
+          this.administrativeNote =
+            'Không tải được danh mục tỉnh, thành phố. Vui lòng thử lại sau.';
+          return;
+        }
+
+        this.administrativeNote =
+          'Theo mô hình hành chính 2 cấp áp dụng từ 01/07/2025, thông tin thuê dùng Tỉnh/Thành phố và Xã/Phường/Đặc khu.';
+        this.syncGuestSelectionsFromCurrentValue();
+      },
+      error: (error) => {
+        console.error('Load provinces failed:', error);
+        this.isLoadingProvinces = false;
+        this.administrativeNote =
+          'Không tải được danh mục tỉnh, thành phố. Vui lòng thử lại sau.';
+      },
+    });
+  }
+
+  private loadGuestWards(provinceCode: string, existingWardName = ''): void {
+    this.isLoadingGuestWards = true;
+
+    this.vietnamAdministrativeService.getWardsByProvinceCode(provinceCode).subscribe({
+      next: (wards) => {
+        this.guestWards = wards;
+        this.isLoadingGuestWards = false;
+
+        if (existingWardName) {
+          const selectedCode = this.findOptionCodeByName(wards, existingWardName);
+          this.guestWardCode = selectedCode;
+          if (selectedCode) {
+            this.guestForm.address.ward = this.getOptionNameByCode(wards, selectedCode);
+          }
+        }
+      },
+      error: (error) => {
+        console.error('Load guest wards failed:', error);
+        this.guestWards = [];
+        this.isLoadingGuestWards = false;
+      },
+    });
+  }
+
+  private syncGuestSelectionsFromCurrentValue(): void {
+    const provinceCode = this.findOptionCodeByName(this.provinces, this.guestForm.address.province);
+    if (!provinceCode) {
+      return;
+    }
+
+    this.guestProvinceCode = provinceCode;
+    this.loadGuestWards(provinceCode, this.guestForm.address.ward);
+  }
+
+  private getOptionNameByCode(options: AdministrativeOption[], code: string): string {
+    return options.find((option) => option.code === code)?.name || '';
+  }
+
+  private findOptionCodeByName(options: AdministrativeOption[], name: string): string {
+    const normalizedName = this.normalizeAdministrativeName(name);
+    if (!normalizedName) {
+      return '';
+    }
+
+    return (
+      options.find(
+        (option) => this.normalizeAdministrativeName(option.name) === normalizedName,
+      )?.code || ''
+    );
+  }
+
+  private normalizeAdministrativeName(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\b(thanh pho|tp\.?|tinh)\b/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   private toDateInputValue(date: Date): string {

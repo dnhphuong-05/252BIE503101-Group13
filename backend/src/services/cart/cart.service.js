@@ -36,7 +36,7 @@ class CartService extends BaseService {
       .sort({ created_at: 1 })
       .lean();
 
-    return { cart, items };
+    return { cart, items: await this.attachPricingSnapshots(items) };
   }
 
   async addItem(user_id, { product_id, quantity = 1, size = null, color = null }) {
@@ -56,6 +56,11 @@ class CartService extends BaseService {
       product.price_sale && product.price_sale > 0
         ? product.price_sale
         : product.price_buy;
+    const original_price_snapshot = product.price_buy || price_snapshot;
+    const product_discount_snapshot = Math.max(
+      0,
+      original_price_snapshot - price_snapshot,
+    );
 
     const filter = {
       cart_id: cart.cart_id,
@@ -69,6 +74,8 @@ class CartService extends BaseService {
         $inc: { quantity },
         $set: {
           price_snapshot,
+          original_price_snapshot,
+          product_discount_snapshot,
           product_name_snapshot: product.name,
           thumbnail_snapshot: product.thumbnail,
           size: normalizedSize,
@@ -80,7 +87,7 @@ class CartService extends BaseService {
 
     if (updated) {
       await this.touchCart(cart.cart_id);
-      return updated;
+      return await this.attachPricingSnapshot(updated);
     }
 
     const created = await CartItem.create({
@@ -89,6 +96,8 @@ class CartService extends BaseService {
       product_name_snapshot: product.name,
       thumbnail_snapshot: product.thumbnail,
       price_snapshot,
+      original_price_snapshot,
+      product_discount_snapshot,
       size: normalizedSize,
       color: normalizedColor,
       quantity,
@@ -96,7 +105,7 @@ class CartService extends BaseService {
     });
 
     await this.touchCart(cart.cart_id);
-    return created.toObject();
+    return await this.attachPricingSnapshot(created.toObject());
   }
 
   async updateItemQuantity(user_id, cart_item_id, quantity) {
@@ -113,7 +122,7 @@ class CartService extends BaseService {
     }
 
     await this.touchCart(cart.cart_id);
-    return updated;
+    return await this.attachPricingSnapshot(updated);
   }
 
   async removeItem(user_id, cart_item_id) {
@@ -165,6 +174,52 @@ class CartService extends BaseService {
       { cart_id },
       { $set: { updated_at: new Date() } },
     );
+  }
+
+  async attachPricingSnapshot(item) {
+    if (!item) {
+      return item;
+    }
+
+    const [enrichedItem] = await this.attachPricingSnapshots([item]);
+    return enrichedItem || item;
+  }
+
+  async attachPricingSnapshots(items = []) {
+    if (!Array.isArray(items) || items.length === 0) {
+      return items;
+    }
+
+    const productIds = [...new Set(items.map((item) => item.product_id).filter(Boolean))];
+    const products = await Product.find({ product_id: { $in: productIds } })
+      .select("product_id price_buy price_sale")
+      .lean();
+
+    const productMap = new Map(
+      products.map((product) => [Number(product.product_id), product]),
+    );
+
+    return items.map((item) => {
+      const product = productMap.get(Number(item.product_id));
+      const finalUnitPrice = Number(
+        item.price_snapshot ??
+          (product?.price_sale && product.price_sale > 0
+            ? product.price_sale
+            : product?.price_buy ?? 0),
+      );
+      const originalUnitPrice = Number(
+        item.original_price_snapshot ?? product?.price_buy ?? finalUnitPrice,
+      );
+      const productDiscount = Number(
+        item.product_discount_snapshot ?? Math.max(0, originalUnitPrice - finalUnitPrice),
+      );
+
+      return {
+        ...item,
+        original_price_snapshot: originalUnitPrice,
+        product_discount_snapshot: Math.max(0, productDiscount),
+      };
+    });
   }
 }
 

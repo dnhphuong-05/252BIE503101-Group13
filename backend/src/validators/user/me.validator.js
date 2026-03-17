@@ -3,12 +3,14 @@ import Joi from "joi";
 const genderSchema = Joi.string()
   .valid("male", "female", "other", "nam", "nu", "nữ", "khac", "khác", "Nam", "Nữ", "Khác")
   .allow(null, "");
+const vietnamPhoneSchema = Joi.string().pattern(/^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/);
+const addressDetailSchema = Joi.string().trim().min(6);
 
 export const updateProfile = {
   body: Joi.object({
     full_name: Joi.string().trim().max(100),
     email: Joi.string().email(),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/),
+    phone: vietnamPhoneSchema,
     avatar: Joi.string().uri().allow(""),
     gender: genderSchema,
     birthday: Joi.date().iso().allow(null, ""),
@@ -32,17 +34,18 @@ export const addAddress = {
   body: Joi.object({
     receiver_name: Joi.string().trim().max(100),
     recipientName: Joi.string().trim().max(100),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/).required(),
+    phone: vietnamPhoneSchema.required(),
     province: Joi.string().trim().required(),
     district: Joi.string().trim().allow("", null),
     ward: Joi.string().trim().required(),
-    address_detail: Joi.string().trim(),
-    address: Joi.string().trim(),
+    address_detail: addressDetailSchema,
+    address: addressDetailSchema,
     note: Joi.string().trim().max(300).allow(null, ""),
     is_default: Joi.boolean(),
     isDefault: Joi.boolean(),
   })
     .or("receiver_name", "recipientName")
+    .or("address_detail", "address")
     .required(),
 };
 
@@ -53,12 +56,12 @@ export const updateAddress = {
   body: Joi.object({
     receiver_name: Joi.string().trim().max(100),
     recipientName: Joi.string().trim().max(100),
-    phone: Joi.string().pattern(/^[0-9]{10,15}$/),
+    phone: vietnamPhoneSchema,
     province: Joi.string().trim(),
     district: Joi.string().trim().allow("", null),
     ward: Joi.string().trim(),
-    address_detail: Joi.string().trim(),
-    address: Joi.string().trim(),
+    address_detail: addressDetailSchema,
+    address: addressDetailSchema,
     note: Joi.string().trim().max(300).allow(null, ""),
     is_default: Joi.boolean(),
     isDefault: Joi.boolean(),

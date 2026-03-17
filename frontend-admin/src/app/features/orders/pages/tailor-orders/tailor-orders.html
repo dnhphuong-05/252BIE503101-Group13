@@ -1,0 +1,117 @@
+<div class="page-shell">
+  <div class="page-header">
+    <div class="title-block">
+      <div class="page-title">Đơn may đo</div>
+      <div class="page-subtitle">Danh sách, lọc và tìm kiếm</div>
+    </div>
+  </div>
+
+  <div class="card table-card tailor-card">
+    <div class="table-toolbar tailor-toolbar">
+      <div class="toolbar-group flex-1">
+        <div class="toolbar-search">
+          <i class="fas fa-search"></i>
+          <input
+            class="input"
+            placeholder="Tìm theo mã đơn, khách hàng, SĐT"
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+          />
+        </div>
+      </div>
+      <div class="toolbar-group">
+        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+      </div>
+    </div>
+
+    <div class="filter-grid">
+      <div class="filter-field">
+        <span class="filter-label">Trạng thái</span>
+        <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          @for (filter of statusFilters; track filter.value) {
+            <option [value]="filter.value">{{ filter.label }}</option>
+          }
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="refresh()">Làm mới</button>
+      </div>
+    </div>
+
+    @if (loadError && orders.length === 0) {
+      <div class="empty-state">{{ loadError }}</div>
+    } @else if (isLoading && orders.length === 0) {
+      <div class="empty-state">Đang tải Đơn may đo...</div>
+    } @else if (orders.length === 0) {
+      <div class="empty-state">Không có Đơn may đo nào.</div>
+    } @else {
+      <table class="table tailor-table">
+        <thead>
+          <tr>
+            <th>Mã đơn</th>
+            <th>Khách hàng</th>
+            <th>Sản phẩm</th>
+            <th>Trạng thái</th>
+            <th>Doanh thu</th>
+            <th>Cập nhật</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (order of orders; track order.id) {
+            <tr class="order-row">
+              <td>
+                <div class="font-semibold text-primary-900">{{ order.id }}</div>
+                <div class="item-meta">Tạo: {{ order.createdAt }}</div>
+              </td>
+              <td>
+                <div class="customer-stack">
+                  <div class="customer-name">{{ order.customer }}</div>
+                  <div class="customer-phone">{{ order.phone }}</div>
+                </div>
+              </td>
+              <td>
+                <div class="product-title">{{ order.title }}</div>
+              </td>
+              <td>
+                <span [class]="statusMeta[order.status].class">
+                  {{ statusMeta[order.status].label }}
+                </span>
+              </td>
+              <td class="font-semibold">{{ formatCurrency(order.totalAmount) }}</td>
+              <td class="text-sm text-primary-500">{{ order.updatedAt }}</td>
+              <td>
+                <div class="table-actions table-actions-tight">
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="openDetail(order)">Xem</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    <div class="table-footer">
+      <span class="text-sm text-primary-500">Hiển thị {{ orders.length }} / {{ total }} đơn</span>
+      <div class="pagination">
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page - 1)"
+          [disabled]="page <= 1"
+        >
+          Trước
+        </button>
+        <button
+          class="btn btn-ghost btn-sm"
+          type="button"
+          (click)="onPageChange(page + 1)"
+          [disabled]="page >= pages"
+        >
+          Sau
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

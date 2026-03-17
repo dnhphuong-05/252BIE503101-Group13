@@ -7,6 +7,7 @@ import { BlogService, BlogPost } from '../../services/blog.service';
 import { ProductService, Product } from '../../services/product.service';
 import { CommentService, BlogComment } from '../../services/comment.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-blog-detail',
@@ -49,6 +50,7 @@ export class BlogDetailComponent implements OnInit {
     private productService: ProductService,
     private sanitizer: DomSanitizer,
     private authService: AuthService,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit() {
@@ -207,6 +209,7 @@ export class BlogDetailComponent implements OnInit {
       next: () => {
         this.newComment = { comment: '', user_name: '' };
         this.isSubmittingComment = false;
+        this.toastService.success('Bình luận đã được gửi và đang chờ duyệt.');
 
         if (this.blog) {
           this.loadComments(this.blog.blog_id);
@@ -275,6 +278,7 @@ export class BlogDetailComponent implements OnInit {
       next: () => {
         this.isSubmittingReply = false;
         this.cancelReply();
+        this.toastService.success('Phản hồi đã được gửi và đang chờ duyệt.');
         if (this.blog) {
           this.loadComments(this.blog.blog_id);
         }
@@ -415,7 +419,7 @@ export class BlogDetailComponent implements OnInit {
 
   likeComment(comment: BlogComment) {
     if (!this.isLoggedIn) {
-      alert('Vui lòng đăng nhập để thích bình luận.');
+      this.toastService.info('Vui lòng đăng nhập để thích bình luận.');
       return;
     }
 
@@ -445,7 +449,7 @@ export class BlogDetailComponent implements OnInit {
 
   copyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
-      alert('Đã sao chép link!');
+      this.toastService.success('Đã sao chép liên kết bài viết.');
     });
   }
 }

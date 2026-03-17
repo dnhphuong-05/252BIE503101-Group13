@@ -42,6 +42,7 @@ export interface Review {
     responder_name?: string;
   };
   images?: Array<string | { url?: string; secure_url?: string; path?: string }>;
+  videos?: Array<string | { url?: string; secure_url?: string; path?: string }>;
   image_urls?: Array<string | { url?: string; secure_url?: string; path?: string }>;
   imageUrls?: Array<string | { url?: string; secure_url?: string; path?: string }>;
   user?: {
@@ -84,10 +85,42 @@ export interface ReviewStatsResponse {
 }
 
 export interface CreateReviewData {
-  user_name: string;
   rating: number;
   comment: string;
+  title?: string;
+  user_name?: string;
   images?: string[];
+  videos?: string[];
+}
+
+export interface ReviewMediaUploadItem {
+  url: string;
+  type: 'image' | 'video';
+  original_name?: string;
+  public_id?: string;
+}
+
+export interface ReviewMediaUploadResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    images: string[];
+    videos: string[];
+    media: ReviewMediaUploadItem[];
+  };
+}
+
+export interface MyReviewEligibilityData {
+  review: Review | null;
+  can_review: boolean;
+  has_completed_purchase: boolean;
+  completed_order_code?: string | null;
+}
+
+export interface MyReviewEligibilityResponse {
+  success: boolean;
+  message?: string;
+  data: MyReviewEligibilityData;
 }
 
 @Injectable({
@@ -95,6 +128,7 @@ export interface CreateReviewData {
 })
 export class ReviewService {
   private apiUrl = `${environment.apiUrl}/products`;
+  private rootApiUrl = environment.apiUrl;
   private userReviewsUrl = `${environment.apiUrl}/users`;
 
   constructor(private http: HttpClient) {}
@@ -109,6 +143,7 @@ export class ReviewService {
     sortBy: string = 'created_at',
     sortOrder: 'asc' | 'desc' = 'desc',
     rating?: number,
+    hasMedia: boolean = false,
   ): Observable<ReviewsResponse> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -118,6 +153,10 @@ export class ReviewService {
 
     if (rating) {
       params = params.set('rating', rating.toString());
+    }
+
+    if (hasMedia) {
+      params = params.set('hasMedia', 'true');
     }
 
     return this.http.get<ReviewsResponse>(`${this.apiUrl}/${productId}/reviews`, { params });
@@ -140,6 +179,10 @@ export class ReviewService {
     return this.http.get<ReviewsResponse>(`${this.userReviewsUrl}/${userId}/reviews`, { params });
   }
 
+  getMyReviewEligibility(productId: string): Observable<MyReviewEligibilityResponse> {
+    return this.http.get<MyReviewEligibilityResponse>(`${this.apiUrl}/${productId}/reviews/my-review`);
+  }
+
   /**
    * Tạo review mới (yêu cầu authentication)
    */
@@ -147,25 +190,31 @@ export class ReviewService {
     return this.http.post(`${this.apiUrl}/${productId}/reviews`, reviewData);
   }
 
+  uploadReviewMedia(files: File[]): Observable<ReviewMediaUploadResponse> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('media', file));
+    return this.http.post<ReviewMediaUploadResponse>(`${this.rootApiUrl}/reviews/media`, formData);
+  }
+
   /**
    * Cập nhật review (yêu cầu authentication)
    */
   updateReview(reviewId: string, updateData: Partial<CreateReviewData>): Observable<unknown> {
-    return this.http.put(`${this.apiUrl}/reviews/${reviewId}`, updateData);
+    return this.http.put(`${this.rootApiUrl}/reviews/${reviewId}`, updateData);
   }
 
   /**
    * Xóa review (yêu cầu authentication)
    */
   deleteReview(reviewId: string): Observable<unknown> {
-    return this.http.delete(`${this.apiUrl}/reviews/${reviewId}`);
+    return this.http.delete(`${this.rootApiUrl}/reviews/${reviewId}`);
   }
 
   /**
    * Đánh dấu review hữu ích
    */
   markHelpful(reviewId: string): Observable<unknown> {
-    return this.http.post(`${this.apiUrl}/reviews/${reviewId}/helpful`, {});
+    return this.http.post(`${this.rootApiUrl}/reviews/${reviewId}/helpful`, {});
   }
 
   /**

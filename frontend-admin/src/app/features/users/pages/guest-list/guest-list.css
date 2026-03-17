@@ -25,11 +25,10 @@
 }
 
 .filter-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
+  letter-spacing: 0.01em;
+  color: var(--muted-strong);
 }
 
 .filter-actions {
@@ -174,9 +173,9 @@
 .detail-drawer {
   padding: 20px;
   border-top: 1px solid var(--border);
-  background: var(--surface-2);
+  background: linear-gradient(180deg, rgba(251, 246, 239, 0.78), rgba(247, 241, 230, 0.65));
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .detail-drawer .section-title {
@@ -195,20 +194,28 @@
 
 .detail-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
 .detail-section {
   display: grid;
   gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .address-card,
@@ -247,10 +254,9 @@
 
 .panel-title {
   font-weight: 600;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  color: var(--muted-strong);
 }
 
 .order-list {
@@ -283,7 +289,6 @@
 
 .order-meta .item-meta {
   font-size: 11px;
-  text-transform: uppercase;
   color: var(--muted);
 }
 
@@ -296,6 +301,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 @media (max-width: 1024px) {
@@ -324,5 +333,19 @@
 
   .filter-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-drawer {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .detail-header {
+    padding: 12px;
+  }
+
+  .detail-section,
+  .detail-actions {
+    padding: 12px;
   }
 }

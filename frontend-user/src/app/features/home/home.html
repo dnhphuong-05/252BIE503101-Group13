@@ -1,187 +1,448 @@
-<!-- Hero Section - Video Background -->
-<section class="hero" id="trang-chu">
-  <iframe
-    class="hero-video"
-    src="https://www.youtube.com/embed/yHHHG2GiKhg?si=moe0vRRWVKcMgf6d&autoplay=1&mute=1&loop=1&playlist=yHHHG2GiKhg&controls=0&showinfo=0&rel=0&modestbranding=1"
-    title="YouTube video player"
-    frameborder="0"
-    allow="
-      accelerometer;
-      autoplay;
-      clipboard-write;
-      encrypted-media;
-      gyroscope;
-      picture-in-picture;
-      web-share;
-    "
-    referrerpolicy="strict-origin-when-cross-origin"
-    allowfullscreen
-  >
-  </iframe>
+﻿<div class="home-page">
+  <section class="shipping-strip">Mien phi van chuyen cho don hang tu 1.000.000 VND</section>
 
-  <div class="hero-content">
-    <h1 class="hero-title">PHUC</h1>
-    <p class="hero-subtitle">Cổ phục Việt — Bán • Cho thuê • May đo</p>
-    <p class="hero-description">
-      Hồi cổ phong hoa, khơi màu gấm vóc<br />
-      Khám phá cổ phục tinh tuyển, chuẩn form – chuẩn chất liệu, tôn dáng theo yêu cầu.
-    </p>
-    <div class="hero-buttons">
-      <button class="btn btn-primary">XEM BỘ SƯU TẬP</button>
-      <button class="btn btn-outline">ĐẶT MAY</button>
-    </div>
-  </div>
-</section>
+  <section class="hero" id="trang-chu">
+    <video
+      #heroVideo
+      class="hero-video"
+      [class.is-hidden]="heroVideoFailed"
+      autoplay
+      loop
+      playsinline
+      webkit-playsinline
+      preload="auto"
+      poster="assets/images/banner.png"
+    >
+      <source
+        src="https://res.cloudinary.com/dwu6e0ian/video/upload/q_auto:good,vc_h264/v1773390692/newweb001_sbsamm.mp4"
+        type="video/mp4"
+      />
+    </video>
+    <img
+      *ngIf="heroVideoFailed"
+      class="hero-fallback-image"
+      src="assets/images/banner.png"
+      alt="Banner trang chu"
+      loading="eager"
+    />
 
-<!-- Lookbook Section -->
-<section class="lookbook section" id="bo-suu-tap">
-  <div class="container">
-    <div class="section-head">
-      <div class="section-title-group">
-        <span class="section-kicker">LOOKBOOK 2026</span>
-        <h2 class="section-title">Dấu ấn gấm vóc</h2>
-      </div>
-      <p class="section-lead">
-        Bốn chủ đề đặc trưng được làm mới từ tư liệu cổ. Mỗi phom dáng giữ hồn truyền thống, tối ưu
-        cho trải nghiệm hiện đại.
-      </p>
-    </div>
+    <div class="hero-content" data-reveal="up">
+      <div class="hero-glass-panel">
+        <span class="hero-kicker">LOOKBOOK PHUC 2026</span>
+        <p class="hero-eyebrow">Trang phục Việt trong những khuôn hình đương đại</p>
+        <h1 class="hero-glass-title" data-text="CỔ PHỤC VIỆT NAM">
+          <span>CỔ PHỤC VIỆT NAM</span>
+        </h1>
+        <p class="hero-description">
+          Những bộ sưu tập được làm mới với phom dáng thanh lịch, chất liệu mềm và nhãn cảm
+          điện ảnh để khoác lên trong mọi khoảnh khắc đặc biệt.
+        </p>
 
-    <div class="lookbook-grid">
-      <article class="lookbook-card is-primary">
-        <img src="assets/images/pos1.jpg" alt="Nhật Bình hoàng gia" />
-        <div class="lookbook-overlay">
-          <span class="lookbook-tag">HOÀNG GIA</span>
-          <h3 class="lookbook-title">Nhật Bình</h3>
-          <p class="lookbook-desc">Sắc thái quyền uy, đường thêu chuẩn mực.</p>
-          <a class="lookbook-link" [routerLink]="['/products']">Khám phá</a>
+        <div class="hero-glass-tags" aria-label="Diem nhan bo suu tap">
+          <span>Ao tac</span>
+          <span>Nhat binh</span>
+          <span>Dat may rieng</span>
         </div>
-      </article>
-
-      <article class="lookbook-card is-upper">
-        <img src="assets/images/pos2.jpg" alt="Áo Ngũ Thân thanh lịch" />
-        <div class="lookbook-overlay">
-          <span class="lookbook-tag">THANH LỊCH</span>
-          <h3 class="lookbook-title">Áo Ngũ Thân</h3>
-          <p class="lookbook-desc">Form cổ điển, dễ phối phụ kiện.</p>
-        </div>
-      </article>
-
-      <article class="lookbook-card is-lower">
-        <img src="assets/images/pos3.jpg" alt="Áo Tứ Thân truyền thống" />
-        <div class="lookbook-overlay">
-          <span class="lookbook-tag">DÂN GIAN</span>
-          <h3 class="lookbook-title">Áo Tứ Thân</h3>
-          <p class="lookbook-desc">Tinh thần lễ hội, sắc màu rực rỡ.</p>
-        </div>
-      </article>
-
-      <article class="lookbook-card is-wide">
-        <img src="assets/images/pos4.jpg" alt="Giao Lĩnh cổ phong" />
-        <div class="lookbook-overlay">
-          <span class="lookbook-tag">CỔ PHONG</span>
-          <h3 class="lookbook-title">Giao Lĩnh</h3>
-          <p class="lookbook-desc">Silhouette mềm mại, tay áo đổ tự nhiên.</p>
-          <a class="lookbook-link ghost" [routerLink]="['/services']">Đặt may</a>
-        </div>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- Featured Products Section -->
-<section class="featured-products section" id="san-pham">
-  <div class="container">
-    <div class="section-head">
-      <div class="section-title-group">
-        <span class="section-kicker">TỪ XƯỞNG</span>
-        <h2 class="section-title">Sản phẩm mới cập bến</h2>
-      </div>
-      <div class="section-actions">
-        <a class="btn btn-outline-dark" [routerLink]="['/products']">Xem tất cả</a>
       </div>
     </div>
+  </section>
 
-    <div *ngIf="isLoading" class="state-card">
-      <div class="spinner"></div>
-      <p>Đang tải sản phẩm...</p>
-    </div>
-
-    <div *ngIf="loadError && !isLoading" class="state-card is-error">
-      <p>{{ loadError }}</p>
-      <button class="btn btn-primary" (click)="loadFeaturedProducts()">Thử lại</button>
-    </div>
-
-    <div *ngIf="!isLoading && !loadError && featuredProducts.length === 0" class="state-card">
-      <p>Chưa có sản phẩm phù hợp. Vui lòng quay lại sau.</p>
-    </div>
-
-    <div *ngIf="!isLoading && !loadError && featuredProducts.length > 0" class="product-grid">
-      <article *ngFor="let product of featuredProducts; trackBy: trackByProduct" class="product-card">
-        <a class="product-media" [routerLink]="['/products', product.product_id]">
-          <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy" />
-          <span *ngIf="getDiscountPercentage(product) > 0" class="product-badge">
-            -{{ getDiscountPercentage(product) }}%
-          </span>
-        </a>
-        <div class="product-body">
-          <span class="product-category">{{ product.category_name || product.category }}</span>
-          <h3 class="product-title">{{ product.name }}</h3>
-          <div class="product-price">
-            <span class="current-price">{{ getFinalPrice(product) | number }}₫</span>
-            <span *ngIf="getDiscountPercentage(product) > 0" class="old-price">
-              {{ product.price_buy | number }}₫
+  <section class="quick-shop">
+    <div class="quick-strip">
+      <a
+        class="quick-segment quick-segment-left"
+        [routerLink]="['/products']"
+        data-reveal="left"
+        style="--reveal-delay: 40ms"
+      >
+        <div class="quick-avatars" aria-hidden="true">
+          <ng-container *ngIf="quickShopCosmeticProducts.length > 0; else quickCosmeticFallback">
+            <span
+              class="quick-avatar"
+              *ngFor="let product of quickShopCosmeticProducts; trackBy: trackByProduct"
+            >
+              <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy" />
             </span>
-          </div>
-          <a class="product-cta" [routerLink]="['/products', product.product_id]">Xem chi tiết</a>
+          </ng-container>
         </div>
-      </article>
-    </div>
-  </div>
-</section>
+        <div class="quick-copy">
+          <span class="quick-title">Mua San Pham</span>
+          <strong class="quick-sub">Xem Ngay -></strong>
+        </div>
+      </a>
 
-<!-- FAQ Section -->
-<section class="faq-section section" id="faq">
-  <div class="container">
-    <div class="section-head">
-      <div class="section-title-group">
-        <span class="section-kicker">FAQ</span>
-        <h2 class="section-title">Câu hỏi thường gặp</h2>
+      <a
+        class="quick-segment quick-segment-right"
+        [routerLink]="['/contact']"
+        data-reveal="right"
+        style="--reveal-delay: 120ms"
+      >
+        <div class="quick-copy">
+          <span class="quick-title">Dat May & Dich Vu</span>
+          <strong class="quick-sub">Tu Van Ngay -></strong>
+        </div>
+        <div class="quick-avatars" aria-hidden="true">
+          <ng-container *ngIf="quickShopSkincareProducts.length > 0; else quickSkincareFallback">
+            <span
+              class="quick-avatar"
+              *ngFor="let product of quickShopSkincareProducts; trackBy: trackByProduct"
+            >
+              <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy" />
+            </span>
+          </ng-container>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <ng-template #quickCosmeticFallback>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+  </ng-template>
+
+  <ng-template #quickSkincareFallback>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+    <span class="quick-avatar quick-avatar-placeholder"></span>
+  </ng-template>
+
+  <section class="new-arrivals section" id="san-pham">
+    <div class="container arrivals-container">
+      <div *ngIf="isLoading" class="state-card">
+        <div class="spinner"></div>
+        <p>Dang tai san pham...</p>
       </div>
-      <p class="section-lead">
-        Tổng hợp nhanh các thắc mắc phổ biến về đặt may, thuê trang phục và quy trình mua hàng.
-      </p>
+
+      <div *ngIf="loadError && !isLoading" class="state-card is-error">
+        <p>{{ loadError }}</p>
+        <button class="btn btn-solid" (click)="loadFeaturedProducts()">Thu Lai</button>
+      </div>
+
+      <div *ngIf="!isLoading && !loadError" class="arrivals-showcase">
+        <article class="showcase-left" data-reveal="left">
+          <div class="showcase-slider">
+            <img
+              *ngFor="let slide of showcaseSlides; let i = index"
+              class="showcase-slide"
+              [class.is-active]="i === currentShowcaseSlide"
+              [src]="slide"
+              [alt]="'Showcase slide ' + (i + 1)"
+              loading="lazy"
+            />
+          </div>
+
+          <div class="showcase-dots" aria-label="Showcase slide controls">
+            <button
+              *ngFor="let slide of showcaseSlides; let i = index"
+              type="button"
+              class="showcase-dot"
+              [class.is-active]="i === currentShowcaseSlide"
+              (click)="goToShowcaseSlide(i)"
+            ></button>
+          </div>
+        </article>
+
+        <article
+          class="showcase-right"
+          data-reveal="right"
+          *ngIf="popularNewArrivalProducts.length > 0; else noNewArrivals"
+        >
+          <div class="showcase-lace" aria-hidden="true"></div>
+
+          <div class="showcase-right-head">
+            <h3>Sản Phẩm Mới Đến</h3>
+          </div>
+
+          <div class="arrivals-grid arrivals-grid-overlay">
+            <article
+              *ngFor="let product of popularNewArrivalProducts; let i = index; trackBy: trackByProduct"
+              class="arrival-card"
+              data-reveal="up"
+              [style.--reveal-delay]="(i * 70) + 'ms'"
+            >
+              <a class="arrival-media" [routerLink]="['/products', product.product_id]">
+                <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy" />
+                <span *ngIf="getDiscountPercentage(product) > 0" class="arrival-badge">
+                  -{{ getDiscountPercentage(product) }}%
+                </span>
+              </a>
+              <div class="arrival-body">
+                <h3>{{ product.name }}</h3>
+                <p class="arrival-price">{{ getFinalPrice(product) | number }} VND</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="showcase-right-foot">
+            <a class="section-link" [routerLink]="['/products']">Xem Tat Ca</a>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #noNewArrivals>
+        <div class="state-card">
+          <p>San pham dang duoc cap nhat. Vui long quay lai sau.</p>
+        </div>
+      </ng-template>
+    </div>
+  </section>
+
+  <section class="review-gallery section" aria-label="Khach hang lookbook">
+    <div class="container lookbook-shell">
+      <div class="lookbook-head" data-reveal="up">
+        <p class="lookbook-title-line">LOOKBOOK PHỤC 2026</p>
+      </div>
+
+      <div class="gallery-grid">
+        <article
+          *ngFor="let frame of orderedReviewLookbookFrames; let i = index; trackBy: trackByImage"
+          class="gallery-item"
+          data-reveal="up"
+          [style.--reveal-delay]="(i * 80) + 'ms'"
+        >
+          <figure class="lookbook-frame">
+            <img [src]="frame.image" [alt]="frame.alt" loading="lazy" />
+          </figure>
+          <div class="lookbook-card-copy">
+            <span class="lookbook-index">0{{ i + 1 }}</span>
+            <h3>{{ frame.title }}</h3>
+            <p>{{ frame.caption }}</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section
+    #brandShowcase
+    class="brand-showcase"
+    [class.is-visible]="isBrandShowcaseVisible"
+    aria-label="Viet Phuc brand banner"
+  >
+    <div class="brand-showcase-lane brand-showcase-lane-top" aria-hidden="true">
+      <div class="brand-showcase-track">
+        <ng-container *ngFor="let word of ribbonWords; let i = index">
+          <span [class.is-outline]="i % 2 === 1">{{ word }}</span>
+        </ng-container>
+        <ng-container *ngFor="let word of ribbonWords; let i = index">
+          <span [class.is-outline]="i % 2 === 1">{{ word }}</span>
+        </ng-container>
+      </div>
     </div>
 
-    <div class="faq-grid">
-      <details class="faq-item">
-        <summary>Thời gian đặt may trung bình là bao lâu?</summary>
-        <p>
-          Thông thường từ 7–14 ngày tuỳ độ phức tạp. Với lịch gấp, bạn có thể liên hệ để được hỗ
-          trợ ưu tiên.
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>Có nhận chỉnh sửa theo số đo cá nhân không?</summary>
-        <p>
-          Có. PHUC tư vấn form dáng dựa trên số đo thực tế và nhu cầu sử dụng để đảm bảo vừa vặn.
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>Thuê trang phục cần chuẩn bị những gì?</summary>
-        <p>
-          Bạn chỉ cần cung cấp số đo cơ bản và thời gian sử dụng. Chúng tôi sẽ tư vấn mẫu phù hợp
-          và hướng dẫn bảo quản.
-        </p>
-      </details>
-      <details class="faq-item">
-        <summary>Hình ảnh sản phẩm có giống thực tế không?</summary>
-        <p>
-          Màu sắc có thể chênh nhẹ do ánh sáng chụp. Chúng tôi luôn cập nhật ảnh thật và mô tả chất
-          liệu chi tiết.
-        </p>
-      </details>
+    <div class="brand-showcase-lane brand-showcase-lane-bottom" aria-hidden="true">
+      <div class="brand-showcase-track brand-showcase-track-reverse">
+        <ng-container *ngFor="let word of ribbonWords; let i = index">
+          <span [class.is-outline]="i % 2 === 0">{{ word }}</span>
+        </ng-container>
+        <ng-container *ngFor="let word of ribbonWords; let i = index">
+          <span [class.is-outline]="i % 2 === 0">{{ word }}</span>
+        </ng-container>
+      </div>
     </div>
-  </div>
-</section>
 
+    <div class="brand-showcase-center">
+      <div class="brand-showcase-collage">
+        <a class="brand-showcase-figure brand-showcase-figure-left" [routerLink]="['/products']">
+          <img src="assets/images/brand/mascot1.png" alt="Viet Phuc mascot 1" loading="lazy" />
+        </a>
+        <a class="brand-showcase-figure brand-showcase-figure-main" [routerLink]="['/products']">
+          <img src="assets/images/brand/big-mascot.png" alt="Viet Phuc big mascot" loading="lazy" />
+        </a>
+        <a class="brand-showcase-figure brand-showcase-figure-right" [routerLink]="['/products']">
+          <img src="assets/images/brand/mascot3.png" alt="Viet Phuc mascot 3" loading="lazy" />
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="best-sellers section">
+    <div class="container">
+      <div class="section-head section-head-center" data-reveal="up">
+          <h2>Sản Phẩm Bán Chạy</h2>
+      </div>
+
+      <div *ngIf="!isLoading && !loadError && bestSellerProducts.length > 0" class="product-grid">
+        <article
+          *ngFor="let product of bestSellerProducts; let i = index; trackBy: trackByProduct"
+          class="product-card"
+          data-reveal="up"
+          [style.--reveal-delay]="(i * 70) + 'ms'"
+        >
+          <a class="product-media" [routerLink]="['/products', product.product_id]">
+            <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy" />
+            <span *ngIf="getDiscountPercentage(product) > 0" class="product-badge">
+              {{ getDiscountPercentage(product) }}% OFF
+            </span>
+          </a>
+          <div class="product-body">
+            <h3 class="product-title">{{ product.name }}</h3>
+            <div class="product-price">
+              <span class="current-price">{{ getFinalPrice(product) | number }} VND</span>
+              <span *ngIf="getDiscountPercentage(product) > 0" class="old-price">
+                {{ product.price_buy | number }} VND
+              </span>
+            </div>
+            <a class="product-cta" [routerLink]="['/products', product.product_id]">
+              Xem Chi Tiet
+            </a>
+          </div>
+        </article>
+      </div>
+
+      <div *ngIf="!isLoading && !loadError && bestSellerProducts.length === 0" class="state-card">
+        <p>Chua co san pham phu hop.</p>
+      </div>
+
+      <div
+        class="best-sellers-foot"
+        *ngIf="!isLoading && !loadError && bestSellerProducts.length > 0"
+        data-reveal="up"
+      >
+        <a class="section-link" [routerLink]="['/products']">Xem Tat Ca</a>
+      </div>
+    </div>
+  </section>
+
+  <section
+    class="customer-voices"
+    aria-labelledby="customer-voices-title"
+    *ngIf="!isLoading && !loadError"
+  >
+    <div class="customer-voices-shell">
+      <div class="customer-voices-layout">
+        <article class="customer-voices-info" data-reveal="left">
+          <p class="customer-voices-kicker">Review Từ Khách</p>
+          <h2 id="customer-voices-title">Cảm Nhận Thực Tế</h2>
+          <p class="customer-voices-copy">
+            Những chia sẻ thật từ khách hàng sau khi nhận sản phẩm. Chuyển từng review bên phải để
+            xem nhanh trải nghiệm thực tế trước khi chọn mua.
+          </p>
+          <p class="customer-voices-copy customer-voices-copy-secondary">
+            Khách hàng thường nhắc đến chất liệu lên form chắc tay, màu sắc đúng hình và cảm giác
+            mặc thoải mái trong sinh hoạt hằng ngày.
+          </p>
+          <div class="customer-voices-stats">
+            <div class="customer-voices-stat">
+              <strong>{{ customerReviewSlides.length }}</strong>
+              <span>review đang hiển thị</span>
+            </div>
+            <div class="customer-voices-stat">
+              <strong>{{ bestSellerProducts.length }}</strong>
+              <span>sản phẩm bán chạy</span>
+            </div>
+          </div>
+          <div class="customer-voices-tags">
+            <span>Chất liệu thực tế</span>
+            <span>Độ đứng form</span>
+            <span>Cảm giác khi mặc</span>
+          </div>
+          <p class="customer-voices-footnote">
+            Đánh giá được lấy trực tiếp từ những sản phẩm nổi bật đang hiển thị trong khung review.
+          </p>
+          <a class="customer-voices-action" [routerLink]="['/products']">Xem Tất Cả</a>
+        </article>
+
+        <div
+          class="customer-voices-stage"
+          [style.--customer-voice-bg-base]="currentCustomerVoiceBackgroundBase"
+          [style.--customer-voice-bg-soft]="currentCustomerVoiceBackgroundSoft"
+          [style.--customer-voice-bg-rgb]="currentCustomerVoiceBackgroundRgb"
+          data-reveal="right"
+        >
+          <div *ngIf="isLoadingCustomerReviewSpotlights" class="state-card customer-voices-state">
+            <div class="spinner"></div>
+            <p>Đang tải đánh giá của khách hàng...</p>
+          </div>
+
+          <article
+            *ngIf="!isLoadingCustomerReviewSpotlights && activeCustomerReviewSlide as activeSlide"
+            class="customer-voice-slide"
+          >
+            <div class="customer-voice-showcase">
+              <button
+                type="button"
+                class="customer-voice-nav customer-voice-nav-prev"
+                (click)="previousCustomerReviewSlide()"
+                [disabled]="customerReviewSlides.length < 2"
+                aria-label="Xem review trước"
+              >
+                ‹
+              </button>
+
+              <a class="customer-voice-media" [routerLink]="['/products', activeSlide.product.product_id]">
+                <img
+                  [src]="getImageUrl(activeSlide.product)"
+                  [alt]="activeSlide.product.name"
+                  loading="lazy"
+                />
+              </a>
+
+              <button
+                type="button"
+                class="customer-voice-nav customer-voice-nav-next"
+                (click)="nextCustomerReviewSlide()"
+                [disabled]="customerReviewSlides.length < 2"
+                aria-label="Xem review tiếp theo"
+              >
+                ›
+              </button>
+            </div>
+
+            <div class="customer-voice-details">
+              <div class="customer-voice-product-summary">
+                <h3>{{ activeSlide.product.name }}</h3>
+              </div>
+
+              <div class="customer-voice-review-card">
+                <div class="customer-voice-footer">
+                  <div class="customer-voice-user">
+                    <span class="customer-voice-avatar">{{ getReviewInitials(activeSlide.review) }}</span>
+                    <div class="customer-voice-user-meta">
+                      <strong>{{ getReviewAuthor(activeSlide.review) }}</strong>
+                      <span>{{ getReviewTimeAgo(activeSlide.review) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  class="customer-voice-rating"
+                  [attr.aria-label]="'Đánh giá ' + activeSlide.review.rating + ' trên 5 sao'"
+                >
+                  <span
+                    *ngFor="let star of reviewStars"
+                    class="customer-voice-star"
+                    [class.is-active]="star <= activeSlide.review.rating"
+                  >
+                    ★
+                  </span>
+                </div>
+
+                <p class="customer-voice-text">"{{ activeSlide.review.comment }}"</p>
+              </div>
+            </div>
+
+            <div class="customer-voice-dots" *ngIf="customerReviewSlides.length > 1">
+              <button
+                *ngFor="let slide of customerReviewSlides; let i = index"
+                type="button"
+                class="customer-voice-dot"
+                [class.is-active]="i === currentCustomerReviewSlide"
+                (click)="goToCustomerReviewSlide(i)"
+                [attr.aria-label]="'Chuyển đến review ' + (i + 1)"
+              ></button>
+            </div>
+          </article>
+
+          <div
+            *ngIf="!isLoadingCustomerReviewSpotlights && !activeCustomerReviewSlide"
+            class="state-card customer-voices-state"
+          >
+            <p>Những đánh giá đầu tiên từ khách hàng sẽ sớm xuất hiện tại đây.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

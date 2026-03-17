@@ -1,19 +1,34 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">{{ isEditMode ? 'Edit blog post' : 'New blog post' }}</div>
-      <div class="page-subtitle">Soạn thảo nội dung và thiết lập SEO</div>
+      <div class="page-title">{{ isEditMode ? 'Chỉnh sửa bài viết' : 'Bài viết mới' }}</div>
+      <div class="page-subtitle">
+        Đồng bộ form với collection <code>blog_posts</code> và cấu hình SEO cho bài viết.
+      </div>
     </div>
     <div class="page-actions">
-      <button class="btn btn-secondary" (click)="saveDraft()" [disabled]="isSaving">
-        Save draft
+      <button
+        class="btn btn-secondary"
+        type="button"
+        (click)="saveCurrentStatus()"
+        [disabled]="isSaving || isLoadingPost"
+      >
+        Lưu theo trạng thái
       </button>
-      <button class="btn btn-primary" (click)="publishNow()" [disabled]="isSaving">
-        Publish now
+      <button
+        class="btn btn-primary"
+        type="button"
+        (click)="publishNow()"
+        [disabled]="isSaving || isLoadingPost"
+      >
+        Đăng ngay
       </button>
     </div>
   </div>
 
+  @if (isLoadingPost) {
+    <div class="text-sm text-primary-500">Đang tải dữ liệu bài viết...</div>
+  }
   @if (loadError) {
     <div class="text-sm text-error">{{ loadError }}</div>
   }
@@ -21,7 +36,7 @@
     <div class="text-sm text-error">{{ saveError }}</div>
   }
   @if (saveSuccess) {
-    <div class="text-sm text-primary-500">{{ saveSuccess }}</div>
+    <div class="text-sm text-success">{{ saveSuccess }}</div>
   }
 
   <div class="form-layout">
@@ -29,31 +44,38 @@
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Title &amp; summary</div>
-            <div class="section-subtitle">Tiêu đề, slug và đoạn trích</div>
+            <div class="section-title">Tiêu đề & tóm tắt</div>
+            <div class="section-subtitle">Tiêu đề, slug và mô tả ngắn hiển thị ở danh sách blog.</div>
           </div>
         </div>
         <div class="section-grid">
           <div>
-            <label class="label">Title</label>
+            <label class="label">Tiêu đề bài viết</label>
             <input class="input" [(ngModel)]="post.title" (input)="onTitleInput()" />
           </div>
           <div>
             <label class="label">Slug</label>
-            <input class="input" [(ngModel)]="post.slug" />
+            <input class="input" [(ngModel)]="post.slug" placeholder="tu-dong-tu-tieu-de" />
           </div>
         </div>
         <div class="mt-3">
-          <label class="label">Excerpt</label>
-          <textarea class="textarea" rows="3" [(ngModel)]="post.excerpt"></textarea>
+          <label class="label">Mô tả ngắn</label>
+          <textarea
+            class="textarea"
+            rows="4"
+            [(ngModel)]="post.excerpt"
+            placeholder="Tóm tắt ngắn gọn nội dung bài viết"
+          ></textarea>
         </div>
       </div>
 
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Cover image</div>
-            <div class="section-subtitle">Ảnh đại diện bài viết</div>
+            <div class="section-title">Ảnh bìa</div>
+            <div class="section-subtitle">
+              Ảnh này sẽ dùng cho thumbnail bài viết và ảnh OG khi chia sẻ.
+            </div>
           </div>
         </div>
         <label
@@ -81,7 +103,7 @@
         }
         @if (post.thumbnail) {
           <div class="cover-preview mt-3">
-            <img [src]="post.thumbnail" alt="Cover image" />
+            <img [src]="post.thumbnail" alt="Ảnh bìa bài viết" />
           </div>
         }
       </div>
@@ -89,26 +111,32 @@
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Content</div>
-            <div class="section-subtitle">Soạn thảo nội dung chính</div>
+            <div class="section-title">Nội dung</div>
+            <div class="section-subtitle">
+              Nội dung chính của bài viết, hệ thống sẽ ước tính thời gian đọc nếu bạn để trống.
+            </div>
           </div>
         </div>
-        <textarea class="textarea editor-area" rows="10" [(ngModel)]="post.content"></textarea>
+        <textarea
+          class="textarea editor-area"
+          rows="12"
+          [(ngModel)]="post.content"
+          placeholder="Nhập nội dung chi tiết của bài viết"
+        ></textarea>
       </div>
 
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">Category &amp; tags</div>
-            <div class="section-subtitle">Phân loại và gắn thẻ</div>
+            <div class="section-title">Phân loại & hiển thị</div>
           </div>
         </div>
         <div class="section-grid">
           <div>
-            <label class="label">Category</label>
+            <label class="label">Danh mục</label>
             <select class="select" [(ngModel)]="post.categoryId" [disabled]="isLoadingCategories">
               <option value="">Chọn danh mục</option>
-              @for (category of categories; track $index) {
+              @for (category of categories; track category.id) {
                 <option [value]="category.id">{{ category.name }}</option>
               }
             </select>
@@ -117,8 +145,57 @@
             }
           </div>
           <div>
-            <label class="label">Tags</label>
-            <input class="input" [(ngModel)]="post.tags" placeholder="xu hướng, áo dài" />
+            <label class="label">Thẻ bài viết</label>
+            <input
+              class="input"
+              [(ngModel)]="post.tags"
+              placeholder="áo dài, lịch sử, văn hóa"
+            />
+          </div>
+          <div>
+            <label class="label">Thời gian đọc (phút)</label>
+            <input class="input" type="number" min="1" [(ngModel)]="post.readingTime" />
+          </div>
+          <div>
+            <label class="label">Ngày đăng</label>
+            <input class="input" type="datetime-local" [(ngModel)]="post.publishedAt" />
+          </div>
+        </div>
+        <label class="feature-toggle mt-3">
+          <input type="checkbox" [(ngModel)]="post.isFeatured" />
+          <span>
+            <strong>Bài viết nổi bật</strong>
+            <small>Hiển thị trong danh sách featured posts trên frontend.</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="card section-card">
+        <div class="card-header">
+          <div>
+            <div class="section-title">Tác giả</div>
+          </div>
+        </div>
+        <div class="section-grid">
+          <div>
+            <label class="label">Tên tác giả</label>
+            <input class="input" [(ngModel)]="post.authorName" />
+          </div>
+          <div>
+            <label class="label">Vai trò tác giả</label>
+            <input class="input" [(ngModel)]="post.authorRole" placeholder="Stylist, Biên tập viên..." />
+          </div>
+          <div>
+            <label class="label">Author ID <span class="hint">Tùy chọn</span></label>
+            <input class="input" type="number" min="1" [(ngModel)]="post.authorId" />
+          </div>
+          <div>
+            <label class="label">Trạng thái bài viết</label>
+            <select class="select" [(ngModel)]="post.status">
+              <option value="draft">Nháp</option>
+              <option value="published">Đã đăng</option>
+              <option value="archived">Lưu trữ</option>
+            </select>
           </div>
         </div>
       </div>
@@ -126,8 +203,7 @@
       <div class="card section-card">
         <div class="card-header">
           <div>
-            <div class="section-title">SEO</div>
-            <div class="section-subtitle">Meta title &amp; description</div>
+            <div class="section-title">SEO & chia sẻ</div>
           </div>
         </div>
         <div class="section-grid">
@@ -140,39 +216,85 @@
             <input class="input" [(ngModel)]="post.metaDescription" />
           </div>
         </div>
+        <div class="mt-3">
+          <label class="label">Meta keywords</label>
+          <input
+            class="input"
+            [(ngModel)]="post.metaKeywords"
+            placeholder="áo ngũ thân, triều Nguyễn, văn hóa"
+          />
+          <div class="field-hint">Nhập nhiều từ khóa, cách nhau bằng dấu phẩy.</div>
+        </div>
       </div>
     </div>
 
     <aside class="form-side">
       <div class="card preview-card">
-        <div class="section-title">Preview</div>
+        <div class="section-title">Xem trước</div>
         <div class="preview-media">
           @if (previewImage) {
-            <img [src]="previewImage" [alt]="post.title || 'Preview image'" />
+            <img [src]="previewImage" [alt]="post.title || 'Ảnh xem trước'" />
           }
         </div>
-        <div class="item-title">{{ post.title || 'Post title' }}</div>
-        <div class="text-sm text-primary-500">{{ previewCategory }}</div>
-        <span class="badge badge-info">{{ post.status }}</span>
+        <div class="preview-copy">
+          <div class="item-title">{{ post.title || 'Tiêu đề bài viết' }}</div>
+          <div class="item-subtitle">{{ post.excerpt || 'Mô tả ngắn sẽ hiển thị ở đây.' }}</div>
+        </div>
+        <div class="preview-meta">
+          <span class="chip chip-neutral">{{ previewCategory }}</span>
+          <span [class]="previewStatus.className">{{ previewStatus.label }}</span>
+          @if (post.isFeatured) {
+            <span class="chip chip-accent">Nổi bật</span>
+          }
+        </div>
+        <div class="preview-stats">
+          <div>
+            <span class="preview-label">Tác giả</span>
+            <strong>{{ post.authorName || 'Admin' }}</strong>
+          </div>
+          <div>
+            <span class="preview-label">Vai trò</span>
+            <strong>{{ post.authorRole || 'Chưa cập nhật' }}</strong>
+          </div>
+          <div>
+            <span class="preview-label">Thời gian đọc</span>
+            <strong>{{ previewReadingTime }} phút</strong>
+          </div>
+          <div>
+            <span class="preview-label">Ngày đăng</span>
+            <strong>{{ previewPublishedAt }}</strong>
+          </div>
+        </div>
+        @if (previewTags.length) {
+          <div class="preview-tags">
+            @for (tag of previewTags; track tag) {
+              <span class="chip chip-info">{{ tag }}</span>
+            }
+          </div>
+        }
       </div>
 
       <div class="card section-card">
-        <div class="section-title">Publish</div>
-        <div class="section-grid">
-          <div>
-            <label class="label">Status</label>
-            <select class="select" [(ngModel)]="post.status">
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
-          </div>
+        <div class="section-title">Xuất bản</div>
+        <div class="publish-note">
+          Nút <strong>Lưu theo trạng thái</strong> sẽ dùng đúng trạng thái bạn chọn ở form.
         </div>
         <div class="mt-3">
-          <button class="btn btn-secondary w-full" (click)="saveDraft()" [disabled]="isSaving">
-            Save draft
+          <button
+            class="btn btn-secondary w-full"
+            type="button"
+            (click)="saveCurrentStatus()"
+            [disabled]="isSaving || isLoadingPost"
+          >
+            Lưu theo trạng thái
           </button>
-          <button class="btn btn-primary w-full mt-2" (click)="publishNow()" [disabled]="isSaving">
-            Publish now
+          <button
+            class="btn btn-primary w-full mt-2"
+            type="button"
+            (click)="publishNow()"
+            [disabled]="isSaving || isLoadingPost"
+          >
+            Đăng ngay
           </button>
         </div>
       </div>

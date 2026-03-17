@@ -30,6 +30,7 @@ export interface CheckoutPayload {
   shipping_method?: string | null;
   shipping_fee?: number;
   discount_amount?: number;
+  loyalty_voucher_id?: string | null;
   payment_method: string;
   note?: string;
   cart_item_ids?: string[];

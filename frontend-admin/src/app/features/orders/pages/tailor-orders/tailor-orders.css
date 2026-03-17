@@ -1,0 +1,147 @@
+.tailor-card {
+  overflow-x: auto;
+}
+
+.tailor-toolbar {
+  border-bottom: none;
+  align-items: center;
+}
+
+.tailor-toolbar .toolbar-search {
+  width: 100%;
+  max-width: 520px;
+}
+
+.filter-grid {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted-strong);
+}
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tailor-table {
+  table-layout: fixed;
+}
+
+.tailor-table th:nth-child(1),
+.tailor-table td:nth-child(1) {
+  width: 170px;
+}
+
+.tailor-table th:nth-child(2),
+.tailor-table td:nth-child(2) {
+  width: 190px;
+}
+
+.tailor-table th:nth-child(4),
+.tailor-table td:nth-child(4) {
+  width: 160px;
+  text-align: center;
+}
+
+.tailor-table th:nth-child(5),
+.tailor-table td:nth-child(5) {
+  width: 150px;
+  text-align: center;
+}
+
+.tailor-table th:nth-child(6),
+.tailor-table td:nth-child(6) {
+  width: 120px;
+  text-align: center;
+}
+
+.tailor-table th:nth-child(7),
+.tailor-table td:nth-child(7) {
+  width: 90px;
+  text-align: center;
+}
+
+.tailor-table th,
+.tailor-table td {
+  vertical-align: middle;
+  padding: 14px 16px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.tailor-table td:nth-child(4),
+.tailor-table td:nth-child(5),
+.tailor-table td:nth-child(6),
+.tailor-table td:nth-child(7) {
+  white-space: nowrap;
+}
+
+.customer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.customer-phone,
+.product-title {
+  font-size: 13px;
+  color: var(--muted-strong);
+}
+
+.table-actions-tight {
+  justify-content: center;
+}
+
+.pagination {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .tailor-toolbar {
+    align-items: stretch;
+  }
+
+  .tailor-toolbar .toolbar-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tailor-toolbar .toolbar-search {
+    max-width: none;
+  }
+
+  .filter-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-field {
+    min-width: 0;
+  }
+}

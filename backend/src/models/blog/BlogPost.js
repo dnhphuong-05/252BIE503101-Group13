@@ -33,7 +33,9 @@ const blogPostSchema = new mongoose.Schema(
       index: true,
     },
     author: {
+      author_id: Number,
       name: String,
+      role: String,
       avatar: String,
       bio: String,
     },
@@ -72,6 +74,7 @@ const blogPostSchema = new mongoose.Schema(
       meta_title: String,
       meta_description: String,
       meta_keywords: [String],
+      og_image: String,
     },
   },
   {

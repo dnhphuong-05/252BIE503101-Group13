@@ -34,7 +34,7 @@ export class ContactComponent {
       phone: '0792 098 518',
       email: 'studio@phuc.vn',
       website: 'www.phuc.vn',
-      address: '669 QL1A, Khu Phố 3, Thủ Đức, TP. Hồ Chí Minh',
+      address: '669 QL1A, Khu Phố 3, Thành phố Hồ Chí Minh',
     },
     social: {
       facebook: 'https://facebook.com/phuc',

@@ -9,6 +9,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notificationService = inject(NotificationService);
   const router = inject(Router);
   const authService = inject(AuthService);
+  const shouldSkipToast =
+    req.url.includes('/tailor-orders') || req.headers.get('x-skip-error-toast') === '1';
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -41,7 +43,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         }
       }
 
-      notificationService.showError(errorMessage);
+      if (!shouldSkipToast) {
+        notificationService.showError(errorMessage);
+      }
       return throwError(() => error);
     }),
   );

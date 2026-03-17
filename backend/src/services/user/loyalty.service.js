@@ -2,6 +2,7 @@ import UserLoyalty from "../../models/user/UserLoyalty.js";
 import LoyaltyTransaction from "../../models/user/LoyaltyTransaction.js";
 import BuyOrder from "../../models/order/BuyOrder.js";
 import RentOrder from "../../models/order/RentOrder.js";
+import ApiError from "../../utils/ApiError.js";
 
 const POINT_RULES = [
   { min: 2000000, points: 15 },
@@ -17,6 +18,27 @@ const TIER_RULES = [
 
 const MAX_TIER_POINTS = 3000;
 
+const VOUCHER_RULES = [
+  {
+    id: "heritage-ship-30k",
+    title: "Heritage Freeship",
+    description: "Giảm 30.000đ phí vận chuyển khi đạt từ 300 điểm thưởng.",
+    required_points: 300,
+    discount_type: "shipping",
+    discount_value: 30000,
+    tier_name: "Heritage",
+  },
+  {
+    id: "royal-product-100k",
+    title: "Royal Product 100K",
+    description: "Giảm 100.000đ trên giá sản phẩm khi đạt từ 1000 điểm thưởng.",
+    required_points: 1000,
+    discount_type: "product",
+    discount_value: 100000,
+    tier_name: "Royal",
+  },
+];
+
 const calculateEarnedPoints = (amount) => {
   const value = Number(amount);
   if (!Number.isFinite(value) || value <= 0) return 0;
@@ -28,6 +50,60 @@ const resolveTier = (totalPoints) => {
   const normalized = Math.max(0, Math.min(Number(totalPoints) || 0, MAX_TIER_POINTS));
   const rule = TIER_RULES.find((item) => normalized >= item.min) || TIER_RULES[TIER_RULES.length - 1];
   return { level: rule.level, name: rule.name };
+};
+
+const buildVoucherView = (voucher, totalPoints) => {
+  const normalizedPoints = Math.max(0, Number(totalPoints) || 0);
+  const isEligible = normalizedPoints >= voucher.required_points;
+
+  return {
+    ...voucher,
+    is_eligible: isEligible,
+    points_shortfall: isEligible ? 0 : voucher.required_points - normalizedPoints,
+  };
+};
+
+const getAvailableVouchers = (totalPoints = 0) =>
+  VOUCHER_RULES.map((voucher) => buildVoucherView(voucher, totalPoints));
+
+const resolveVoucherSelection = async ({
+  userId,
+  voucherId,
+  subtotalAmount = 0,
+  shippingFee = 0,
+}) => {
+  if (!voucherId) {
+    return null;
+  }
+
+  if (!userId) {
+    throw ApiError.badRequest("Bạn cần đăng nhập để áp dụng voucher điểm thưởng");
+  }
+
+  const loyalty = await UserLoyalty.findOne({ user_id: userId }).lean();
+  const totalPoints = Math.max(0, Number(loyalty?.total_points) || 0);
+  const voucher = VOUCHER_RULES.find((item) => item.id === voucherId);
+
+  if (!voucher) {
+    throw ApiError.badRequest("Voucher không hợp lệ");
+  }
+
+  if (totalPoints < voucher.required_points) {
+    throw ApiError.badRequest("Bạn chưa đủ điểm để nhận voucher này");
+  }
+
+  const normalizedSubtotal = Math.max(0, Number(subtotalAmount) || 0);
+  const normalizedShipping = Math.max(0, Number(shippingFee) || 0);
+  const rawDiscount =
+    voucher.discount_type === "shipping"
+      ? Math.min(voucher.discount_value, normalizedShipping)
+      : Math.min(voucher.discount_value, normalizedSubtotal);
+
+  return {
+    ...buildVoucherView(voucher, totalPoints),
+    discount_amount: Math.max(0, rawDiscount),
+    total_points: totalPoints,
+  };
 };
 
 const awardOrderPoints = async ({ userId, amount, refId, reason }) => {
@@ -162,6 +238,8 @@ const syncOrderPointsForUser = async (userId) => {
 export default {
   calculateEarnedPoints,
   resolveTier,
+  getAvailableVouchers,
+  resolveVoucherSelection,
   awardOrderPoints,
   syncOrderPointsForUser,
 };

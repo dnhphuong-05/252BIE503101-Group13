@@ -6,6 +6,21 @@ import UserMeasurement from "../../models/user/UserMeasurement.js";
 import UserLoyalty from "../../models/user/UserLoyalty.js";
 import LoyaltyTransaction from "../../models/user/LoyaltyTransaction.js";
 import ApiError from "../../utils/ApiError.js";
+import mongoose from "mongoose";
+
+const buildAddressLookup = (userId, addressId) => {
+  const normalizedAddressId = String(addressId || "").trim();
+  const orConditions = [{ address_id: normalizedAddressId }];
+
+  if (mongoose.Types.ObjectId.isValid(normalizedAddressId)) {
+    orConditions.push({ _id: normalizedAddressId });
+  }
+
+  return {
+    user_id: userId,
+    $or: orConditions,
+  };
+};
 
 const attachUserDetails = async (user) => {
   const userId = user.user_id;
@@ -259,10 +274,7 @@ class UserService extends BaseService {
       throw ApiError.notFound("User not found");
     }
 
-    const address = await UserAddress.findOne({
-      user_id: user.user_id,
-      address_id: addressId,
-    });
+    const address = await UserAddress.findOne(buildAddressLookup(user.user_id, addressId));
     if (!address) {
       throw ApiError.notFound("Address not found");
     }
@@ -300,10 +312,7 @@ class UserService extends BaseService {
       throw ApiError.notFound("User not found");
     }
 
-    const result = await UserAddress.deleteOne({
-      user_id: user.user_id,
-      address_id: addressId,
-    });
+    const result = await UserAddress.deleteOne(buildAddressLookup(user.user_id, addressId));
 
     if (result.deletedCount === 0) {
       throw ApiError.notFound("Address not found");
@@ -322,10 +331,7 @@ class UserService extends BaseService {
       throw ApiError.notFound("User not found");
     }
 
-    const address = await UserAddress.findOne({
-      user_id: user.user_id,
-      address_id: addressId,
-    });
+    const address = await UserAddress.findOne(buildAddressLookup(user.user_id, addressId));
 
     if (!address) {
       throw ApiError.notFound("Address not found");

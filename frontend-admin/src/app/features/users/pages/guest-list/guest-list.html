@@ -1,14 +1,16 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Guest Customers</div>
-      <div class="page-subtitle">
-        Quản lý khách vãng lai: tra cứu thông tin, lịch sử đơn và mời đăng ký.
-      </div>
+      <div class="page-title">Khách vãng lai</div>
+      <div class="page-subtitle">{{ detailMode ? 'Chi tiết khách vãng lai' : 'Danh sách, lọc và tìm kiếm' }}</div>
     </div>
+    @if (detailMode) {
+      <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Quay lại danh sách</button>
+    }
   </div>
 
   <div class="card table-card">
+    @if (!detailMode) {
     <div class="table-toolbar guest-toolbar">
       <div class="toolbar-group flex-1">
         <div class="toolbar-search">
@@ -56,9 +58,9 @@
       </div>
 
       <div class="filter-actions">
-        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
         <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
-          Refresh
+          Làm mới
         </button>
       </div>
     </div>
@@ -141,7 +143,9 @@
         </button>
       </div>
     </div>
+    }
 
+    @if (detailMode) {
     @if (detailLoading) {
       <div class="detail-loading">Đang tải chi tiết khách...</div>
     } @else if (selectedGuest) {
@@ -246,6 +250,7 @@
           </button>
         </div>
       </div>
+    }
     }
   </div>
 </div>

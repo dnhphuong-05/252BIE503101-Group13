@@ -4,8 +4,15 @@ import { UserRole } from '../../models/auth.model';
 
 export const contactsRoutes: Routes = [
   {
+    path: ':id',
+    loadComponent: () => import('./pages/contacts.component').then((m) => m.ContactsComponent),
+    canActivate: [roleGuard([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN])],
+    data: { detail: true },
+  },
+  {
     path: '',
     loadComponent: () => import('./pages/contacts.component').then((m) => m.ContactsComponent),
     canActivate: [roleGuard([UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN])],
+    data: { detail: false },
   },
 ];

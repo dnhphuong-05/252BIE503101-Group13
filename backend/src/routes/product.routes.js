@@ -6,6 +6,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  permanentDeleteProduct,
   getRelatedProducts,
   getFeaturedProducts,
   getBestSellingProducts,
@@ -135,6 +136,17 @@ router.delete(
   "/:id",
   validate(productValidator.getProductByIdSchema, "params"),
   deleteProduct,
+);
+
+/**
+ * @route   DELETE /api/products/:id/permanent
+ * @desc    Delete product permanently
+ * @access  Private/Admin
+ */
+router.delete(
+  "/:id/permanent",
+  validate(productValidator.getProductByIdSchema, "params"),
+  permanentDeleteProduct,
 );
 
 export default router;

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import ProductReview from "../models/ProductReview.js";
 import ProductRating from "../models/ProductRating.js";
 import Product from "../models/Product.js";
+import BuyOrder from "../models/order/BuyOrder.js";
 import UserProfile from "../models/user/UserProfile.js";
 import { ApiError } from "../utils/index.js";
 
@@ -171,6 +172,93 @@ const buildReviewIdFilter = (reviewId) => {
   return { $or: filters };
 };
 
+const resolveNumericProductId = async (productId) => {
+  const { numeric, idString } = normalizeProductId(productId);
+
+  if (numeric !== null) {
+    return numeric;
+  }
+
+  if (idString && /^[0-9a-fA-F]{24}$/.test(idString)) {
+    const product = await Product.findById(idString).select("product_id").lean();
+    const productNumeric = Number(product?.product_id);
+    return Number.isFinite(productNumeric) ? productNumeric : null;
+  }
+
+  return null;
+};
+
+const findCompletedBuyOrderForProduct = async (productId, userId) => {
+  const numericProductId = await resolveNumericProductId(productId);
+  if (!userId || numericProductId === null) {
+    return null;
+  }
+
+  return BuyOrder.findOne({
+    user_id: userId,
+    order_status: "completed",
+    items: {
+      $elemMatch: {
+        product_id: numericProductId,
+      },
+    },
+  })
+    .select("order_id order_code order_status completed_at customer_received_at created_at")
+    .lean();
+};
+
+const findUserReviewForProduct = async (productId, userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  const reviewFilter = mergeFilterWithExtra(await resolveProductFilter(productId), {
+    user_id: userId,
+  });
+
+  const review = await ProductReview.findOne(reviewFilter).lean();
+  if (review) {
+    return review;
+  }
+
+  return getLegacyReviewModel().findOne(reviewFilter).lean();
+};
+
+const extractReviewSequence = (reviewId) => {
+  if (typeof reviewId !== "string") return 0;
+
+  const match = reviewId.match(/^rv_\d+_(\d+)$/);
+  if (!match) return 0;
+
+  const sequence = Number(match[1]);
+  return Number.isFinite(sequence) ? sequence : 0;
+};
+
+const generateReviewId = async (productId) => {
+  const productPrefix = `rv_${productId}_`;
+  const lastReview = await ProductReview.findOne({
+    id: { $regex: `^${productPrefix}` },
+  })
+    .sort({ created_at: -1, _id: -1 })
+    .select("id")
+    .lean();
+
+  const lastSequence = extractReviewSequence(lastReview?.id);
+  if (lastSequence > 0) {
+    return `${productPrefix}${lastSequence + 1}`;
+  }
+
+  const reviewCount = await ProductReview.countDocuments({
+    id: { $regex: `^${productPrefix}` },
+  });
+
+  if (reviewCount > 0) {
+    return `${productPrefix}${reviewCount + 1}`;
+  }
+
+  return `${productPrefix}${Date.now()}`;
+};
+
 /**
  * Review Service - Business logic cho Review
  */
@@ -185,10 +273,16 @@ class ReviewService {
       sortBy = "created_at",
       sortOrder = "desc",
       rating = "",
+      hasMedia = false,
     } = queryParams;
 
     const filter = await resolveProductFilter(productId);
     const ratingFilter = rating ? mergeFilterWithExtra(filter, { rating: parseInt(rating) }) : filter;
+    const mediaFilter = hasMedia
+      ? mergeFilterWithExtra(ratingFilter, {
+          $or: [{ "images.0": { $exists: true } }, { "videos.0": { $exists: true } }],
+        })
+      : ratingFilter;
 
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === "asc" ? 1 : -1;
@@ -198,12 +292,12 @@ class ReviewService {
     const skip = (pageNum - 1) * limitNum;
 
     const [reviews, total] = await Promise.all([
-      ProductReview.find(ratingFilter)
+      ProductReview.find(mediaFilter)
         .sort(sortOptions)
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      ProductReview.countDocuments(ratingFilter),
+      ProductReview.countDocuments(mediaFilter),
     ]);
 
     const enrichedReviews = await attachReviewerNames(reviews);
@@ -211,12 +305,12 @@ class ReviewService {
     if (total === 0) {
       const LegacyReview = getLegacyReviewModel();
       const [legacyReviews, legacyTotal] = await Promise.all([
-        LegacyReview.find(ratingFilter)
+        LegacyReview.find(mediaFilter)
           .sort(sortOptions)
           .skip(skip)
           .limit(limitNum)
           .lean(),
-        LegacyReview.countDocuments(ratingFilter),
+        LegacyReview.countDocuments(mediaFilter),
       ]);
 
       return {
@@ -286,45 +380,72 @@ class ReviewService {
   /**
    * Tạo review mới
    */
-  async createReview(productId, reviewData) {
+  async createReview(productId, reviewData, actor) {
     // Kiểm tra sản phẩm tồn tại
-    const product = await Product.findOne({ product_id: parseInt(productId) });
+    const userId = actor?.user_id || null;
+    if (!userId) {
+      throw ApiError.unauthorized("Vui lòng đăng nhập để đánh giá sản phẩm");
+    }
+
+    const numericProductId = await resolveNumericProductId(productId);
+    const product = Number.isFinite(numericProductId)
+      ? await Product.findOne({ product_id: numericProductId }).select("product_id name").lean()
+      : null;
 
     if (!product) {
       throw ApiError.notFound("Không tìm thấy sản phẩm");
     }
 
-    // Kiểm tra user đã review chưa (nếu có user_id)
-    if (reviewData.user_id) {
-      const existingReview = await ProductReview.findOne({
-        product_id: parseInt(productId),
-        user_id: reviewData.user_id,
-      });
 
-      if (existingReview) {
-        throw ApiError.conflict("Bạn đã đánh giá sản phẩm này rồi");
-      }
+    const completedOrder = await findCompletedBuyOrderForProduct(
+      product.product_id,
+      userId,
+    );
+    const profile = await UserProfile.findOne({ user_id: userId }).select("full_name").lean();
+    const reviewerName =
+      profile?.full_name ||
+      actor?.full_name ||
+      actor?.fullName ||
+      actor?.email ||
+      userId;
+
+    if (!completedOrder) {
+      throw ApiError.forbidden(
+        "Chỉ những khách đã mua và có đơn hàng hoàn thành mới được đánh giá sản phẩm này",
+      );
     }
 
-    // Generate review ID
-    const lastReview = await ProductReview.findOne().sort({ id: -1 }).lean();
-    const reviewCount = lastReview
-      ? parseInt(lastReview.id.split("_")[2]) + 1
-      : 1;
-    const reviewId = `rv_${productId}_${reviewCount}`;
+    const existingReview = await findUserReviewForProduct(
+      product.product_id,
+      userId,
+    );
+
+    if (existingReview) {
+      throw ApiError.conflict("Bạn đã đánh giá sản phẩm này rồi");
+    }
+
+    // Generate a review ID that remains stable even when legacy records are missing `id`.
+    const reviewId = await generateReviewId(product.product_id);
 
     // Create review
     const review = await ProductReview.create({
       id: reviewId,
-      product_id: parseInt(productId),
+      product_id: product.product_id,
       product_name: product.name,
-      ...reviewData,
+      user_id: userId,
+      user_name: reviewerName,
+      rating: reviewData.rating,
+      title: reviewData.title || "",
+      comment: reviewData.comment,
+      images: Array.isArray(reviewData.images) ? reviewData.images : [],
+      videos: Array.isArray(reviewData.videos) ? reviewData.videos : [],
+      verified_purchase: true,
       created_at: new Date().toISOString(),
       helpful_count: 0,
     });
 
     // Update product rating
-    await this.updateProductRating(parseInt(productId));
+    await this.updateProductRating(product.product_id);
 
     return review;
   }
@@ -532,12 +653,26 @@ class ReviewService {
    * Lấy review của user cho một sản phẩm
    */
   async getUserReviewForProduct(productId, userId) {
-    const baseFilter = await resolveProductFilter(productId);
-    const review = await ProductReview.findOne(
-      mergeFilterWithExtra(baseFilter, { user_id: userId }),
-    ).lean();
+    if (!userId) {
+      return {
+        review: null,
+        can_review: false,
+        has_completed_purchase: false,
+        completed_order_code: null,
+      };
+    }
 
-    return review;
+    const [review, completedOrder] = await Promise.all([
+      findUserReviewForProduct(productId, userId),
+      findCompletedBuyOrderForProduct(productId, userId),
+    ]);
+
+    return {
+      review,
+      can_review: Boolean(completedOrder) && !review,
+      has_completed_purchase: Boolean(completedOrder),
+      completed_order_code: completedOrder?.order_code || null,
+    };
   }
 
   /**

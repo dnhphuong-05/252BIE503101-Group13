@@ -1,10 +1,14 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
-  GuestCustomerService,
   GuestCustomerPayload,
+  GuestCustomerService,
 } from '../../../services/guest-customer.service';
+import {
+  AdministrativeOption,
+  VietnamAdministrativeService,
+} from '../../../services/vietnam-administrative.service';
 
 export interface GuestFormData {
   full_name: string;
@@ -35,8 +39,8 @@ export interface GuestFormErrors {
   templateUrl: './guest-form.html',
   styleUrl: './guest-form.css',
 })
-export class GuestFormComponent {
-  @Input() show: boolean = false;
+export class GuestFormComponent implements OnInit {
+  @Input() show = false;
   @Input() productName?: string;
   @Input() quantity?: number;
   @Input() selectedSize?: string;
@@ -67,39 +71,87 @@ export class GuestFormComponent {
     },
   };
 
-  isSubmittingGuest: boolean = false;
-  guestSubmitError: string = '';
+  provinces: AdministrativeOption[] = [];
+  wards: AdministrativeOption[] = [];
+  provinceCode = '';
+  wardCode = '';
+  isLoadingProvinces = false;
+  isLoadingWards = false;
+  administrativeNote = '';
 
-  constructor(private guestCustomerService: GuestCustomerService) {}
+  isSubmittingGuest = false;
+  guestSubmitError = '';
 
-  /**
-   * Đóng form
-   */
+  private readonly vietnamPhonePattern = /^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/;
+  private readonly emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  constructor(
+    private guestCustomerService: GuestCustomerService,
+    private vietnamAdministrativeService: VietnamAdministrativeService,
+  ) {}
+
+  ngOnInit(): void {
+    this.loadAdministrativeOptions();
+  }
+
   closeForm(): void {
     this.close.emit();
   }
 
-  /**
-   * Xử lý click overlay
-   */
   onOverlayClick(): void {
     this.closeForm();
   }
 
-  /**
-   * Xử lý submit form
-   */
+  onProvinceChange(provinceCode: string): void {
+    this.provinceCode = provinceCode;
+    this.wardCode = '';
+    this.wards = [];
+    this.guestForm.address.province = this.getOptionNameByCode(this.provinces, provinceCode);
+    this.guestForm.address.ward = '';
+    this.guestErrors.address.province = '';
+    this.guestErrors.address.ward = '';
+
+    if (!provinceCode) {
+      return;
+    }
+
+    this.loadWards(provinceCode);
+  }
+
+  onWardChange(wardCode: string): void {
+    this.wardCode = wardCode;
+    this.guestForm.address.ward = this.getOptionNameByCode(this.wards, wardCode);
+    this.guestErrors.address.ward = '';
+  }
+
+  getProvincePlaceholder(): string {
+    return this.isLoadingProvinces ? 'Đang tải tỉnh/thành phố...' : 'Chọn tỉnh/thành phố';
+  }
+
+  getWardPlaceholder(): string {
+    if (!this.provinceCode) {
+      return 'Chọn tỉnh/thành phố trước';
+    }
+
+    if (this.isLoadingWards) {
+      return 'Đang tải xã/phường/đặc khu...';
+    }
+
+    return 'Chọn xã/phường/đặc khu';
+  }
+
+  showWardHint(): boolean {
+    return Boolean(this.provinceCode && !this.isLoadingWards && !this.wards.length);
+  }
+
   submitForm(): void {
-    // Reset errors
     this.resetErrors();
     this.guestSubmitError = '';
 
-    // Validate form
     if (!this.validateForm()) {
       return;
     }
 
-    // Submit form
     this.isSubmittingGuest = true;
 
     const payload: GuestCustomerPayload = {
@@ -128,13 +180,9 @@ export class GuestFormComponent {
     });
   }
 
-  /**
-   * Validate form
-   */
   private validateForm(): boolean {
     let isValid = true;
 
-    // Validate full_name
     if (!this.guestForm.full_name.trim()) {
       this.guestErrors.full_name = 'Họ và tên là bắt buộc';
       isValid = false;
@@ -143,25 +191,22 @@ export class GuestFormComponent {
       isValid = false;
     }
 
-    // Validate phone
     if (!this.guestForm.phone.trim()) {
       this.guestErrors.phone = 'Số điện thoại là bắt buộc';
       isValid = false;
-    } else if (!/^(0|\+84)[0-9]{9,10}$/.test(this.guestForm.phone.trim())) {
-      this.guestErrors.phone = 'Số điện thoại không hợp lệ';
+    } else if (!this.vietnamPhonePattern.test(this.guestForm.phone.trim())) {
+      this.guestErrors.phone = 'Số điện thoại chưa đúng định dạng Việt Nam';
       isValid = false;
     }
 
-    // Validate email (required)
     if (!this.guestForm.email || !this.guestForm.email.trim()) {
       this.guestErrors.email = 'Email là bắt buộc';
       isValid = false;
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.guestForm.email.trim())) {
+    } else if (!this.emailPattern.test(this.guestForm.email.trim())) {
       this.guestErrors.email = 'Email không hợp lệ';
       isValid = false;
     }
 
-    // Validate address
     if (!this.guestForm.address.province.trim()) {
       this.guestErrors.address.province = 'Tỉnh/Thành phố là bắt buộc';
       isValid = false;
@@ -175,14 +220,103 @@ export class GuestFormComponent {
     if (!this.guestForm.address.detail.trim()) {
       this.guestErrors.address.detail = 'Địa chỉ chi tiết là bắt buộc';
       isValid = false;
+    } else if (this.guestForm.address.detail.trim().length < 6) {
+      this.guestErrors.address.detail = 'Địa chỉ chi tiết phải có ít nhất 6 ký tự';
+      isValid = false;
     }
 
     return isValid;
   }
 
-  /**
-   * Reset errors
-   */
+  private loadAdministrativeOptions(): void {
+    this.isLoadingProvinces = true;
+
+    this.vietnamAdministrativeService.getProvinces().subscribe({
+      next: (provinces) => {
+        this.provinces = provinces;
+        this.isLoadingProvinces = false;
+
+        if (!provinces.length) {
+          this.administrativeNote =
+            'Không tải được danh mục tỉnh, thành phố. Vui lòng thử lại sau.';
+          return;
+        }
+
+        this.administrativeNote =
+          'Theo mô hình hành chính 2 cấp áp dụng từ 01/07/2025, form đặt hàng dùng Tỉnh/Thành phố và Xã/Phường/Đặc khu.';
+        this.syncSelectionsFromCurrentValue();
+      },
+      error: (error) => {
+        console.error('Load provinces failed:', error);
+        this.isLoadingProvinces = false;
+        this.administrativeNote =
+          'Không tải được danh mục tỉnh, thành phố. Vui lòng thử lại sau.';
+      },
+    });
+  }
+
+  private loadWards(provinceCode: string, existingWardName = ''): void {
+    this.isLoadingWards = true;
+
+    this.vietnamAdministrativeService.getWardsByProvinceCode(provinceCode).subscribe({
+      next: (wards) => {
+        this.wards = wards;
+        this.isLoadingWards = false;
+
+        if (existingWardName) {
+          const selectedCode = this.findOptionCodeByName(wards, existingWardName);
+          this.wardCode = selectedCode;
+          if (selectedCode) {
+            this.guestForm.address.ward = this.getOptionNameByCode(wards, selectedCode);
+          }
+        }
+      },
+      error: (error) => {
+        console.error('Load wards failed:', error);
+        this.wards = [];
+        this.isLoadingWards = false;
+      },
+    });
+  }
+
+  private syncSelectionsFromCurrentValue(): void {
+    const provinceCode = this.findOptionCodeByName(this.provinces, this.guestForm.address.province);
+    if (!provinceCode) {
+      return;
+    }
+
+    this.provinceCode = provinceCode;
+    this.loadWards(provinceCode, this.guestForm.address.ward);
+  }
+
+  private getOptionNameByCode(options: AdministrativeOption[], code: string): string {
+    return options.find((option) => option.code === code)?.name || '';
+  }
+
+  private findOptionCodeByName(options: AdministrativeOption[], name: string): string {
+    const normalizedName = this.normalizeAdministrativeName(name);
+    if (!normalizedName) {
+      return '';
+    }
+
+    return (
+      options.find(
+        (option) => this.normalizeAdministrativeName(option.name) === normalizedName,
+      )?.code || ''
+    );
+  }
+
+  private normalizeAdministrativeName(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\b(thanh pho|tp\.?|tinh)\b/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   private resetErrors(): void {
     this.guestErrors = {
       full_name: '',
@@ -196,9 +330,6 @@ export class GuestFormComponent {
     };
   }
 
-  /**
-   * Reset form
-   */
   private resetForm(): void {
     this.guestForm = {
       full_name: '',
@@ -210,6 +341,9 @@ export class GuestFormComponent {
         detail: '',
       },
     };
+    this.provinceCode = '';
+    this.wardCode = '';
+    this.wards = [];
     this.resetErrors();
     this.guestSubmitError = '';
   }

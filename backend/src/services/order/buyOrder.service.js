@@ -11,6 +11,8 @@ import loyaltyService from "../user/loyalty.service.js";
 import returnService from "./return.service.js";
 
 const buildOrderLink = (orderId) => `/profile/orders/${orderId}`;
+const buildAdminOrderLink = (orderId) => `/orders/sales?order=${orderId}`;
+const buildAdminReturnLink = (returnId) => `/orders/returns?request=${returnId}`;
 
 const statusNotificationMap = {
   confirmed: {
@@ -224,6 +226,15 @@ class BuyOrderService extends BaseService {
       }
 
       // Gửi email xác nhận nếu có email
+      await notifyAdmins({
+        type: "order_placed",
+        title: "Đơn mua mới",
+        message: `Có đơn mua mới ${order_code} cần xác nhận.`,
+        entityType: "sales_order",
+        entityId: order_id,
+        link: buildAdminOrderLink(order_id),
+      });
+
       let emailSent = false;
       if (orderData.customer_info?.email) {
         try {
@@ -232,7 +243,6 @@ class BuyOrderService extends BaseService {
           const full_address = [
             address.detail,
             address.ward,
-            address.district,
             address.province,
           ]
             .map((part) => (typeof part === "string" ? part.trim() : ""))
@@ -559,7 +569,7 @@ class BuyOrderService extends BaseService {
       message: `Đơn ${order.order_code} đã được khách xác nhận nhận hàng.`,
       entityType: "sales_order",
       entityId: order.order_id,
-      link: buildOrderLink(order.order_id),
+      link: buildAdminOrderLink(order.order_id),
     });
 
     return order.toObject();
@@ -616,7 +626,7 @@ class BuyOrderService extends BaseService {
       message: `Đơn ${order.order_code} vừa gửi yêu cầu hoàn trả.`,
       entityType: "sales_order",
       entityId: order.order_id,
-      link: buildOrderLink(order.order_id),
+      link: buildAdminReturnLink(returnRequest.return_id || order.order_id),
     });
 
     return { order: order.toObject(), return_request: returnRequest };
@@ -759,6 +769,18 @@ class BuyOrderService extends BaseService {
         },
         { silent: true },
       );
+    }
+
+    const actorRole = actor?.role || null;
+    if (!actorRole || actorRole === "customer") {
+      await notifyAdmins({
+        type: "order_cancelled",
+        title: "Đơn mua bị hủy",
+        message: `Khách đã hủy đơn mua ${order.order_code}.`,
+        entityType: "sales_order",
+        entityId: order.order_id,
+        link: buildAdminOrderLink(order.order_id),
+      });
     }
 
     return order.toObject();

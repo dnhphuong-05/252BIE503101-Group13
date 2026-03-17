@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiResponse, BackendListResponse } from '../../../models';
 import { environment } from '../../../../environments/environment';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -51,6 +52,10 @@ interface ContactStatsResponse {
   };
 }
 
+interface TailorOrderOpenResponse {
+  tailor_order_id: string;
+}
+
 @Component({
   selector: 'app-contacts',
   standalone: true,
@@ -60,6 +65,8 @@ interface ContactStatsResponse {
 })
 export class ContactsComponent implements OnInit {
   private readonly http = inject(HttpClient);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly apiUrl = environment.apiUrl;
   private readonly notification = inject(NotificationService);
 
@@ -84,6 +91,7 @@ export class ContactsComponent implements OnInit {
     { value: 'replied', label: 'Đã xử lý' },
     { value: 'closed', label: 'Hoàn tất' },
   ];
+  protected readonly statusFlow: ContactStatus[] = ['new', 'processing', 'replied', 'closed'];
 
   protected messages: ContactMessage[] = [];
   protected total = 0;
@@ -108,11 +116,38 @@ export class ContactsComponent implements OnInit {
 
   protected noteDraft = '';
   protected isUpdating = false;
+  protected isOpeningTailorOrder = false;
   private searchTimer?: ReturnType<typeof setTimeout>;
+  private pendingContactId: number | null = null;
 
   protected selectedMessage: ContactMessage | null = null;
+  protected detailMode = false;
 
   ngOnInit(): void {
+    this.route.data.subscribe((data) => {
+      this.detailMode = Boolean(data['detail']);
+      if (!this.detailMode) {
+        this.selectedMessage = null;
+        this.noteDraft = '';
+      }
+    });
+
+    this.route.paramMap.subscribe((params) => {
+      this.setPendingContactId(params.get('id'));
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      const rawContactId = params.get('contact');
+      if (!rawContactId) {
+        return;
+      }
+      if (!this.detailMode) {
+        this.router.navigate(['/contacts', rawContactId], { replaceUrl: true });
+        return;
+      }
+      this.setPendingContactId(rawContactId);
+    });
+
     this.loadStats();
     this.loadContacts();
   }
@@ -127,6 +162,10 @@ export class ContactsComponent implements OnInit {
 
   protected onView(message: ContactMessage, event?: Event): void {
     event?.stopPropagation();
+    if (!this.detailMode) {
+      this.router.navigate(['/contacts', message.contact_id]);
+      return;
+    }
     this.selectedMessage = message;
     this.noteDraft = message.admin_note || '';
     this.fetchContactDetail(message.contact_id);
@@ -174,6 +213,97 @@ export class ContactsComponent implements OnInit {
     this.updateStatus(message.contact_id, status, this.noteDraft, silent);
   }
 
+  protected backToList(): void {
+    this.router.navigate(['/contacts']);
+  }
+
+  protected get currentStatusIndex(): number {
+    if (!this.selectedMessage) {
+      return -1;
+    }
+    return this.statusFlow.indexOf(this.selectedMessage.status);
+  }
+
+  protected get progressPercent(): number {
+    if (!this.selectedMessage || this.currentStatusIndex < 0) {
+      return 0;
+    }
+    return Math.round(((this.currentStatusIndex + 1) / this.statusFlow.length) * 100);
+  }
+
+  protected isFlowDone(stepIndex: number): boolean {
+    return this.currentStatusIndex >= stepIndex;
+  }
+
+  protected isFlowCurrent(stepIndex: number): boolean {
+    return this.currentStatusIndex === stepIndex;
+  }
+
+  protected flowTime(status: ContactStatus): string {
+    const message = this.selectedMessage;
+    if (!message) return '-';
+
+    const createdAt = message.created_at ? this.formatDateTime(message.created_at) : '-';
+    const repliedAt = message.replied_at ? this.formatDateTime(message.replied_at) : '-';
+    const current = this.currentStatusIndex;
+    const statusIndex = this.statusFlow.indexOf(status);
+
+    if (status === 'new') {
+      return createdAt;
+    }
+    if (status === 'processing') {
+      if (current >= statusIndex) {
+        return repliedAt !== '-' ? repliedAt : createdAt;
+      }
+      return '-';
+    }
+    if (status === 'replied') {
+      if (current >= statusIndex) {
+        return repliedAt !== '-' ? repliedAt : createdAt;
+      }
+      return '-';
+    }
+    if (status === 'closed') {
+      return message.status === 'closed' ? (repliedAt !== '-' ? repliedAt : createdAt) : '-';
+    }
+    return '-';
+  }
+
+  protected openTailorOrder(): void {
+    const message = this.selectedMessage;
+    if (!message || message.purpose !== 'custom' || this.isOpeningTailorOrder) return;
+
+    this.isOpeningTailorOrder = true;
+    this.http
+      .post<ApiResponse<TailorOrderOpenResponse>>(
+        `${this.apiUrl}/tailor-orders/from-contact/${message.contact_id}`,
+        {},
+      )
+      .subscribe({
+        next: (response) => {
+          const orderId = response.data?.tailor_order_id;
+          if (!orderId) {
+            this.notification.showError('\u004b\u0068\u00f4\u006e\u0067 \u0074\u0068\u1ec3 \u006d\u1edf \u0111\u01a1\u006e \u006d\u0061\u0079 \u0111\u006f \u0074\u1eeb \u0068\u1ed9\u0069 \u0074\u0068\u006f\u1ea1\u0069 \u0069\u006e\u0062\u006f\u0078 \u006e\u00e0\u0079.');
+            return;
+          }
+
+          this.fetchContactDetail(message.contact_id);
+          this.loadStats();
+          this.notification.showSuccess('\u0110\u00e3 \u006d\u1edf \u0111\u01a1\u006e \u006d\u0061\u0079 \u0111\u006f \u0063\u0068\u006f \u0079\u00ea\u0075 \u0063\u1ea7\u0075 \u006e\u00e0\u0079.');
+          this.router.navigate(['/orders/tailor', orderId]);
+        },
+        error: (error) => {
+          console.error('Failed to open tailor order:', error);
+          this.notification.showError(
+            error?.error?.message || '\u004b\u0068\u00f4\u006e\u0067 \u0074\u0068\u1ec3 \u0074\u1ea1\u006f \u0068\u006f\u1eb7\u0063 \u006d\u1edf \u0111\u01a1\u006e \u006d\u0061\u0079 \u0111\u006f.',
+          );
+        },
+        complete: () => {
+          this.isOpeningTailorOrder = false;
+        },
+      });
+  }
+
   private loadContacts(): void {
     this.isLoading = true;
     this.loadError = '';
@@ -209,12 +339,18 @@ export class ContactsComponent implements OnInit {
           this.messages = items.map((item) => this.mapApiMessage(item));
           this.total = response.data?.pagination.total ?? this.messages.length;
           this.pages = response.data?.pagination.pages ?? 1;
-          const currentId = this.selectedMessage?.contact_id ?? null;
-          if (currentId) {
-            const updated =
-              this.messages.find((message) => message.contact_id === currentId) || null;
-            this.selectedMessage = updated;
-            this.noteDraft = updated?.admin_note || '';
+          if (this.detailMode) {
+            const currentId = this.selectedMessage?.contact_id ?? null;
+            if (currentId) {
+              const updated =
+                this.messages.find((message) => message.contact_id === currentId) || null;
+              this.selectedMessage = updated;
+              this.noteDraft = updated?.admin_note || '';
+            } else {
+              this.selectedMessage = null;
+              this.noteDraft = '';
+            }
+            this.openPendingContact();
           } else {
             this.selectedMessage = null;
             this.noteDraft = '';
@@ -294,19 +430,19 @@ export class ContactsComponent implements OnInit {
       });
   }
 
-  private fetchContactDetail(contactId: number): void {
+  private fetchContactDetail(contactId: number, autoMarkProcessing = false): void {
     this.http
       .get<ApiResponse<ContactMessageApi>>(`${this.apiUrl}/contact/${contactId}`)
       .subscribe({
         next: (response) => {
           if (!response.data) return;
           const updated = this.mapApiMessage(response.data);
-          this.messages = this.messages.map((item) =>
-            item.contact_id === contactId ? updated : item,
-          );
-          if (this.selectedMessage?.contact_id === contactId) {
-            this.selectedMessage = updated;
-            this.noteDraft = updated.admin_note || '';
+          this.messages = this.upsertMessage(updated);
+          this.selectedMessage = updated;
+          this.noteDraft = updated.admin_note || '';
+
+          if (autoMarkProcessing && updated.status === 'new') {
+            this.updateStatus(updated.contact_id, 'processing', updated.admin_note || '', true);
           }
         },
         error: () => {},
@@ -372,5 +508,38 @@ export class ContactsComponent implements OnInit {
       cooperation: 'Hợp tác / dự án',
     };
     return map[purpose] ?? purpose;
+  }
+
+  private upsertMessage(nextMessage: ContactMessage): ContactMessage[] {
+    const index = this.messages.findIndex((item) => item.contact_id === nextMessage.contact_id);
+    if (index === -1) {
+      return [nextMessage, ...this.messages];
+    }
+
+    return this.messages.map((item, itemIndex) => (itemIndex === index ? nextMessage : item));
+  }
+
+  private openPendingContact(): void {
+    if (!this.detailMode) {
+      return;
+    }
+    if (!Number.isFinite(this.pendingContactId)) {
+      return;
+    }
+
+    const contactId = this.pendingContactId as number;
+    this.pendingContactId = null;
+    const existing = this.messages.find((item) => item.contact_id === contactId) || null;
+    this.selectedMessage = existing;
+    this.noteDraft = existing?.admin_note || '';
+    this.fetchContactDetail(contactId, true);
+  }
+
+  private setPendingContactId(rawContactId: string | null): void {
+    const contactId = rawContactId ? Number(rawContactId) : Number.NaN;
+    this.pendingContactId = Number.isFinite(contactId) ? contactId : null;
+    if (this.messages.length > 0) {
+      this.openPendingContact();
+    }
   }
 }

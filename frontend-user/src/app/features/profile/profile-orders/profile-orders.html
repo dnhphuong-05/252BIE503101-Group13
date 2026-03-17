@@ -87,8 +87,16 @@
                 <span><i class="fas fa-times"></i> {{ item.quantity }}</span>
               </div>
             </div>
-            <div class="item-price">
-              {{ formatPrice(item.price) }}
+            <div class="item-side">
+              <div class="item-price">
+                {{ formatPrice(item.price) }}
+              </div>
+              @if (canReviewItem(order, item)) {
+                <button class="btn btn-review-order" type="button" (click)="goToReview(order, item)">
+                  <i class="fas fa-star"></i>
+                  <span>Đánh giá</span>
+                </button>
+              }
             </div>
           </div>
         </div>

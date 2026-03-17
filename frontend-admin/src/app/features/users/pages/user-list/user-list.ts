@@ -2,6 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiResponse, BackendListResponse } from '../../../../models';
 import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/services/notification.service';
@@ -117,6 +118,8 @@ export class UserListComponent implements OnInit {
   private readonly apiUrl = environment.apiUrl;
   private readonly notification = inject(NotificationService);
   private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly roleMeta: Record<UserRoleLabel, { label: string; class: string }> = {
     super_admin: { label: 'Super Admin', class: 'chip chip-accent' },
@@ -166,11 +169,30 @@ export class UserListComponent implements OnInit {
   protected buyOrders: OrderRow[] = [];
   protected rentOrders: OrderRow[] = [];
   protected loyaltyTransactions: LoyaltyTransaction[] = [];
+  protected detailMode = false;
 
   private searchTimer?: ReturnType<typeof setTimeout>;
+  private pendingUserId: string | null = null;
 
   ngOnInit(): void {
-    this.loadUsers();
+    this.route.data.subscribe((data) => {
+      this.detailMode = Boolean(data['detail']);
+      if (!this.detailMode) {
+        this.selectedUser = null;
+        this.roleDraft = null;
+        this.buyOrders = [];
+        this.rentOrders = [];
+        this.loyaltyTransactions = [];
+      }
+      this.loadUsers();
+    });
+
+    this.route.paramMap.subscribe((params) => {
+      this.pendingUserId = params.get('id');
+      if (this.detailMode && this.pendingUserId && this.users.length > 0) {
+        this.fetchUserDetail(this.pendingUserId);
+      }
+    });
   }
 
   protected applyFilters(): void {
@@ -200,7 +222,15 @@ export class UserListComponent implements OnInit {
   }
 
   protected onView(user: UserRow): void {
+    if (!this.detailMode) {
+      this.router.navigate(['/users', user.id]);
+      return;
+    }
     this.fetchUserDetail(user.id);
+  }
+
+  protected backToList(): void {
+    this.router.navigate(['/users']);
   }
 
   protected toggleStatus(): void {
@@ -357,6 +387,12 @@ export class UserListComponent implements OnInit {
           this.users = items.map((user) => this.mapUserRow(user));
           this.total = response.data?.pagination.total ?? this.users.length;
           this.pages = response.data?.pagination.pages ?? 1;
+          if (this.detailMode && this.pendingUserId) {
+            this.fetchUserDetail(this.pendingUserId);
+          } else if (!this.detailMode) {
+            this.selectedUser = null;
+            this.roleDraft = null;
+          }
           this.isLoading = false;
         },
         error: (error) => {

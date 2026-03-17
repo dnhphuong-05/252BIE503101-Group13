@@ -226,7 +226,7 @@
   font-family: 'Dancing Script', cursive;
   font-size: 4rem;
   font-weight: 700;
-  color: #d4af8c;
+  color: var(--burgundy);
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
 }
 

@@ -1,14 +1,14 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Blog posts</div>
-      <div class="page-subtitle">Manage publishing, status, and visibility.</div>
+      <div class="page-title">Bài viết</div>
+      <div class="page-subtitle">Quản lý trạng thái đăng bài, lưu trữ và hiển thị nội dung.</div>
     </div>
     <div class="page-actions">
-      <button class="btn btn-secondary btn-sm">Export</button>
+      <button class="btn btn-secondary btn-sm" type="button">Export</button>
       <button class="btn btn-primary" [routerLink]="['/blog/posts/new']">
         <i class="fas fa-plus"></i>
-        New post
+        Bài viết mới
       </button>
     </div>
   </div>
@@ -20,21 +20,56 @@
           <i class="fas fa-search"></i>
           <input
             class="input"
-            placeholder="Search posts, author, tags"
+            placeholder="Tìm kiếm tiêu đề, tác giả, thẻ"
             [(ngModel)]="searchTerm"
             (input)="onSearchInput()"
             (keyup.enter)="applyFilters()"
           />
         </div>
       </div>
-      <div class="toolbar-group">
-        <button class="btn btn-ghost btn-sm">Bulk actions</button>
+      <div class="toolbar-group bulk-toolbar-group">
+        <span class="bulk-summary">
+          {{
+            selectedCount > 0
+              ? 'Đã chọn ' + selectedCount + ' bài viết'
+              : 'Chọn nhiều bài viết để thao tác hàng loạt'
+          }}
+        </span>
+        <div class="bulk-action-row">
+          <select
+            class="select bulk-select"
+            [(ngModel)]="bulkAction"
+            [disabled]="!selectedCount || isBulkRunning"
+          >
+            <option value="">Bulk actions</option>
+            @for (option of bulkActionOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+          <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            (click)="applyBulkAction()"
+            [disabled]="!selectedCount || !bulkAction || isBulkRunning"
+          >
+            @if (isBulkRunning) {
+              Đang áp dụng...
+            } @else {
+              Áp dụng
+            }
+          </button>
+          @if (selectedCount > 0) {
+            <button class="btn btn-ghost btn-sm" type="button" (click)="clearSelection()">
+              Bỏ chọn
+            </button>
+          }
+        </div>
       </div>
     </div>
 
     <div class="filter-grid">
       <div class="filter-field">
-        <span class="filter-label">Status</span>
+        <span class="filter-label">Trạng thái</span>
         <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
           @for (option of statusOptions; track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
@@ -43,14 +78,14 @@
       </div>
 
       <div class="filter-field">
-        <span class="filter-label">Category</span>
+        <span class="filter-label">Danh mục</span>
         <select
           class="select"
           [(ngModel)]="categoryFilter"
           (change)="applyFilters()"
           [disabled]="filtersLoading"
         >
-          <option value="">All categories</option>
+          <option value="">Tất cả danh mục</option>
           @for (category of categories; track category.id) {
             <option [value]="category.id">{{ category.name }} ({{ category.count }})</option>
           }
@@ -58,7 +93,7 @@
       </div>
 
       <div class="filter-field">
-        <span class="filter-label">Sort</span>
+        <span class="filter-label">Sắp xếp</span>
         <select class="select" [(ngModel)]="sortFilter" (change)="applyFilters()">
           @for (option of sortOptions; track option.value) {
             <option [value]="option.value">{{ option.label }}</option>
@@ -67,11 +102,9 @@
       </div>
 
       <div class="filter-actions">
-        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">
-          Reset
-        </button>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
         <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
-          Refresh
+          Làm mới
         </button>
       </div>
     </div>
@@ -79,27 +112,54 @@
     @if (filtersError) {
       <div class="filter-error">{{ filtersError }}</div>
     }
+    @if (actionSuccess) {
+      <div class="action-feedback success">{{ actionSuccess }}</div>
+    }
+    @if (loadError && posts.length > 0) {
+      <div class="action-feedback error">{{ loadError }}</div>
+    }
 
     @if (loadError && posts.length === 0) {
       <div class="empty-state">{{ loadError }}</div>
     } @else if (isLoading && posts.length === 0) {
-      <div class="empty-state">Loading posts...</div>
+      <div class="empty-state">Đang tải bài viết...</div>
     } @else if (posts.length === 0) {
-      <div class="empty-state">No posts found.</div>
+      <div class="empty-state">Không tìm thấy bài viết phù hợp.</div>
     } @else {
       <table class="table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Views</th>
-            <th>Updated</th>
+            <th class="checkbox-cell">
+              <input
+                class="row-checkbox"
+                type="checkbox"
+                [checked]="allVisibleSelected"
+                [indeterminate]="someVisibleSelected"
+                [disabled]="isBulkRunning"
+                (change)="toggleSelectAll($event)"
+                aria-label="Chọn tất cả bài viết đang hiển thị"
+              />
+            </th>
+            <th>Tiêu đề</th>
+            <th>Trạng thái</th>
+            <th>Lượt xem</th>
+            <th>Cập nhật</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           @for (post of posts; track post.id) {
-            <tr>
+            <tr [class.row-selected]="isSelected(post.id)">
+              <td class="checkbox-cell">
+                <input
+                  class="row-checkbox"
+                  type="checkbox"
+                  [checked]="isSelected(post.id)"
+                  [disabled]="isBulkRunning"
+                  (change)="toggleSelection(post.id, $event)"
+                  [attr.aria-label]="'Chọn bài viết ' + post.title"
+                />
+              </td>
               <td>
                 <div class="item-cell">
                   <img class="item-thumb" [src]="post.thumbnail" [alt]="post.title" />
@@ -116,30 +176,38 @@
               <td class="text-sm text-primary-500">{{ post.updatedAt }}</td>
               <td>
                 <div class="table-actions table-actions-tight">
-                  <button class="btn btn-ghost btn-sm" (click)="onView(post)">View</button>
-                  <button class="btn btn-secondary btn-sm" (click)="onEdit(post)">Edit</button>
+                  <button class="btn btn-ghost btn-sm" (click)="onView(post)" [disabled]="isBulkRunning">
+                    Xem
+                  </button>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    (click)="onEdit(post)"
+                    [disabled]="isBulkRunning"
+                  >
+                    Sửa
+                  </button>
                   @if (post.status !== 'archived') {
                     <button
                       class="btn btn-ghost btn-sm"
                       (click)="onArchive(post)"
-                      [disabled]="statusUpdatingIds.has(post.id)"
+                      [disabled]="isBulkRunning || statusUpdatingIds.has(post.id)"
                     >
                       @if (statusUpdatingIds.has(post.id)) {
-                        Updating...
+                        Đang cập nhật...
                       } @else {
-                        Archive
+                        Lưu trữ
                       }
                     </button>
                   } @else {
                     <button
                       class="btn btn-ghost btn-sm"
                       (click)="onRestore(post)"
-                      [disabled]="statusUpdatingIds.has(post.id)"
+                      [disabled]="isBulkRunning || statusUpdatingIds.has(post.id)"
                     >
                       @if (statusUpdatingIds.has(post.id)) {
-                        Updating...
+                        Đang cập nhật...
                       } @else {
-                        Restore
+                        Khôi phục
                       }
                     </button>
                   }
@@ -147,14 +215,14 @@
                     <button
                       class="btn btn-ghost btn-sm text-error"
                       (click)="onDelete(post)"
-                      [disabled]="deletingIds.has(post.id)"
-                      title="Delete permanently"
-                      aria-label="Delete permanently"
+                      [disabled]="isBulkRunning || deletingIds.has(post.id)"
+                      title="Xóa vĩnh viễn"
+                      aria-label="Xóa vĩnh viễn"
                     >
                       @if (deletingIds.has(post.id)) {
-                        Deleting...
+                        Đang xóa...
                       } @else {
-                        Delete
+                        Xóa
                       }
                     </button>
                   }
@@ -167,19 +235,19 @@
     }
 
     <div class="table-footer">
-      <span class="text-sm text-primary-500">Showing {{ posts.length }} / {{ total }} posts</span>
+      <span class="text-sm text-primary-500">Hiển thị {{ posts.length }} / {{ total }} bài viết</span>
       @if (posts.length < total) {
         <button
           class="btn btn-secondary btn-sm load-more-btn"
           type="button"
           (click)="loadMore()"
-          [disabled]="isLoading || isLoadingMore"
+          [disabled]="isLoading || isLoadingMore || isBulkRunning"
         >
           @if (isLoadingMore) {
             <span class="spinner" aria-hidden="true"></span>
-            Loading...
+            Đang tải...
           } @else {
-            Load more
+            Tải thêm
           }
         </button>
       }

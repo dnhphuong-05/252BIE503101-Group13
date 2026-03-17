@@ -88,6 +88,14 @@
   margin: 0;
 }
 
+.guest-admin-note {
+  padding: 0.5rem 1.5rem 0;
+  margin: 0;
+  color: #7b6670;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
 /* ============================================================================
    GUEST SUMMARY - Thông tin sản phẩm
    ============================================================================ */
@@ -164,6 +172,7 @@
 }
 
 .guest-field input,
+.guest-field select,
 .guest-field textarea {
   padding: 0.75rem;
   border: 1px solid #d1d5db;
@@ -173,7 +182,22 @@
   font-family: inherit;
 }
 
+.guest-field select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b7280 50%),
+    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.5rem;
+  background-color: #ffffff;
+}
+
 .guest-field input:focus,
+.guest-field select:focus,
 .guest-field textarea:focus {
   outline: none;
   border-color: #3b82f6;
@@ -181,13 +205,21 @@
 }
 
 .guest-field input.error,
+.guest-field select.error,
 .guest-field textarea.error {
   border-color: #ef4444;
 }
 
 .guest-field input.error:focus,
+.guest-field select.error:focus,
 .guest-field textarea.error:focus {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.guest-field select:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
 .guest-error {
@@ -196,6 +228,12 @@
   display: flex;
   align-items: center;
   gap: 0.25rem;
+}
+
+.guest-hint {
+  font-size: 0.75rem;
+  color: #7b6670;
+  line-height: 1.5;
 }
 
 .guest-submit-error {

@@ -78,6 +78,89 @@ export const uploadBlogImages = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
+// Review media upload configuration
+const reviewMediaStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    const isVideo = file.mimetype?.startsWith("video/");
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+
+    return {
+      folder: "vietphuc/reviews",
+      resource_type: "auto",
+      allowed_formats: isVideo
+        ? ["mp4", "mov", "webm", "m4v"]
+        : ["jpg", "jpeg", "png", "gif", "webp"],
+      public_id: `review-${req.user?.user_id || req.user?._id || "guest"}-${uniqueSuffix}`,
+    };
+  },
+});
+
+export const uploadReviewMedia = multer({
+  storage: reviewMediaStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+    files: 6,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "video/x-m4v",
+    ];
+
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(
+      new Error(
+        "Định dạng file không hợp lệ. Chỉ chấp nhận ảnh jpg, jpeg, png, gif, webp hoặc video mp4, webm, mov, m4v",
+      ),
+      false,
+    );
+  },
+});
+
+// Tailor order images upload configuration
+const tailorOrderStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, _file) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    return {
+      folder: "vietphuc/tailor-orders",
+      allowed_formats: ["jpg", "jpeg", "png", "webp"],
+      public_id: `tailor-${req.user?.user_id || req.user?._id || "staff"}-${uniqueSuffix}`,
+    };
+  },
+});
+
+export const uploadTailorOrderImages = multer({
+  storage: tailorOrderStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 12,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+    cb(
+      new Error("Dinh dang file khong hop le. Chi chap nhan jpg, jpeg, png, webp"),
+      false,
+    );
+  },
+});
+
 // Delete image from Cloudinary
 export const deleteImage = async (publicId) => {
   try {

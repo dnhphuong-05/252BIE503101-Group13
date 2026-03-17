@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ProductService, Product } from '../../services/product.service';
 import { AuthService } from '../../services/auth.service';
 import { CartService } from '../../services/cart.service';
+import { ToastService } from '../../services/toast.service';
 import { ProductModal } from '../../shared/components/product-modal/product-modal';
 
 interface Category {
@@ -30,7 +31,7 @@ export class ProductsComponent implements OnInit {
   selectedPrice = 0;
   minPrice = 0;
   maxPrice = 10000000;
-  sortBy = 'newest';
+  sortBy = 'name-asc';
   searchQuery = '';
   itemsPerPage = 20;
   currentPage = 1;
@@ -65,6 +66,7 @@ export class ProductsComponent implements OnInit {
     private route: ActivatedRoute,
     private authService: AuthService,
     private cartService: CartService,
+    private toastService: ToastService,
   ) {}
 
   ngOnInit() {
@@ -250,7 +252,7 @@ export class ProductsComponent implements OnInit {
     this.selectedGender = '';
     this.selectedPrice = this.maxPrice;
     this.searchQuery = '';
-    this.sortBy = 'newest';
+    this.sortBy = 'name-asc';
     this.currentPage = 1;
     this.loadProducts();
   }
@@ -380,11 +382,11 @@ export class ProductsComponent implements OnInit {
         next: () => {
           this.showProductModal = false;
           this.selectedProduct = null;
-          alert('Đã thêm vào giỏ hàng.');
+          this.toastService.success('Đã thêm sản phẩm vào giỏ hàng.');
         },
         error: (err) => {
           console.error('Add to cart failed:', err);
-          alert('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
+          this.toastService.error('Không thể thêm vào giỏ hàng. Vui lòng thử lại.');
         },
       });
   }

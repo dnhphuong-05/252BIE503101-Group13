@@ -11,6 +11,7 @@ const router = express.Router();
 router.use(protect);
 
 router.get("/summary", controller.getSummary);
+router.get("/loyalty-vouchers", controller.getLoyaltyVouchers);
 router.get(
   "/loyalty-transactions",
   validate(validator.getLoyaltyTransactions, "query"),

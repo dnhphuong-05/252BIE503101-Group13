@@ -226,30 +226,49 @@ body {
 }
 
 .hero-branding {
-  text-align: left;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .brand-mark {
-  justify-items: baseline;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .brand-name {
-  width: 300px;
-  margin-bottom: 20px;
+  width: min(300px, 100%);
+  margin: 0 auto 20px;
   animation: fadeInUp 1s ease-out;
 }
 
 .brand-character {
-  width: 300px;
+  width: min(300px, 100%);
   display: block;
+  margin: 0 auto;
   animation: fadeInUp 1.2s ease-out;
 }
 
 .brand-slogan {
-  width: 300px;
+  width: min(300px, 100%);
+  margin: 0 auto;
   animation: fadeInUp 1.4s ease-out;
   padding: 5px 15px;
+  display: flex;
+  justify-content: center;
+}
+
+.brand-name img,
+.brand-character img,
+.brand-slogan img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
 }
 
 .hero-navigation {

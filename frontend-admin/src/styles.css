@@ -1145,3 +1145,122 @@ a {
     position: static;
   }
 }
+
+.order-detail .progress-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(45, 180, 186, 0.25);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(238, 251, 252, 0.96));
+}
+
+.order-detail .progress-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.order-detail .progress-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.order-detail .progress-percent {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f9aa2;
+}
+
+.order-detail .progress-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 154, 162, 0.14);
+  overflow: hidden;
+}
+
+.order-detail .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1ea7ad 0%, #39c2c8 100%);
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.order-detail .flow-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(130px, 1fr);
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.order-detail .flow-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  padding-top: 2px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.order-detail .flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: calc(50% + 18px);
+  width: calc(100% - 36px);
+  height: 2px;
+  background: #c8d4d6;
+}
+
+.order-detail .flow-step.done:not(:last-child)::after,
+.order-detail .flow-step.current:not(:last-child)::after {
+  background: #20aeb5;
+}
+
+.order-detail .flow-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 2px solid #c8d4d6;
+  background: #fff;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.order-detail .flow-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.order-detail .flow-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.order-detail .flow-step.done .flow-dot,
+.order-detail .flow-step.current .flow-dot {
+  border-color: #20aeb5;
+  background: #20aeb5;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .order-detail .progress-card {
+    padding: 14px;
+  }
+
+  .order-detail .flow-list {
+    grid-auto-columns: minmax(110px, 1fr);
+  }
+}

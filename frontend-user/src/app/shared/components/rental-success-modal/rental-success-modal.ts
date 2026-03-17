@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterModule } from '@angular/router';
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-rental-success-modal',
@@ -25,6 +26,8 @@ export class RentalSuccessModal {
     | 'violated' = 'booked';
 
   @Output() closed = new EventEmitter<void>();
+
+  constructor(private toastService: ToastService) {}
 
   get statusLabel(): string {
     switch (this.status) {
@@ -63,6 +66,11 @@ export class RentalSuccessModal {
 
   copyOrderCode(): void {
     if (!this.rentOrderCode) return;
-    navigator.clipboard?.writeText(this.rentOrderCode).catch(() => undefined);
+    navigator.clipboard
+      ?.writeText(this.rentOrderCode)
+      .then(() => {
+        this.toastService.success('Đã sao chép mã đơn thuê.');
+      })
+      .catch(() => undefined);
   }
 }

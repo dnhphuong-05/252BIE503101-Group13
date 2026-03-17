@@ -120,6 +120,33 @@ export const getLoyaltyTransactions = catchAsync(async (req, res) => {
   );
 });
 
+export const getLoyaltyVouchers = catchAsync(async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    await loyaltyService.syncOrderPointsForUser(userId);
+  } catch (error) {
+    console.error("Failed to sync loyalty points:", error);
+  }
+
+  const loyalty = await UserLoyalty.findOne({ user_id: userId }).lean();
+  const totalPoints = Math.max(0, Number(loyalty?.total_points) || 0);
+  const tier = loyaltyService.resolveTier(totalPoints);
+
+  successResponse(
+    res,
+    {
+      loyalty: {
+        total_points: totalPoints,
+        tier_name: loyalty?.tier_name || tier.name,
+        tier_level: loyalty?.tier_level || tier.level,
+      },
+      vouchers: loyaltyService.getAvailableVouchers(totalPoints),
+    },
+    "Loyalty vouchers retrieved successfully",
+  );
+});
+
 export const getProfile = catchAsync(async (req, res) => {
   const user = req.user;
   const userId = user.user_id;
