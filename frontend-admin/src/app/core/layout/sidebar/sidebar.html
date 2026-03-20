@@ -1,4 +1,9 @@
-<aside class="sidebar" [class.collapsed]="isCollapsed()">
+<aside
+  #sidebarRef
+  class="sidebar"
+  [class.collapsed]="isCollapsed()"
+  (scroll)="onSidebarScroll($event)"
+>
   <div class="sidebar-brand">
     <div class="brand-wrap">
       <div class="brand-logos">
@@ -34,7 +39,7 @@
             <a
               class="nav-item"
               [routerLink]="item.route"
-              routerLinkActive="active"
+              [class.active]="isRouteActive(item.route)"
               [title]="isCollapsed() ? item.label : ''"
             >
               <span class="nav-main">
@@ -65,7 +70,11 @@
             @if (item.children?.length && !isCollapsed() && isGroupOpen(item.label)) {
               <div class="nav-children">
                 @for (child of item.children; track child.label) {
-                  <a class="nav-child" [routerLink]="child.route" routerLinkActive="active">
+                  <a
+                    class="nav-child"
+                    [routerLink]="child.route"
+                    [class.active]="isRouteActive(child.route)"
+                  >
                     {{ child.label }}
                   </a>
                 }

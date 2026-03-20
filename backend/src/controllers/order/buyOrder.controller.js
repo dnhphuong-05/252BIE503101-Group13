@@ -167,6 +167,18 @@ export const cancelOrder = catchAsync(async (req, res) => {
 });
 
 /**
+ * Dashboard report cho admin
+ * GET /api/buy-orders/dashboard-report
+ */
+export const getDashboardReport = catchAsync(async (req, res) => {
+  const report = await buyOrderService.getDashboardReport({
+    days: req.query.days,
+  });
+
+  successResponse(res, report, "Dashboard report được lấy thành công");
+});
+
+/**
  * Khách xác nhận đã nhận hàng
  * POST /api/buy-orders/:order_id/confirm-received
  */

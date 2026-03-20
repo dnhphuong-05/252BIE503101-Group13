@@ -1,7 +1,7 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">{{ isEditMode ? 'Chỉnh sửa sản phẩm' : 'Sản phẩm mới' }}</div>
+      <div class="page-title">{{ isEditMode ? 'Edit product' : 'New product' }}</div>
       <div class="page-subtitle">Tạo sản phẩm mới và cấu hình thông tin chi tiết cho cửa hàng</div>
     </div>
     <div class="page-actions">
@@ -219,7 +219,7 @@
             </select>
           </div>
           <div>
-            <label class="label">Tags</label>
+            <label class="label">Thẻ</label>
             <input class="input" [(ngModel)]="product.tags" placeholder="lụa, thêu tay" />
           </div>
           <div>
@@ -248,7 +248,7 @@
           </div>
           <div>
             <label class="label">Xuất xứ</label>
-            <input class="input" [(ngModel)]="product.origin" placeholder="Việt Nam" />
+            <input class="input" [(ngModel)]="product.origin" placeholder="Vietnam" />
           </div>
           <div>
             <label class="label">Giới tính</label>

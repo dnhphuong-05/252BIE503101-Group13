@@ -1,4 +1,6 @@
 import GuestCustomer from "../../models/GuestCustomer.js";
+import User from "../../models/user/User.js";
+import emailService from "../email/email.service.js";
 import ApiError from "../../utils/ApiError.js";
 import { StatusCodes } from "http-status-codes";
 
@@ -222,6 +224,68 @@ class GuestCustomerService {
    */
   async findOrCreate(guestData) {
     return await GuestCustomer.findOrCreate(guestData);
+  }
+
+  /**
+   * Gui email moi guest customer dang ky tai khoan
+   * @param {string} guestId - Guest ID
+   * @param {Object} invitedBy - User thuc hien moi
+   * @returns {Promise<Object>} Ket qua gui email
+   */
+  async inviteRegister(guestId, invitedBy) {
+    const guestCustomer = await this.getGuestCustomerById(guestId);
+    const guestEmail = guestCustomer.email?.trim().toLowerCase();
+
+    if (!guestEmail) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        "Khách này chưa có email để gửi lời mời",
+      );
+    }
+
+    const existedUser = await User.findOne({ email: guestEmail }).lean();
+    if (existedUser) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        "Email này đã có tài khoản, không cần gửi lời mời",
+      );
+    }
+
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:4200")
+      .trim()
+      .replace(/\/+$/, "");
+    const query = new URLSearchParams({
+      email: guestEmail,
+      full_name: guestCustomer.full_name || "",
+      phone: guestCustomer.phone || "",
+      source: "guest_invite",
+      guest_id: guestCustomer.guest_id || "",
+    });
+    const registerUrl = `${frontendUrl}/register?${query.toString()}`;
+
+    const emailResult = await emailService.sendRegisterInvitation({
+      email: guestEmail,
+      fullName: guestCustomer.full_name || "",
+      phone: guestCustomer.phone || "",
+      guestId: guestCustomer.guest_id || "",
+      registerUrl,
+      invitedBy: invitedBy?.email || invitedBy?.user_id || "Admin",
+    });
+
+    if (!emailResult.success) {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        emailResult.error || "Gửi email mời đăng ký thất bại",
+      );
+    }
+
+    return {
+      guest_id: guestCustomer.guest_id,
+      email: guestEmail,
+      register_url: registerUrl,
+      sent_at: new Date().toISOString(),
+      message_id: emailResult.messageId,
+    };
   }
 
   /**

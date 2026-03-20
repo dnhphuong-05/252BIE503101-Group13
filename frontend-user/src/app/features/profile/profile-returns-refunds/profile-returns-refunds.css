@@ -1,0 +1,262 @@
+:host {
+  display: block;
+}
+
+.returns-page {
+  animation: fadeIn 0.35s ease-out;
+  padding: 32px 40px 60px;
+  max-width: 1200px;
+  margin: 20px auto 0;
+  display: grid;
+  gap: 18px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 26px;
+  border-radius: 20px;
+  border: 1px solid rgba(139, 38, 53, 0.12);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 240, 0.98));
+  box-shadow: 0 10px 30px rgba(139, 38, 53, 0.08);
+}
+
+.header-content {
+  display: grid;
+  gap: 6px;
+}
+
+.page-title {
+  margin: 0;
+  font-family: 'Noto Serif', 'Georgia', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #7b1f2d;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.page-title i {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #8b2635;
+  background: rgba(139, 38, 53, 0.12);
+}
+
+.page-subtitle {
+  margin: 0;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px;
+  color: #6f6661;
+}
+
+.header-note {
+  flex-shrink: 0;
+  border: 1px solid rgba(139, 38, 53, 0.18);
+  background: rgba(139, 38, 53, 0.06);
+  color: #8b2635;
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.panel {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid rgba(139, 38, 53, 0.12);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 8px 22px rgba(139, 38, 53, 0.06);
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-family: 'Noto Serif', 'Georgia', serif;
+  font-size: 19px;
+  font-weight: 700;
+  color: #2f2a26;
+}
+
+.panel-count {
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 12px;
+  color: #7a707f;
+}
+
+.order-list {
+  display: grid;
+  gap: 10px;
+}
+
+.order-card {
+  border: 1px solid rgba(139, 38, 53, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(140deg, #fffdf9, #ffffff);
+  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.order-meta {
+  min-width: 0;
+}
+
+.order-code {
+  font-family: 'Noto Serif', 'Georgia', serif;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #1f3551;
+}
+
+.order-date {
+  margin-top: 5px;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  color: #6d6573;
+}
+
+.order-total {
+  font-family: 'Noto Serif', 'Georgia', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #7b1d34;
+  white-space: nowrap;
+}
+
+.order-extra {
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d8d59;
+  white-space: nowrap;
+}
+
+.btn-request {
+  border: 1px solid #b02244;
+  background: linear-gradient(135deg, #9e203f 0%, #ba274a 100%);
+  color: #ffffff;
+  border-radius: 999px;
+  min-height: 38px;
+  padding: 0 16px;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.btn-request:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(158, 32, 63, 0.22);
+}
+
+.status-badge {
+  border: 1px solid #d7c9ec;
+  background: #f4effd;
+  color: #5e4b86;
+  border-radius: 999px;
+  min-height: 30px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.empty,
+.state-card {
+  border: 1px dashed #ddcfc4;
+  border-radius: 12px;
+  background: #fffaf3;
+  padding: 14px;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  color: #6d6272;
+}
+
+.state-card.error {
+  border-color: #f0c8c8;
+  background: #fff5f5;
+  color: #8f2f2f;
+}
+
+@media (max-width: 1024px) {
+  .returns-page {
+    padding: 24px 18px 40px;
+    margin-top: 8px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .panel-head h2 {
+    font-size: 17px;
+  }
+
+  .order-code {
+    font-size: 17px;
+  }
+
+  .order-date,
+  .order-extra {
+    font-size: 13px;
+  }
+
+  .order-total {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .order-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .btn-request {
+    width: fit-content;
+  }
+}

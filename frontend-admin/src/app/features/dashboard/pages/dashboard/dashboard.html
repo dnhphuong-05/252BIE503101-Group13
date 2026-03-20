@@ -57,6 +57,7 @@
         }
       </div>
     </div>
+
     <div class="report-grid">
       <div class="report-panel">
         <div class="report-title">Hoạt động chính</div>
@@ -114,8 +115,139 @@
         <div class="progress-bar">
           <div class="progress-fill" [style.width.%]="pendingCommentRate"></div>
         </div>
-        <div class="text-xs text-primary-500">
-          Tỷ lệ chờ duyệt {{ pendingCommentRate }}%
+        <div class="text-xs text-primary-500">Tỷ lệ chờ duyệt {{ pendingCommentRate }}%</div>
+      </div>
+    </div>
+
+    <div class="sales-report-head">
+      <div>
+        <div class="report-title">Báo cáo doanh thu và lợi nhuận</div>
+        <div class="report-hint">Theo đơn hoàn thành trong {{ selectedSalesRange }} ngày gần nhất.</div>
+      </div>
+      <div class="sales-range-group">
+        @for (days of salesRangeOptions; track days) {
+          <button
+            class="period-btn"
+            [class.active]="isSalesRangeActive(days)"
+            (click)="changeSalesRange(days)"
+            [disabled]="isSalesLoading"
+          >
+            {{ days }} ngày
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="sales-meta">
+      <span>Kỳ báo cáo: {{ salesRangeLabel }}</span>
+      <span>Tỷ lệ hoàn thành: {{ formatCompletionRate(salesSummary.completion_rate) }}</span>
+    </div>
+
+    <div class="sales-chart-grid">
+      <div class="report-panel chart-panel">
+        <div class="chart-header">
+          <div class="chart-title">Doanh thu</div>
+          <div class="chart-value">{{ formatCurrency(salesSummary.total_revenue) }}</div>
+        </div>
+        <div class="chart-svg-wrap">
+          <button class="chart-detail-btn" type="button" (click)="openChartDetail('revenue')">
+            Xem chi tiết
+          </button>
+          @if (revenueLineChart.points.length) {
+            <svg class="chart-svg" viewBox="0 0 640 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="revenueAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#8b1c35" stop-opacity="0.35"></stop>
+                  <stop offset="100%" stop-color="#8b1c35" stop-opacity="0.04"></stop>
+                </linearGradient>
+              </defs>
+              <path class="line-area" [attr.d]="revenueLineChart.areaPath" fill="url(#revenueAreaGradient)"></path>
+              <path class="line-path revenue-line" [attr.d]="revenueLineChart.path"></path>
+              @for (point of revenueLineChart.points; track point.date) {
+                <circle class="line-dot revenue-dot" [attr.cx]="point.x" [attr.cy]="point.y" r="3.4">
+                  <title>{{ point.label }}: {{ formatCurrency(point.value) }}</title>
+                </circle>
+              }
+            </svg>
+          } @else {
+            <div class="chart-empty">Không có dữ liệu</div>
+          }
+        </div>
+        <div class="chart-axis">
+          @for (tick of salesTrendTicks; track $index) {
+            <span>{{ tick }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="report-panel chart-panel">
+        <div class="chart-header">
+          <div class="chart-title">Lợi nhuận</div>
+          <div class="chart-value">{{ formatCurrency(salesSummary.total_profit) }}</div>
+        </div>
+        <div class="chart-svg-wrap">
+          <button class="chart-detail-btn" type="button" (click)="openChartDetail('profit')">
+            Xem chi tiết
+          </button>
+          @if (profitLineChart.points.length) {
+            <svg class="chart-svg" viewBox="0 0 640 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="profitAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stop-color="#0f766e" stop-opacity="0.35"></stop>
+                  <stop offset="100%" stop-color="#0f766e" stop-opacity="0.04"></stop>
+                </linearGradient>
+              </defs>
+              <path class="line-area" [attr.d]="profitLineChart.areaPath" fill="url(#profitAreaGradient)"></path>
+              <path class="line-path profit-line" [attr.d]="profitLineChart.path"></path>
+              @for (point of profitLineChart.points; track point.date) {
+                <circle class="line-dot profit-dot" [attr.cx]="point.x" [attr.cy]="point.y" r="3.4">
+                  <title>{{ point.label }}: {{ formatCurrency(point.value) }}</title>
+                </circle>
+              }
+            </svg>
+          } @else {
+            <div class="chart-empty">Không có dữ liệu</div>
+          }
+        </div>
+        <div class="chart-axis">
+          @for (tick of salesTrendTicks; track $index) {
+            <span>{{ tick }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="report-panel chart-panel">
+        <div class="chart-header">
+          <div class="chart-title">Số đơn hoàn thành</div>
+          <div class="chart-value">{{ formatNumber(salesSummary.completed_orders) }}</div>
+        </div>
+        <div class="chart-svg-wrap">
+          <button class="chart-detail-btn" type="button" (click)="openChartDetail('completed')">
+            Xem chi tiết
+          </button>
+          @if (completedBarChart.bars.length) {
+            <svg class="chart-svg" viewBox="0 0 640 220" preserveAspectRatio="none">
+              @for (bar of completedBarChart.bars; track bar.date) {
+                <rect
+                  class="bar-rect"
+                  [attr.x]="bar.x"
+                  [attr.y]="bar.y"
+                  [attr.width]="bar.width"
+                  [attr.height]="bar.height"
+                  rx="3"
+                >
+                  <title>{{ bar.label }}: {{ formatNumber(bar.value) }} đơn</title>
+                </rect>
+              }
+            </svg>
+          } @else {
+            <div class="chart-empty">Không có dữ liệu</div>
+          }
+        </div>
+        <div class="chart-axis">
+          @for (tick of salesTrendTicks; track $index) {
+            <span>{{ tick }}</span>
+          }
         </div>
       </div>
     </div>
@@ -204,4 +336,47 @@
       </div>
     </div>
   </div>
+
+  @if (isDetailModalOpen) {
+    <div class="detail-modal-backdrop" (click)="onDetailBackdropClick($event)">
+      <div class="detail-modal" role="dialog" aria-modal="true" aria-label="Chi tiết biểu đồ">
+        <div class="detail-modal-header">
+          <div>
+            <div class="detail-modal-title">{{ detailModalTitle() }}</div>
+            <div class="detail-modal-subtitle">{{ salesRangeLabel }}</div>
+          </div>
+          <button class="detail-close-btn" type="button" (click)="closeChartDetail()">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="detail-summary-row">
+          <span class="detail-summary-label">{{ detailMetricLabel() }} tổng</span>
+          <strong class="detail-summary-value">{{ detailSummaryValue() }}</strong>
+        </div>
+
+        <div class="detail-table-wrap">
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>{{ detailMetricLabel() }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (point of salesTrend; track point.date) {
+                <tr>
+                  <td>{{ point.label }}</td>
+                  <td>{{ formatDetailValue(detailValueOf(point)) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (!salesTrend.length) {
+            <div class="detail-empty">Không có dữ liệu chi tiết.</div>
+          }
+        </div>
+      </div>
+    </div>
+  }
 </div>

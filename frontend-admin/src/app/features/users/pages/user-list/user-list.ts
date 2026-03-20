@@ -122,8 +122,8 @@ export class UserListComponent implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly roleMeta: Record<UserRoleLabel, { label: string; class: string }> = {
-    super_admin: { label: 'Super Admin', class: 'chip chip-accent' },
-    admin: { label: 'Admin', class: 'chip chip-info' },
+    super_admin: { label: 'Quản trị cấp cao', class: 'chip chip-accent' },
+    admin: { label: 'Quản trị viên', class: 'chip chip-info' },
     staff: { label: 'Nhân viên', class: 'chip chip-neutral' },
     customer: { label: 'Khách hàng', class: 'chip chip-soft' },
   };
@@ -137,8 +137,8 @@ export class UserListComponent implements OnInit {
     { value: 'all', label: 'Tất cả' },
     { value: 'customer', label: 'Khách hàng' },
     { value: 'staff', label: 'Nhân viên' },
-    { value: 'admin', label: 'Admin' },
-    { value: 'super_admin', label: 'Super Admin' },
+    { value: 'admin', label: 'Quản trị viên' },
+    { value: 'super_admin', label: 'Quản trị cấp cao' },
   ];
 
   protected readonly statusFilters: Array<{ value: 'all' | UserStatus; label: string }> = [
@@ -160,7 +160,6 @@ export class UserListComponent implements OnInit {
   protected statusFilter: 'all' | UserStatus = 'all';
 
   protected selectedUser: SelectedUser | null = null;
-  protected roleDraft: UserRoleLabel | null = null;
   protected detailLoading = false;
   protected ordersLoading = false;
   protected loyaltyLoading = false;
@@ -170,6 +169,12 @@ export class UserListComponent implements OnInit {
   protected rentOrders: OrderRow[] = [];
   protected loyaltyTransactions: LoyaltyTransaction[] = [];
   protected detailMode = false;
+  protected readonly avatarErrorIds = new Set<string>();
+  protected detailAvatarFailed = false;
+  protected roleConfirmOpen = false;
+  protected pendingRoleChange: UserRoleLabel | null = null;
+  protected currentRoleLabelForConfirm = '';
+  protected nextRoleLabelForConfirm = '';
 
   private searchTimer?: ReturnType<typeof setTimeout>;
   private pendingUserId: string | null = null;
@@ -179,7 +184,6 @@ export class UserListComponent implements OnInit {
       this.detailMode = Boolean(data['detail']);
       if (!this.detailMode) {
         this.selectedUser = null;
-        this.roleDraft = null;
         this.buyOrders = [];
         this.rentOrders = [];
         this.loyaltyTransactions = [];
@@ -229,6 +233,14 @@ export class UserListComponent implements OnInit {
     this.fetchUserDetail(user.id);
   }
 
+  protected onListAvatarError(userId: string): void {
+    this.avatarErrorIds.add(userId);
+  }
+
+  protected onDetailAvatarError(): void {
+    this.detailAvatarFailed = true;
+  }
+
   protected backToList(): void {
     this.router.navigate(['/users']);
   }
@@ -239,15 +251,58 @@ export class UserListComponent implements OnInit {
     this.updateStatus(this.selectedUser.id, nextStatus);
   }
 
+  protected requestRoleChange(event: Event): void {
+    if (!this.selectedUser || !this.canManageRoles() || this.isUpdating) return;
+    const selectEl = event.target as HTMLSelectElement | null;
+    const currentRole = this.selectedUser.role;
+    const nextRole = (selectEl?.value || currentRole) as UserRoleLabel;
+    if (selectEl) {
+      // Keep visual value at current role until user explicitly confirms.
+      selectEl.value = currentRole;
+    }
+    if (currentRole === nextRole) return;
+    this.pendingRoleChange = nextRole;
+    this.currentRoleLabelForConfirm = this.roleMeta[currentRole].label;
+    this.nextRoleLabelForConfirm = this.roleMeta[nextRole].label;
+    this.roleConfirmOpen = true;
+  }
+
+  protected cancelRoleChange(): void {
+    this.roleConfirmOpen = false;
+    this.pendingRoleChange = null;
+    this.currentRoleLabelForConfirm = '';
+    this.nextRoleLabelForConfirm = '';
+  }
+
+  protected confirmRoleChange(): void {
+    if (!this.selectedUser || !this.pendingRoleChange) {
+      this.cancelRoleChange();
+      return;
+    }
+    const nextRole = this.pendingRoleChange;
+    this.roleConfirmOpen = false;
+    this.pendingRoleChange = null;
+    this.currentRoleLabelForConfirm = '';
+    this.nextRoleLabelForConfirm = '';
+    this.updateRole(nextRole);
+  }
+
   protected updateRole(nextRole: UserRoleLabel): void {
     if (!this.selectedUser || !this.canManageRoles() || this.isUpdating) return;
     if (this.selectedUser.role === nextRole) return;
     const previousDetail = this.selectedUser;
     const previousRole = this.selectedUser.role;
+    const selectedUserId = this.selectedUser.id;
     this.isUpdating = true;
 
+    // Optimistic UI: reflect the selected role immediately.
+    this.selectedUser = { ...this.selectedUser, role: nextRole };
+    this.users = this.users.map((item) =>
+      item.id === selectedUserId ? { ...item, role: nextRole } : item,
+    );
+
     this.http
-      .patch<ApiResponse<UserDetailApi>>(`${this.apiUrl}/admin/users/${this.selectedUser.id}/role`, {
+      .patch<ApiResponse<UserDetailApi>>(`${this.apiUrl}/admin/users/${selectedUserId}/role`, {
         role: nextRole,
       })
       .subscribe({
@@ -256,16 +311,19 @@ export class UserListComponent implements OnInit {
             this.isUpdating = false;
             return;
           }
-          this.selectedUser = this.mergeDetail(response.data, previousDetail);
-          this.roleDraft = response.data.role;
+          const normalized = { ...response.data, role: nextRole };
+          this.selectedUser = this.mergeDetail(normalized, previousDetail);
           this.users = this.users.map((item) =>
-            item.id === response.data!._id ? this.mapUserRow(response.data!) : item,
+            item.id === normalized._id ? this.mapUserRow(normalized) : item,
           );
           this.notification.showSuccess('Cập nhật role thành công');
           this.isUpdating = false;
         },
         error: () => {
-          this.roleDraft = previousRole;
+          this.selectedUser = { ...previousDetail, role: previousRole };
+          this.users = this.users.map((item) =>
+            item.id === selectedUserId ? { ...item, role: previousRole } : item,
+          );
           this.isUpdating = false;
           this.notification.showError('Không thể cập nhật role');
         },
@@ -356,6 +414,108 @@ export class UserListComponent implements OnInit {
     return parts.join(', ');
   }
 
+  protected orderProgressPercent(status: string | null | undefined): number {
+    const normalized = this.normalizeStatus(status);
+    if (
+      normalized.includes('complete') ||
+      normalized.includes('closed') ||
+      normalized.includes('deliver') ||
+      normalized.includes('done') ||
+      normalized.includes('success') ||
+      normalized.includes('hoàn') ||
+      normalized.includes('hoan')
+    ) {
+      return 100;
+    }
+    if (
+      normalized.includes('cancel') ||
+      normalized.includes('fail') ||
+      normalized.includes('refund') ||
+      normalized.includes('hủy') ||
+      normalized.includes('huy')
+    ) {
+      return 25;
+    }
+    if (
+      normalized.includes('confirm') ||
+      normalized.includes('process') ||
+      normalized.includes('shipping') ||
+      normalized.includes('pending') ||
+      normalized.includes('active') ||
+      normalized.includes('đang') ||
+      normalized.includes('dang')
+    ) {
+      return 68;
+    }
+    return 45;
+  }
+
+  protected orderProgressColor(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    if (
+      normalized.includes('complete') ||
+      normalized.includes('closed') ||
+      normalized.includes('deliver') ||
+      normalized.includes('done') ||
+      normalized.includes('success') ||
+      normalized.includes('hoàn') ||
+      normalized.includes('hoan')
+    ) {
+      return '#15803d';
+    }
+    if (
+      normalized.includes('cancel') ||
+      normalized.includes('fail') ||
+      normalized.includes('refund') ||
+      normalized.includes('hủy') ||
+      normalized.includes('huy')
+    ) {
+      return '#b91c1c';
+    }
+    return '#1d4ed8';
+  }
+
+  protected measurementCompleteness(measurement?: Measurement | null): number {
+    if (!measurement) return 0;
+    const values = [
+      measurement.neck,
+      measurement.shoulder,
+      measurement.chest,
+      measurement.waist,
+      measurement.hip,
+      measurement.sleeve,
+      measurement.arm,
+      measurement.back_length,
+      measurement.leg_length,
+    ];
+    const filled = values.filter((value) => value !== null && value !== undefined).length;
+    return Math.round((filled / values.length) * 100);
+  }
+
+  protected loyaltyProgressPercent(): number {
+    const points = this.currentLoyaltyPoints();
+    if (points < 100) return Math.round((points / 100) * 100);
+    if (points < 300) return Math.round(((points - 100) / 200) * 100);
+    if (points < 700) return Math.round(((points - 300) / 400) * 100);
+    return 100;
+  }
+
+  protected loyaltyNextTierLabel(): string {
+    const points = this.currentLoyaltyPoints();
+    if (points < 100) return 'Bạc';
+    if (points < 300) return 'Vàng';
+    if (points < 700) return 'Bạch kim';
+    return 'Kim cương';
+  }
+
+  protected loyaltyPointsToNextTier(): number {
+    const points = this.currentLoyaltyPoints();
+    if (points < 100) return 100 - points;
+    if (points < 300) return 300 - points;
+    if (points < 700) return 700 - points;
+    return 0;
+  }
+
   private loadUsers(): void {
     this.isLoading = true;
     this.loadError = '';
@@ -385,13 +545,13 @@ export class UserListComponent implements OnInit {
         next: (response) => {
           const items = response.data?.items ?? [];
           this.users = items.map((user) => this.mapUserRow(user));
+          this.avatarErrorIds.clear();
           this.total = response.data?.pagination.total ?? this.users.length;
           this.pages = response.data?.pagination.pages ?? 1;
           if (this.detailMode && this.pendingUserId) {
             this.fetchUserDetail(this.pendingUserId);
           } else if (!this.detailMode) {
             this.selectedUser = null;
-            this.roleDraft = null;
           }
           this.isLoading = false;
         },
@@ -408,6 +568,7 @@ export class UserListComponent implements OnInit {
 
   private fetchUserDetail(id: string): void {
     this.detailLoading = true;
+    this.detailAvatarFailed = false;
     this.selectedUser = null;
     this.buyOrders = [];
     this.rentOrders = [];
@@ -424,7 +585,6 @@ export class UserListComponent implements OnInit {
           id: response.data._id,
           createdLabel: this.formatDateTime(response.data.created_at),
         };
-        this.roleDraft = response.data.role;
         this.detailLoading = false;
         if (response.data.user_id) {
           this.fetchOrders(response.data.user_id);
@@ -514,7 +674,6 @@ export class UserListComponent implements OnInit {
             return;
           }
           this.selectedUser = this.mergeDetail(response.data, previousDetail);
-          this.roleDraft = response.data.role;
           this.users = this.users.map((item) =>
             item.id === response.data!._id ? this.mapUserRow(response.data!) : item,
           );
@@ -555,5 +714,13 @@ export class UserListComponent implements OnInit {
       measurements: user.measurements ?? previousDetail?.measurements ?? [],
       loyalty: user.loyalty ?? previousDetail?.loyalty ?? null,
     };
+  }
+
+  private currentLoyaltyPoints(): number {
+    return Math.max(0, Number(this.selectedUser?.loyalty?.total_points ?? 0));
+  }
+
+  private normalizeStatus(value: string | null | undefined): string {
+    return String(value || '').trim().toLowerCase();
   }
 }

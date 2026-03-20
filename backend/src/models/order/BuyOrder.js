@@ -183,6 +183,11 @@ const buyOrderSchema = new mongoose.Schema(
       },
       index: true,
     },
+    payment_transaction_code: {
+      type: String,
+      default: null,
+      trim: true,
+    },
     paid_at: {
       type: Date,
       default: null,
@@ -216,6 +221,15 @@ const buyOrderSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+    shipping_status: {
+      type: String,
+      default: "pending",
+      enum: {
+        values: ["pending", "ready_to_ship", "shipped", "delivered", "delivery_failed"],
+        message: "Trạng thái vận chuyển không hợp lệ",
+      },
+      index: true,
+    },
     shipping_status_detail: {
       type: String,
       default: null,
@@ -230,6 +244,14 @@ const buyOrderSchema = new mongoose.Schema(
       type: String,
       default: null,
       trim: true,
+    },
+    tracking_created_at: {
+      type: Date,
+      default: null,
+    },
+    estimated_delivery_at: {
+      type: Date,
+      default: null,
     },
     shipped_at: {
       type: Date,

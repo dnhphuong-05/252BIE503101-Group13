@@ -2,12 +2,32 @@ import BaseService from "../BaseService.js";
 import RentOrder from "../../models/order/RentOrder.js";
 import ApiError from "../../utils/ApiError.js";
 import notificationService from "../notification.service.js";
+import emailService from "../email/email.service.js";
 import loyaltyService from "../user/loyalty.service.js";
 import User from "../../models/user/User.js";
 import Counter from "../../models/Counter.js";
 
 const buildRentLink = (rentOrderId) => `/profile/rentals/${rentOrderId}`;
 const buildAdminRentLink = (rentOrderId) => `/orders/rent?order=${rentOrderId}`;
+
+const buildRentTrackingUrl = (rentOrderId, rentOrderCode, isGuest = false) => {
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:4200";
+  if (isGuest) {
+    return `${frontendUrl}/?rentOrder=${encodeURIComponent(rentOrderCode || rentOrderId)}`;
+  }
+  return `${frontendUrl}/profile/rentals?order=${encodeURIComponent(rentOrderId)}`;
+};
+
+const buildRentAddressText = (customerInfo = {}) => {
+  if (customerInfo.delivery_method === "pickup") {
+    return "Nhan tai cua hang (shop se lien he xac nhan).";
+  }
+  const address = customerInfo.address || {};
+  const parts = [address.address_detail, address.ward, address.province]
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
+    .filter(Boolean);
+  return parts.join(", ");
+};
 
 const formatCurrency = (value) =>
   `${new Intl.NumberFormat("vi-VN").format(Number(value) || 0)} đ`;
@@ -199,6 +219,17 @@ class RentOrderService extends BaseService {
     if (!orderData?.customer_info) {
       throw ApiError.badRequest("Customer info is required");
     }
+
+    const normalizedCustomerEmail =
+      typeof orderData.customer_info.email === "string"
+        ? orderData.customer_info.email.trim().toLowerCase()
+        : "";
+    orderData.customer_info.email = normalizedCustomerEmail || null;
+
+    if (orderData?.guest_id && !normalizedCustomerEmail) {
+      throw ApiError.badRequest("Guest rent orders require email to receive tracking information");
+    }
+
     if (!orderData?.item) {
       throw ApiError.badRequest("Rent item is required");
     }
@@ -272,7 +303,63 @@ class RentOrderService extends BaseService {
       link: buildAdminRentLink(order.rent_order_id),
     });
 
-    return { order };
+    let emailSent = false;
+    if (normalizedCustomerEmail) {
+      try {
+        const orderObject = order.toObject();
+        const customerInfo = orderObject.customer_info || {};
+        const item = orderObject.item || {};
+        const rentalPeriod = orderObject.rental_period || {};
+        const pricing = orderObject.pricing || {};
+
+        const startDate = rentalPeriod.start_date
+          ? new Date(rentalPeriod.start_date).toLocaleDateString("vi-VN")
+          : "";
+        const endDate = rentalPeriod.end_date
+          ? new Date(rentalPeriod.end_date).toLocaleDateString("vi-VN")
+          : "";
+        const rentDays = Number(rentalPeriod.days) || 0;
+
+        const emailData = {
+          orderCode: orderObject.rent_order_code,
+          status: "Da tiep nhan don thue",
+          customer: {
+            full_name: customerInfo.full_name || "",
+            phone: customerInfo.phone || "",
+            email: normalizedCustomerEmail,
+            full_address: buildRentAddressText(customerInfo),
+          },
+          items: [
+            {
+              name: item.name_snapshot || "San pham " + String(item.product_id || ""),
+              price: Number(item.rent_price_per_day) || 0,
+              quantity: Number(item.quantity) || 1,
+              sku: item.sku || "",
+              attributes: {
+                "So ngay thue": rentDays > 0 ? String(rentDays) + " ngay" : "",
+                "Ngay nhan": startDate,
+                "Ngay tra": endDate,
+              },
+            },
+          ],
+          subtotal: Number(pricing.deposit_required) || 0,
+          shippingFee: Number(pricing.shipping_fee) || 0,
+          total: Number(pricing.total_due_today) || 0,
+          trackingUrl: buildRentTrackingUrl(
+            orderObject.rent_order_id,
+            orderObject.rent_order_code,
+            Boolean(orderObject.guest_id),
+          ),
+        };
+
+        const emailResult = await emailService.sendOrderConfirmation(emailData);
+        emailSent = Boolean(emailResult?.success);
+      } catch (error) {
+        console.error("Error sending rent order confirmation email:", error);
+      }
+    }
+
+    return { order, emailSent };
   }
 
   async getByUserId(userId, options = {}) {

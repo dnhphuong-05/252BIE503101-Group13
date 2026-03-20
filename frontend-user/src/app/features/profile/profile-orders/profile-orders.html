@@ -116,9 +116,10 @@
                 <i class="fas fa-check"></i>
                 <span>Đã nhận được hàng</span>
               </button>
+            }
+            @if (order.status === 'completed') {
               <button
                 class="btn btn-return-order"
-                [disabled]="!canRequestReturn(order) || returningOrderId === order.id"
                 (click)="openReturnModal(order)"
               >
                 <i class="fas fa-undo"></i>
@@ -164,12 +165,4 @@
     (close)="closeCancelModal()"
     (submit)="confirmCancelOrder($event)"
   ></app-cancel-order-modal>
-
-  <app-return-request-modal
-    [show]="showReturnModal"
-    [orderCode]="returningOrder?.orderCode || ''"
-    [loading]="returningOrderId === returningOrder?.id"
-    (close)="closeReturnModal()"
-    (submit)="submitReturnRequest($event)"
-  ></app-return-request-modal>
 </div>

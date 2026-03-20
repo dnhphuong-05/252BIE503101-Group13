@@ -3,17 +3,17 @@
     <div class="title-block">
       <div class="page-title">
         @if (view() === 'rent') {
-          Đơn thuê
+          Rent orders
         } @else if (view() === 'returns') {
-          Returns & refunds
+          Return orders
         } @else {
           Sales orders
         }
       </div>
-      <div class="page-subtitle">{{ detailMode ? 'Chi tiết đơn hàng' : 'Danh sách, lọc và tìm kiếm' }}</div>
+      <div class="page-subtitle">{{ detailMode ? 'Order details' : 'List, filter and search' }}</div>
     </div>
     @if (detailMode) {
-      <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Quay lại danh sách</button>
+      <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Back to list</button>
     }
   </div>
 
@@ -26,7 +26,7 @@
             <i class="fas fa-search"></i>
             <input
               class="input"
-              placeholder="Tìm theo mã đơn, khách hàng, SĐT"
+              placeholder="Search by order code, customer, phone"
               [(ngModel)]="searchTerm"
               (ngModelChange)="applyFilters()"
             />
@@ -35,11 +35,11 @@
         <div class="toolbar-group">
           <span class="text-sm text-primary-500">
             @if (view() === 'rent') {
-              Tổng: {{ rentTotal }}
+              Total: {{ rentTotal }}
             } @else if (view() === 'sales') {
-              Tổng: {{ salesTotal }}
+              Total: {{ salesTotal }}
             } @else {
-              Tổng: {{ returnTotal }}
+              Total: {{ returnTotal }}
             }
           </span>
         </div>
@@ -48,33 +48,33 @@
       <div class="filter-grid">
         @if (view() === 'rent') {
           <div class="filter-field">
-            <span class="filter-label">Trạng thái thuê</span>
+            <span class="filter-label">Rental status</span>
             <select class="select" [(ngModel)]="rentStatusFilter" (ngModelChange)="applyFilters()">
-              <option value="all">Tất cả</option>
-              <option value="booked">Đã đặt</option>
-              <option value="ongoing">Đang thuê</option>
-              <option value="return_requested">Yêu cầu trả</option>
-              <option value="returning">Đang trả</option>
-              <option value="returned">Đã nhận</option>
-              <option value="closed">Hoàn tất</option>
-              <option value="cancelled">Đã hủy</option>
-              <option value="violated">Vi phạm</option>
+              <option value="all">All</option>
+              <option value="booked">Booked</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="return_requested">Return requested</option>
+              <option value="returning">Returning</option>
+              <option value="returned">Received by shop</option>
+              <option value="closed">Closed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="violated">Violated</option>
             </select>
           </div>
           <div class="filter-field">
-            <span class="filter-label">Yêu cầu trả</span>
+            <span class="filter-label">Return request</span>
             <select class="select" [(ngModel)]="rentReturnFilter" (ngModelChange)="applyFilters()">
-              <option value="all">Tất cả</option>
-              <option value="requested">Có yêu cầu</option>
-              <option value="none">Không có</option>
+              <option value="all">All</option>
+              <option value="requested">Requested</option>
+              <option value="none">No request</option>
             </select>
           </div>
           <div class="filter-field">
-            <span class="filter-label">Khách hàng</span>
+            <span class="filter-label">Customer</span>
             <select class="select" [(ngModel)]="rentCustomerFilter" (ngModelChange)="applyFilters()">
-              <option value="all">Tất cả</option>
-              <option value="user">Khách có tài khoản</option>
-              <option value="guest">Khách vãng lai</option>
+              <option value="all">All</option>
+              <option value="user">Registered user</option>
+              <option value="guest">Guest</option>
             </select>
           </div>
         } @else if (view() === 'sales') {
@@ -144,9 +144,9 @@
         }
 
         <div class="filter-actions">
-          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
           <button class="btn btn-secondary btn-sm" type="button" (click)="refreshOrders()">
-            Làm mới
+            Refresh
           </button>
         </div>
       </div>
@@ -157,13 +157,13 @@
         <table class="table order-table order-table-rent">
           <thead>
             <tr>
-              <th>Đơn thuê</th>
-              <th>Khách</th>
-              <th>Thời gian thuê</th>
-              <th>Trạng thái</th>
-              <th>Thanh toán</th>
-              <th>Cọc</th>
-              <th>Yêu cầu trả</th>
+              <th>Rent order</th>
+              <th>Customer</th>
+              <th>Rental period</th>
+              <th>Status</th>
+              <th>Payment</th>
+              <th>Deposit</th>
+              <th>Return request</th>
               <th></th>
             </tr>
           </thead>
@@ -173,7 +173,7 @@
                 <td>
                   <div class="rent-code">
                     <div class="font-semibold text-primary-900">{{ order.code }}</div>
-                    <div class="text-xs text-primary-500">Tạo: {{ order.createdAt }}</div>
+                    <div class="text-xs text-primary-500">Created: {{ order.createdAt }}</div>
                   </div>
                 </td>
                 <td>
@@ -189,7 +189,7 @@
                 </td>
                 <td>
                   <div class="item-meta">{{ order.period }}</div>
-                  <div class="text-xs text-primary-500">{{ order.days }} ngày</div>
+                  <div class="text-xs text-primary-500">{{ order.days }} days</div>
                 </td>
                 <td>
                   <span [class]="getRentStatusMetaFor(order).class">
@@ -204,9 +204,9 @@
                 <td>
                   <div class="price-stack">
                     <div class="price-main">{{ order.depositPaid }}</div>
-                    <div class="price-sub">Tiền thuê:</div>
+                    <div class="price-sub">Rental fee:</div>
                     <div class="price-sub">{{ order.rentFee }}</div>
-                    <div class="price-sub">Hoàn dự kiến:</div>
+                    <div class="price-sub">Estimated refund:</div>
                     <div class="price-sub">{{ order.refundExpected }}</div>
                   </div>
                 </td>
@@ -216,17 +216,17 @@
                       class="chip"
                       [class]="order.returnRequested ? 'chip-warning' : 'chip-neutral'"
                     >
-                      {{ order.returnRequested ? 'Có yêu cầu' : 'Không' }}
+                      {{ order.returnRequested ? 'Requested' : 'None' }}
                     </span>
                     @if (order.returnRequestedAt) {
-                      <div class="text-xs text-primary-500">Gửi: {{ order.returnRequestedAt }}</div>
+                      <div class="text-xs text-primary-500">Sent: {{ order.returnRequestedAt }}</div>
                     }
                   </div>
                 </td>
                 <td>
                   <div class="table-actions table-actions-tight">
                     <button class="btn btn-ghost btn-sm" (click)="onViewRent(order, $event)">
-                      Xem
+                      View
                     </button>
                   </div>
                 </td>
@@ -329,23 +329,23 @@
       <div class="table-footer">
         <span class="text-sm text-primary-500">
           @if (view() === 'rent') {
-            Hiển thị {{ rentOrders.length }} / {{ rentTotal }} đơn
+            Showing {{ rentOrders.length }} / {{ rentTotal }} orders
           } @else if (view() === 'sales') {
-            Hiển thị {{ salesOrders.length }} / {{ salesTotal }} đơn
+            Showing {{ salesOrders.length }} / {{ salesTotal }} orders
           } @else if (view() === 'returns') {
-            Hiển thị {{ returnOrders.length }} / {{ returnTotal }} đơn
+            Showing {{ returnOrders.length }} / {{ returnTotal }} orders
           } @else {
-            Hiển thị 0 / 0 đơn
+            Showing 0 / 0 orders
           }
         </span>
-        <button class="btn btn-secondary btn-sm">Tải thêm</button>
+        <button class="btn btn-secondary btn-sm">Load more</button>
       </div>
       }
 
       @if (detailMode) {
       @if (view() === 'rent') {
         @if (rentDetailLoading) {
-          <div class="detail-loading">Đang tải chi tiết đơn thuê...</div>
+          <div class="detail-loading">Loading rent order details...</div>
         } @else if (rentDetailError) {
           <div class="empty-state soft">{{ rentDetailError }}</div>
         } @else if (selectedRentDetail) {
@@ -367,16 +367,45 @@
                 <span [class]="getRentDetailStatusMeta(selectedRentDetail).class">
                   {{ getRentDetailStatusMeta(selectedRentDetail).label }}
                 </span>
+                <span [class]="paymentMeta[selectedRentDetail.payment.payment_status || 'unpaid'].class">
+                  {{ paymentMeta[selectedRentDetail.payment.payment_status || 'unpaid'].label }}
+                </span>
               </div>
             </div>
 
-            <div class="progress-card">
+              <div class="progress-card">
               <div class="progress-top">
-                <div class="progress-title">Tiến trình đơn thuê</div>
+                <div class="progress-title">Rent order progress</div>
                 <div class="progress-percent">{{ rentProgressPercent() }}%</div>
               </div>
               <div class="progress-track">
                 <div class="progress-fill" [style.width.%]="rentProgressPercent()"></div>
+              </div>
+              <div class="sales-rings">
+                <div class="sales-ring-card">
+                  <div class="sales-ring order" [style.--ring-progress]="rentProgressPercent() + '%'">
+                    <span>{{ rentProgressPercent() }}%</span>
+                  </div>
+                  <div class="item-meta">Tiến trình đơn</div>
+                </div>
+                <div class="sales-ring-card">
+                  <div
+                    class="sales-ring payment"
+                    [style.--ring-progress]="rentPaymentProgressPercent(selectedRentDetail) + '%'"
+                  >
+                    <span>{{ rentPaymentProgressPercent(selectedRentDetail) }}%</span>
+                  </div>
+                  <div class="item-meta">Thanh toán</div>
+                </div>
+                <div class="sales-ring-card">
+                  <div
+                    class="sales-ring shipping"
+                    [style.--ring-progress]="rentShippingProgressPercent(selectedRentDetail) + '%'"
+                  >
+                    <span>{{ rentShippingProgressPercent(selectedRentDetail) }}%</span>
+                  </div>
+                  <div class="item-meta">Vận chuyển</div>
+                </div>
               </div>
               <div class="flow-list">
                 @for (step of rentProgressFlow; track step; let i = $index) {
@@ -392,9 +421,9 @@
                   </div>
                 }
               </div>
-            </div>
+              </div>
 
-            <div class="step-overview-card">
+              <div class="step-overview-card">
               <div class="section-title">{{ rentCurrentStepLabel() }}</div>
               <div class="item-meta">{{ rentProgressTime(rentFocusedStep()) }}</div>
               <div class="step-overview-hints">
@@ -421,38 +450,68 @@
               </div>
             </div>
 
-            <div class="detail-grid">
-              <div>
-                <div class="item-meta">Khách hàng</div>
-                <div class="font-semibold">
+            <div class="sales-contact-cards">
+              <div class="sales-contact-card card-customer">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <span class="contact-label">Khách hàng</span>
+                </div>
+                <div class="contact-value">
                   {{ selectedRentDetail.customer_info.full_name || '-' }}
                 </div>
               </div>
-              <div>
-                <div class="item-meta">SĐT</div>
-                <div class="font-semibold">{{ selectedRentDetail.customer_info.phone || '-' }}</div>
-              </div>
-              <div>
-                <div class="item-meta">Email</div>
-                <div class="font-semibold">{{ selectedRentDetail.customer_info.email || '-' }}</div>
-              </div>
-              <div class="grid-span-2">
-                <div class="item-meta">Địa chỉ</div>
-                <div class="font-semibold">
-                  {{ formatAddressText(selectedRentDetail.customer_info.address) }}
+              <div class="sales-contact-card card-phone">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-phone"></i>
+                  </span>
+                  <span class="contact-label">SĐT</span>
                 </div>
+                <div class="contact-value">{{ selectedRentDetail.customer_info.phone || '-' }}</div>
               </div>
-              <div>
-                <div class="item-meta">Thời gian thuê</div>
-                <div class="font-semibold">
+              <div class="sales-contact-card card-email">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <span class="contact-label">Email</span>
+                </div>
+                <div class="contact-value">{{ selectedRentDetail.customer_info.email || '-' }}</div>
+              </div>
+              <div class="sales-contact-card card-period">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                  </span>
+                  <span class="contact-label">Thời gian thuê</span>
+                </div>
+                <div class="contact-value">
                   {{ formatDateTime(selectedRentDetail.rental_period.start_date) }} -
                   {{ formatDateTime(selectedRentDetail.rental_period.end_date) }}
                 </div>
               </div>
-              <div>
-                <div class="item-meta">Sản phẩm</div>
-                <div class="font-semibold">
+              <div class="sales-contact-card card-product">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-box"></i>
+                  </span>
+                  <span class="contact-label">Sản phẩm</span>
+                </div>
+                <div class="contact-value">
                   {{ selectedRentDetail.item.name_snapshot || '-' }}
+                </div>
+              </div>
+              <div class="sales-contact-card card-address">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-map-marker-alt"></i>
+                  </span>
+                  <span class="contact-label">Địa chỉ</span>
+                </div>
+                <div class="contact-value contact-value-address">
+                  {{ formatAddressText(selectedRentDetail.customer_info.address) }}
                 </div>
               </div>
             </div>
@@ -543,7 +602,7 @@
               </div>
             </div>
 
-            <div class="detail-section">
+              <div class="detail-section">
               <div class="section-title">Ghi chú nội bộ</div>
               <textarea class="input textarea" rows="3" [(ngModel)]="rentAdminNoteDraft"></textarea>
               <div class="detail-actions">
@@ -556,9 +615,9 @@
                   Lưu ghi chú
                 </button>
               </div>
-            </div>
+              </div>
 
-            <div class="detail-section">
+              <div class="detail-section">
               <div class="section-title">Thông tin giao/nhận</div>
               <div class="form-grid">
                 <div class="filter-field">
@@ -582,9 +641,9 @@
                   <input class="input" [(ngModel)]="rentReturnNoteDraft" />
                 </div>
               </div>
-            </div>
+              </div>
 
-            <div class="detail-section">
+              <div class="detail-section">
               <div class="section-title">Tình trạng đồ</div>
               <div class="form-grid">
                 <div class="filter-field full-width">
@@ -604,93 +663,98 @@
                   ></textarea>
                 </div>
               </div>
-            </div>
+              </div>
 
-            <div class="detail-section">
-              <div class="section-title">Phí &amp; hoàn cọc</div>
-              <div class="form-grid">
-                <div class="filter-field">
-                  <span class="filter-label">Phí trễ (tự động)</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [readonly]="true"
-                    [(ngModel)]="rentLateFeeDraft"
-                  />
-                </div>
-                <div class="filter-field">
-                  <span class="filter-label">Phí hư hỏng</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [(ngModel)]="rentDamageFeeDraft"
-                    (input)="refreshRentRefundExpectedDraft()"
-                  />
-                </div>
-                <div class="filter-field">
-                  <span class="filter-label">Phạt vi phạm</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [(ngModel)]="rentPenaltyFeeDraft"
-                    (input)="refreshRentRefundExpectedDraft()"
-                  />
-                </div>
-                <div class="filter-field">
-                  <span class="filter-label">Phí vệ sinh</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [(ngModel)]="rentCleaningFeeDraft"
-                    (input)="refreshRentRefundExpectedDraft()"
-                  />
-                </div>
-                <div class="filter-field">
-                  <span class="filter-label">Phí khác</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [(ngModel)]="rentExtraChargeDraft"
-                    (input)="refreshRentRefundExpectedDraft()"
-                  />
-                </div>
-                <div class="filter-field">
-                  <span class="filter-label">Dự kiến hoàn</span>
-                  <input
-                    class="input"
-                    type="number"
-                    [readonly]="true"
-                    [(ngModel)]="rentRefundExpectedDraft"
-                  />
+            @if (showRentSettlementSection()) {
+              <div class="detail-section">
+                <div class="section-title">Phí &amp; hoàn cọc</div>
+                <div class="form-grid">
+                  <div class="filter-field">
+                    <span class="filter-label">Phí trễ (tự động)</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [readonly]="true"
+                      [(ngModel)]="rentLateFeeDraft"
+                    />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Phí hư hỏng</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [(ngModel)]="rentDamageFeeDraft"
+                      (input)="refreshRentRefundExpectedDraft()"
+                    />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Phạt vi phạm</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [(ngModel)]="rentPenaltyFeeDraft"
+                      (input)="refreshRentRefundExpectedDraft()"
+                    />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Phí vệ sinh</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [(ngModel)]="rentCleaningFeeDraft"
+                      (input)="refreshRentRefundExpectedDraft()"
+                    />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Phí khác</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [(ngModel)]="rentExtraChargeDraft"
+                      (input)="refreshRentRefundExpectedDraft()"
+                    />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Dự kiến hoàn</span>
+                    <input
+                      class="input"
+                      type="number"
+                      [readonly]="true"
+                      [(ngModel)]="rentRefundExpectedDraft"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            }
 
-            <div class="detail-section">
-              <div class="section-title">Hoàn tiền</div>
-              <div class="form-grid">
-                <div class="filter-field">
-                  <span class="filter-label">Số tiền hoàn</span>
-                  <input class="input" type="number" [(ngModel)]="rentRefundPaidDraft" />
+            @if (showRentRefundSection()) {
+              <div class="detail-section">
+                <div class="section-title">Hoàn tiền</div>
+                <div class="form-grid">
+                  <div class="filter-field">
+                    <span class="filter-label">Số tiền hoàn</span>
+                    <input class="input" type="number" [(ngModel)]="rentRefundPaidDraft" />
+                  </div>
+                  <div class="filter-field">
+                    <span class="filter-label">Biên nhận (URL)</span>
+                    <input class="input" [(ngModel)]="rentRefundReceiptUrlDraft" />
+                  </div>
                 </div>
-                <div class="filter-field">
-                  <span class="filter-label">Biên nhận (URL)</span>
-                  <input class="input" [(ngModel)]="rentRefundReceiptUrlDraft" />
+                <div class="filter-field full-width">
+                  <span class="filter-label">Ghi chú hoàn tiền</span>
+                  <textarea
+                    class="input textarea"
+                    rows="2"
+                    [(ngModel)]="rentRefundNoteDraft"
+                  ></textarea>
                 </div>
               </div>
-              <div class="filter-field full-width">
-                <span class="filter-label">Ghi chú hoàn tiền</span>
-                <textarea
-                  class="input textarea"
-                  rows="2"
-                  [(ngModel)]="rentRefundNoteDraft"
-                ></textarea>
-              </div>
-            </div>
+            }
 
-            <div class="detail-section">
-              <div class="section-title">Admin thao tác</div>
-              <div class="status-actions">
+            @if (showRentActionSection()) {
+              <div class="detail-section">
+                <div class="section-title">Admin thao tác</div>
+                <div class="status-actions">
                 @if (selectedRentDetail.rent_status === 'booked') {
                   @if (isGuestRentDetail()) {
                     <button
@@ -738,7 +802,7 @@
                       class="btn btn-secondary btn-sm"
                       type="button"
                       [disabled]="rentActionLoading"
-                      (click)="updateRentStatus('ongoing', 'Xác nhận đơn thuê')"
+                      (click)="updateRentStatus('ongoing', 'Confirm rent order')"
                     >
                       Xác nhận đơn
                     </button>
@@ -880,16 +944,19 @@
                     Hoàn cọc &amp; chốt đơn
                   </button>
                 }
+                </div>
+                @if (showRentCancelReasonField()) {
+                  <div class="filter-field full-width">
+                    <span class="filter-label">Lý do hủy</span>
+                    <textarea
+                      class="input textarea"
+                      rows="2"
+                      [(ngModel)]="rentCancelReasonDraft"
+                    ></textarea>
+                  </div>
+                }
               </div>
-              <div class="filter-field full-width">
-                <span class="filter-label">Lý do hủy</span>
-                <textarea
-                  class="input textarea"
-                  rows="2"
-                  [(ngModel)]="rentCancelReasonDraft"
-                ></textarea>
-              </div>
-            </div>
+            }
 
             <div class="detail-section">
               <div class="section-title">Lịch sử trạng thái</div>
@@ -919,7 +986,7 @@
         } @else if (returnDetailError) {
           <div class="empty-state soft">{{ returnDetailError }}</div>
         } @else if (selectedReturnDetail) {
-          <div class="detail-drawer order-detail return-detail">
+          <div class="detail-drawer order-detail sales-detail return-detail">
             <div class="detail-header return-header">
               <div>
                 <div class="section-title">{{ selectedReturnDetail.return_id }}</div>
@@ -1090,7 +1157,7 @@
               </div>
             </div>
 
-            <div class="detail-grid">
+            <div class="detail-grid return-summary-grid">
               <div>
                 <div class="item-meta">Khách hàng</div>
                 <div class="font-semibold">
@@ -1127,6 +1194,7 @@
               </div>
             </div>
 
+            <div class="return-progress-layout">
             <div class="progress-card">
               <div class="progress-top">
                 <div class="progress-title">Tiến trình hoàn trả</div>
@@ -1177,9 +1245,11 @@
                 }
               </div>
             </div>
+            </div>
 
-            <div class="detail-section">
-              <div class="section-title">Vận đơn trả</div>
+            <div class="return-edit-layout">
+            <div class="detail-section return-edit-card return-shipping-card">
+              <div class="section-title"><i class="fas fa-truck"></i> Vận đơn trả</div>
               <div class="form-grid">
                 <div class="filter-field">
                   <span class="filter-label">Nhà vận chuyển</span>
@@ -1189,11 +1259,21 @@
                   <span class="filter-label">Mã vận đơn</span>
                   <input class="input" [(ngModel)]="returnShippingTrackingDraft" />
                 </div>
+                <div class="filter-field full-width">
+                  <span class="filter-label">Trạng thái vận đơn</span>
+                  <div class="return-shipping-status">
+                    @if ((selectedReturnDetail.return_shipping?.tracking_code || returnShippingTrackingDraft)?.trim()) {
+                      Đã có mã vận đơn, chờ cập nhật luồng hoàn trả.
+                    } @else {
+                      Chưa có mã vận đơn.
+                    }
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div class="detail-section">
-              <div class="section-title">Hoàn tiền</div>
+            <div class="detail-section return-edit-card return-refund-card">
+              <div class="section-title"><i class="fas fa-wallet"></i> Hoàn tiền</div>
               <div class="form-grid">
                 <div class="filter-field">
                   <span class="filter-label">Số tiền hoàn</span>
@@ -1203,11 +1283,17 @@
                   <span class="filter-label">Biên nhận (URL)</span>
                   <input class="input" [(ngModel)]="returnReceiptUrlDraft" />
                 </div>
+              </div>
+            </div>
+
+            <div class="detail-section return-edit-card return-refund-note-card full-width">
+              <div class="section-title"><i class="fas fa-note-sticky"></i> Ghi chú hoàn tiền</div>
+              <div class="form-grid">
                 <div class="filter-field full-width">
-                  <span class="filter-label">Ghi chú hoàn tiền</span>
                   <textarea class="input textarea" rows="2" [(ngModel)]="returnRefundNoteDraft"></textarea>
                 </div>
               </div>
+            </div>
             </div>
 
             <div class="detail-section">
@@ -1254,7 +1340,7 @@
       @if (view() === 'sales') {
         @if (detailLoading) {
           <div class="detail-loading">Đang tải chi tiết đơn...</div>
-        } @else if (detailError) {
+        } @else if (detailError && !selectedSalesDetail) {
           <div class="empty-state soft">{{ detailError }}</div>
         } @else if (selectedSalesDetail) {
           <div class="detail-drawer order-detail sales-detail">
@@ -1267,6 +1353,7 @@
                 </div>
               </div>
               <div class="header-badges">
+                <span class="chip chip-teal">Đơn mua</span>
                 <span
                   [class]="selectedSalesDetail.guest_id ? 'chip chip-warning' : 'chip chip-teal'"
                 >
@@ -1274,6 +1361,12 @@
                 </span>
                 <span [class]="getSalesDetailStatusMeta(selectedSalesDetail).class">
                   {{ getSalesDetailStatusMeta(selectedSalesDetail).label }}
+                </span>
+                <span [class]="paymentMeta[selectedSalesDetail.payment_status].class">
+                  {{ paymentMeta[selectedSalesDetail.payment_status].label }}
+                </span>
+                <span [class]="salesShippingStatusMeta(selectedSalesDetail).class">
+                  {{ salesShippingStatusMeta(selectedSalesDetail).label }}
                 </span>
               </div>
             </div>
@@ -1285,6 +1378,32 @@
               </div>
               <div class="progress-track">
                 <div class="progress-fill" [style.width.%]="salesProgressPercent()"></div>
+              </div>
+              <div class="sales-rings">
+                <div class="sales-ring-card">
+                  <div class="sales-ring order" [style.--ring-progress]="salesProgressPercent() + '%'">
+                    <span>{{ salesProgressPercent() }}%</span>
+                  </div>
+                  <div class="item-meta">Tiến trình đơn</div>
+                </div>
+                <div class="sales-ring-card">
+                  <div
+                    class="sales-ring payment"
+                    [style.--ring-progress]="salesPaymentProgressPercent(selectedSalesDetail) + '%'"
+                  >
+                    <span>{{ salesPaymentProgressPercent(selectedSalesDetail) }}%</span>
+                  </div>
+                  <div class="item-meta">Thanh toán</div>
+                </div>
+                <div class="sales-ring-card">
+                  <div
+                    class="sales-ring shipping"
+                    [style.--ring-progress]="salesShippingProgressPercent(selectedSalesDetail) + '%'"
+                  >
+                    <span>{{ salesShippingProgressPercent(selectedSalesDetail) }}%</span>
+                  </div>
+                  <div class="item-meta">Vận chuyển</div>
+                </div>
               </div>
               <div class="flow-list">
                 @for (step of salesProgressFlow; track step; let i = $index) {
@@ -1329,28 +1448,48 @@
               </div>
             </div>
 
-            <div class="detail-grid">
-              <div>
-                <div class="item-meta">Khách hàng</div>
-                <div class="font-semibold">
+            <div class="sales-contact-cards">
+              <div class="sales-contact-card card-customer">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-user"></i>
+                  </span>
+                  <span class="contact-label">Khách hàng</span>
+                </div>
+                <div class="contact-value">
                   {{ selectedSalesDetail.customer_info.full_name || '-' }}
                 </div>
               </div>
-              <div>
-                <div class="item-meta">SĐT</div>
-                <div class="font-semibold">
+              <div class="sales-contact-card card-phone">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-phone"></i>
+                  </span>
+                  <span class="contact-label">SĐT</span>
+                </div>
+                <div class="contact-value">
                   {{ selectedSalesDetail.customer_info.phone || '-' }}
                 </div>
               </div>
-              <div>
-                <div class="item-meta">Email</div>
-                <div class="font-semibold">
+              <div class="sales-contact-card card-email">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-envelope"></i>
+                  </span>
+                  <span class="contact-label">Email</span>
+                </div>
+                <div class="contact-value">
                   {{ selectedSalesDetail.customer_info.email || '-' }}
                 </div>
               </div>
-              <div class="grid-span-2">
-                <div class="item-meta">Địa chỉ</div>
-                <div class="font-semibold">
+              <div class="sales-contact-card card-address">
+                <div class="contact-card-head">
+                  <span class="contact-icon">
+                    <i class="fas fa-map-marker-alt"></i>
+                  </span>
+                  <span class="contact-label">Địa chỉ</span>
+                </div>
+                <div class="contact-value contact-value-address">
                   {{ formatAddressText(selectedSalesDetail.customer_info.address) }}
                 </div>
               </div>
@@ -1438,21 +1577,23 @@
                   </div>
                 }
               </div>
-              <div class="inline-actions">
-                <select class="select select-compact" [(ngModel)]="paymentStatusDraft">
-                  @for (option of paymentStatusOptions; track option.value) {
-                    <option [value]="option.value">{{ option.label }}</option>
-                  }
-                </select>
-                <button
-                  class="btn btn-secondary btn-sm"
-                  type="button"
-                  [disabled]="actionLoading"
-                  (click)="updatePaymentStatus()"
-                >
-                  Cập nhật thanh toán
-                </button>
-              </div>
+              @if (canEditSalesPayment(selectedSalesDetail)) {
+                <div class="inline-actions">
+                  <select class="select select-compact" [(ngModel)]="paymentStatusDraft">
+                    @for (option of paymentStatusOptions; track option.value) {
+                      <option [value]="option.value">{{ option.label }}</option>
+                    }
+                  </select>
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updatePaymentStatus()"
+                  >
+                    Cập nhật thanh toán
+                  </button>
+                </div>
+              }
             </div>
 
             <div class="detail-section">
@@ -1538,25 +1679,14 @@
                     Hủy đơn
                   </button>
                 } @else if (selectedSalesDetail.order_status === 'confirmed') {
-                  @if (isGuestSalesDetail()) {
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      type="button"
-                      [disabled]="actionLoading"
-                      (click)="updateSalesStatus('shipping')"
-                    >
-                      Tạo vận đơn
-                    </button>
-                  } @else {
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      type="button"
-                      [disabled]="actionLoading"
-                      (click)="updateSalesStatus('processing')"
-                    >
-                      Bắt đầu xử lý
-                    </button>
-                  }
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    type="button"
+                    [disabled]="actionLoading"
+                    (click)="updateSalesStatus('processing')"
+                  >
+                    Bắt đầu xử lý
+                  </button>
                   <button
                     class="btn btn-ghost btn-sm"
                     type="button"
@@ -1722,4 +1852,3 @@
     </div>
   </div>
 </div>
-

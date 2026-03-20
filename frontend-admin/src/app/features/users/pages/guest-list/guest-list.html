@@ -1,8 +1,8 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Khách vãng lai</div>
-      <div class="page-subtitle">{{ detailMode ? 'Chi tiết khách vãng lai' : 'Danh sách, lọc và tìm kiếm' }}</div>
+      <div class="page-title">Guest customers</div>
+      <div class="page-subtitle">{{ detailMode ? 'Chi tiết khách' : 'Danh sách, lọc và tìm kiếm' }}</div>
     </div>
     @if (detailMode) {
       <button class="btn btn-ghost btn-sm" type="button" (click)="backToList()">Quay lại danh sách</button>
@@ -17,7 +17,7 @@
           <i class="fas fa-search"></i>
           <input
             class="input"
-            placeholder="Tìm theo tên, SĐT, email hoặc mã guest"
+            placeholder="Tìm theo tên, số điện thoại, email, mã khách"
             [(ngModel)]="searchTerm"
             (input)="onSearchInput()"
             (keyup.enter)="applyFilters()"
@@ -25,7 +25,7 @@
         </div>
       </div>
       <div class="toolbar-group">
-        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+        <span class="text-sm text-primary-500">Hiển thị {{ guests.length }} / {{ total }} khách</span>
       </div>
     </div>
 
@@ -58,9 +58,9 @@
       </div>
 
       <div class="filter-actions">
-        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
         <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
-          Làm mới
+          Refresh
         </button>
       </div>
     </div>
@@ -76,14 +76,12 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Khách</th>
+            <th>Khách hàng</th>
             <th>Liên hệ</th>
             <th>Tổng đơn</th>
-            <th>Tổng chi tiêu</th>
-            <th>Đơn gần nhất</th>
             <th>Trạng thái</th>
             <th>Ngày tạo</th>
-            <th>Hành động</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -98,8 +96,6 @@
                 </div>
               </td>
               <td>{{ guest.orderCount }}</td>
-              <td>{{ formatCurrency(guest.totalSpent) }}</td>
-              <td>{{ guest.lastOrderAt }}</td>
               <td>
                 <span [class]="statusMeta[guest.status].class">
                   {{ statusMeta[guest.status].label }}
@@ -150,45 +146,58 @@
       <div class="detail-loading">Đang tải chi tiết khách...</div>
     } @else if (selectedGuest) {
       <div class="detail-drawer">
-        <div class="detail-header">
-          <div>
-            <div class="section-title">{{ selectedGuest!.full_name }}</div>
-            <div class="item-meta">
-              ID: {{ selectedGuest!.guest_id }} · {{ selectedGuest!.createdLabel }}
+        <div class="detail-hero">
+          <div class="detail-hero-main">
+            <span class="hero-avatar">
+              <i class="fas fa-user"></i>
+            </span>
+            <div class="hero-copy">
+              <div class="hero-name">{{ selectedGuest!.full_name }}</div>
+              <div class="hero-subtitle">ID: {{ selectedGuest!.guest_id }} - {{ selectedGuest!.createdLabel }}</div>
             </div>
           </div>
-          <span [class]="statusMeta[selectedGuest!.status].class">
-            {{ statusMeta[selectedGuest!.status].label }}
-          </span>
+          <div class="detail-hero-side">
+            <span [class]="statusMeta[selectedGuest!.status].class">
+              {{ statusMeta[selectedGuest!.status].label }}
+            </span>
+          </div>
         </div>
 
-        <div class="detail-grid">
-          <div>
-            <div class="item-meta">SĐT</div>
-            <div class="font-semibold">{{ selectedGuest!.phone || '-' }}</div>
+        <div class="detail-overview-grid">
+          <div class="overview-card overview-card-phone">
+            <div class="overview-head">
+              <span class="overview-icon"><i class="fas fa-phone"></i></span>
+              <span class="overview-label">SĐT</span>
+            </div>
+            <div class="overview-main">{{ selectedGuest!.phone || '-' }}</div>
           </div>
-          <div>
-            <div class="item-meta">Email</div>
-            <div class="font-semibold">{{ selectedGuest!.email || '-' }}</div>
+
+          <div class="overview-card overview-card-email">
+            <div class="overview-head">
+              <span class="overview-icon"><i class="fas fa-envelope"></i></span>
+              <span class="overview-label">Email</span>
+            </div>
+            <div class="overview-main">{{ selectedGuest!.email || '-' }}</div>
           </div>
-          <div>
-            <div class="item-meta">Đơn gần nhất</div>
-            <div class="font-semibold">{{ selectedGuest!.lastOrderLabel }}</div>
+
+          <div class="overview-card overview-card-order">
+            <div class="overview-head">
+              <span class="overview-icon"><i class="fas fa-shopping-bag"></i></span>
+              <span class="overview-label">Tổng đơn</span>
+            </div>
+            <div class="overview-main">{{ selectedGuest!.order_count ?? 0 }} đơn</div>
+            <div class="item-meta">Đơn mua: {{ buyOrders.length }} | Đơn thuê: {{ rentOrders.length }}</div>
           </div>
         </div>
 
         <div class="detail-section">
           <div class="section-title">Địa chỉ</div>
-          <div class="address-card">
-            {{ selectedGuest!.addressLabel || '-' }}
-          </div>
+          <div class="address-card">{{ selectedGuest!.addressLabel || '-' }}</div>
         </div>
 
         <div class="detail-section">
           <div class="section-title">Ghi chú</div>
-          <div class="note-card">
-            {{ selectedGuest!.notes || 'Chưa có ghi chú.' }}
-          </div>
+          <div class="note-card">{{ selectedGuest!.notes || 'Chưa có ghi chú.' }}</div>
         </div>
 
         <div class="detail-section">
@@ -207,6 +216,13 @@
                       <div>
                         <div class="font-semibold">{{ order.code }}</div>
                         <div class="item-meta">{{ order.createdAt }}</div>
+                        <div class="progress-track">
+                          <span
+                            class="progress-fill"
+                            [style.width.%]="orderProgressPercent(order.status)"
+                            [style.background]="orderProgressColor(order.status)"
+                          ></span>
+                        </div>
                       </div>
                       <div class="order-meta">
                         <span class="item-meta">{{ order.status }}</span>
@@ -231,6 +247,13 @@
                       <div>
                         <div class="font-semibold">{{ order.code }}</div>
                         <div class="item-meta">{{ order.createdAt }}</div>
+                        <div class="progress-track">
+                          <span
+                            class="progress-fill"
+                            [style.width.%]="orderProgressPercent(order.status)"
+                            [style.background]="orderProgressColor(order.status)"
+                          ></span>
+                        </div>
                       </div>
                       <div class="order-meta">
                         <span class="item-meta">{{ order.status }}</span>
@@ -245,8 +268,14 @@
         </div>
 
         <div class="detail-actions">
-          <button class="btn btn-primary btn-sm" type="button" (click)="inviteToRegister()">
-            Mời đăng ký
+          <span class="item-meta">Mời khách trở thành tài khoản thành viên</span>
+          <button
+            class="btn btn-primary btn-sm"
+            type="button"
+            (click)="inviteToRegister()"
+            [disabled]="isInviting || !selectedGuest!.email"
+          >
+            {{ isInviting ? 'Đang gửi...' : 'Mời đăng ký' }}
           </button>
         </div>
       </div>

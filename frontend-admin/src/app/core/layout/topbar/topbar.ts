@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, output, signal } from '@angular/core';
+import { Component, HostListener, inject, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AdminNotificationsService } from '../../services/admin-notifications.service';
@@ -86,10 +86,10 @@ export class TopbarComponent implements OnInit {
 
     this.adminNotifications.markAllAsRead().subscribe({
       next: () => {
-        this.toast.showSuccess('Đã đánh dấu tất cả thông báo là đã đọc');
+        this.toast.showSuccess('All notifications were marked as read');
       },
       error: () => {
-        this.toast.showError('Không thể cập nhật trạng thái thông báo');
+        this.toast.showError('Unable to update notification status');
       },
     });
   }
@@ -121,14 +121,16 @@ export class TopbarComponent implements OnInit {
 
     if (diffMs < hour) {
       const minutes = Math.max(1, Math.round(diffMs / minute));
-      return `${minutes} phút trước`;
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
     }
 
     if (diffMs < day) {
-      return `${Math.round(diffMs / hour)} giờ trước`;
+      const hours = Math.round(diffMs / hour);
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
     }
 
-    return `${Math.round(diffMs / day)} ngày trước`;
+    const days = Math.round(diffMs / day);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   }
 
   protected userInitials(): string {
@@ -148,5 +150,23 @@ export class TopbarComponent implements OnInit {
 
   protected handleLogout(): void {
     this.authService.logout();
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected handleClickOutside(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+
+    if (!target.closest('.create-dropdown')) {
+      this.createMenuOpen.set(false);
+    }
+
+    if (!target.closest('.notification-dropdown')) {
+      this.notificationMenuOpen.set(false);
+    }
+
+    if (!target.closest('.user-dropdown')) {
+      this.userMenuOpen.set(false);
+    }
   }
 }

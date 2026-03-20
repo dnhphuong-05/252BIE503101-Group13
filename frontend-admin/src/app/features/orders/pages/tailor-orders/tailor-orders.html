@@ -1,8 +1,8 @@
-<div class="page-shell">
+﻿<div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Đơn may đo</div>
-      <div class="page-subtitle">Danh sách, lọc và tìm kiếm</div>
+      <div class="page-title">Tailor orders</div>
+      <div class="page-subtitle">List, filter and search</div>
     </div>
   </div>
 
@@ -13,20 +13,20 @@
           <i class="fas fa-search"></i>
           <input
             class="input"
-            placeholder="Tìm theo mã đơn, khách hàng, SĐT"
+            placeholder="Search by order ID, customer, phone"
             [(ngModel)]="searchTerm"
             (input)="onSearchInput()"
           />
         </div>
       </div>
       <div class="toolbar-group">
-        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+        <span class="text-sm text-primary-500">Total: {{ total }}</span>
       </div>
     </div>
 
     <div class="filter-grid">
       <div class="filter-field">
-        <span class="filter-label">Trạng thái</span>
+        <span class="filter-label">Status</span>
         <select class="select" [(ngModel)]="statusFilter" (change)="applyFilters()">
           @for (filter of statusFilters; track filter.value) {
             <option [value]="filter.value">{{ filter.label }}</option>
@@ -34,27 +34,27 @@
         </select>
       </div>
       <div class="filter-actions">
-        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
-        <button class="btn btn-secondary btn-sm" type="button" (click)="refresh()">Làm mới</button>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+        <button class="btn btn-secondary btn-sm" type="button" (click)="refresh()">Refresh</button>
       </div>
     </div>
 
     @if (loadError && orders.length === 0) {
       <div class="empty-state">{{ loadError }}</div>
     } @else if (isLoading && orders.length === 0) {
-      <div class="empty-state">Đang tải Đơn may đo...</div>
+      <div class="empty-state">Loading tailor orders...</div>
     } @else if (orders.length === 0) {
-      <div class="empty-state">Không có Đơn may đo nào.</div>
+      <div class="empty-state">No tailor orders found.</div>
     } @else {
       <table class="table tailor-table">
         <thead>
           <tr>
-            <th>Mã đơn</th>
-            <th>Khách hàng</th>
-            <th>Sản phẩm</th>
-            <th>Trạng thái</th>
-            <th>Doanh thu</th>
-            <th>Cập nhật</th>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Status</th>
+            <th>Revenue</th>
+            <th>Updated</th>
             <th></th>
           </tr>
         </thead>
@@ -63,7 +63,7 @@
             <tr class="order-row">
               <td>
                 <div class="font-semibold text-primary-900">{{ order.id }}</div>
-                <div class="item-meta">Tạo: {{ order.createdAt }}</div>
+                <div class="item-meta">Created: {{ order.createdAt }}</div>
               </td>
               <td>
                 <div class="customer-stack">
@@ -83,7 +83,7 @@
               <td class="text-sm text-primary-500">{{ order.updatedAt }}</td>
               <td>
                 <div class="table-actions table-actions-tight">
-                  <button class="btn btn-ghost btn-sm" type="button" (click)="openDetail(order)">Xem</button>
+                  <button class="btn btn-ghost btn-sm" type="button" (click)="openDetail(order)">View</button>
                 </div>
               </td>
             </tr>
@@ -93,7 +93,7 @@
     }
 
     <div class="table-footer">
-      <span class="text-sm text-primary-500">Hiển thị {{ orders.length }} / {{ total }} đơn</span>
+      <span class="text-sm text-primary-500">Showing {{ orders.length }} / {{ total }} orders</span>
       <div class="pagination">
         <button
           class="btn btn-ghost btn-sm"
@@ -101,7 +101,7 @@
           (click)="onPageChange(page - 1)"
           [disabled]="page <= 1"
         >
-          Trước
+          Prev
         </button>
         <button
           class="btn btn-ghost btn-sm"
@@ -109,7 +109,7 @@
           (click)="onPageChange(page + 1)"
           [disabled]="page >= pages"
         >
-          Sau
+          Next
         </button>
       </div>
     </div>

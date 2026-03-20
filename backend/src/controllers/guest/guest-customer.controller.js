@@ -153,6 +153,23 @@ const findOrCreate = catchAsync(async (req, res) => {
   });
 });
 
+/**
+ * Gui email moi guest dang ky tai khoan
+ * @route POST /api/guest-customers/:guestId/invite-register
+ */
+const inviteRegister = catchAsync(async (req, res) => {
+  const result = await guestCustomerService.inviteRegister(
+    req.params.guestId,
+    req.user,
+  );
+
+  res.status(StatusCodes.OK).json({
+    success: true,
+    message: "Đã gửi email mời đăng ký",
+    data: result,
+  });
+});
+
 export {
   createGuestCustomer,
   getGuestCustomer,
@@ -163,4 +180,5 @@ export {
   recordOrder,
   getStatistics,
   findOrCreate,
+  inviteRegister,
 };

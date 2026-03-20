@@ -51,11 +51,22 @@ export const createCheckout = {
   })
     .custom((value, helpers) => {
       if (!value.address_id && !value.customer_info) {
-        return helpers.error("any.custom");
+        return helpers.error("any.custom", {
+          message: "Can chon dia chi hoac nhap thong tin khach hang",
+        });
       }
+
+      const isGuestCheckout = !value.address_id;
+      const guestEmail = (value.customer_info?.email || "").trim();
+      if (isGuestCheckout && !guestEmail) {
+        return helpers.error("any.custom", {
+          message: "Guest checkout requires email to receive order tracking",
+        });
+      }
+
       return value;
     })
     .messages({
-      "any.custom": "Cần chọn địa chỉ hoặc nhập thông tin khách hàng",
+      "any.custom": "{{#message}}",
     }),
 };

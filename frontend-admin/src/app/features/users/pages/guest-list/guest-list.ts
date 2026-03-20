@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
@@ -35,8 +35,6 @@ interface GuestRow {
   email: string;
   status: GuestStatus;
   orderCount: number;
-  totalSpent: number;
-  lastOrderAt: string;
   createdAt: string;
 }
 
@@ -57,7 +55,6 @@ interface OrderRow {
 type SelectedGuest = GuestApi & {
   status: GuestStatus;
   createdLabel?: string;
-  lastOrderLabel?: string;
   addressLabel?: string;
 };
 
@@ -90,9 +87,7 @@ export class GuestListComponent implements OnInit {
 
   protected readonly sortOptions: Array<{ value: string; label: string }> = [
     { value: 'created_at', label: 'Ngày tạo' },
-    { value: 'last_order_at', label: 'Đơn gần nhất' },
     { value: 'order_count', label: 'Tổng đơn' },
-    { value: 'total_spent', label: 'Tổng chi tiêu' },
   ];
 
   protected readonly sortOrders: Array<{ value: 'asc' | 'desc'; label: string }> = [
@@ -119,6 +114,7 @@ export class GuestListComponent implements OnInit {
   protected buyOrders: OrderRow[] = [];
   protected rentOrders: OrderRow[] = [];
   protected detailMode = false;
+  protected isInviting = false;
 
   private searchTimer?: ReturnType<typeof setTimeout>;
   private pendingGuestId: string | null = null;
@@ -182,7 +178,38 @@ export class GuestListComponent implements OnInit {
   }
 
   protected inviteToRegister(): void {
-    window.open(`${environment.userUrl}/register`, '_blank');
+    if (!this.selectedGuest) {
+      this.notification.showError('Không tìm thấy thông tin khách để gửi lời mời');
+      return;
+    }
+
+    if (!this.selectedGuest.email) {
+      this.notification.showError('Khách này chưa có email để gửi lời mời đăng ký');
+      return;
+    }
+
+    if (this.isInviting) {
+      return;
+    }
+
+    this.isInviting = true;
+    this.http
+      .post<{ success: boolean; message?: string }>(
+        `${this.apiUrl}/guest-customers/${this.selectedGuest.guest_id}/invite-register`,
+        {},
+      )
+      .subscribe({
+        next: (response) => {
+          this.notification.showSuccess(response.message || 'Đã gửi email mời đăng ký');
+          this.isInviting = false;
+        },
+        error: (error) => {
+          const message =
+            error?.error?.message || 'Gửi email mời đăng ký thất bại. Vui lòng thử lại';
+          this.notification.showError(message);
+          this.isInviting = false;
+        },
+      });
   }
 
   protected formatCurrency(value: number | null | undefined): string {
@@ -216,6 +243,67 @@ export class GuestListComponent implements OnInit {
       hour: '2-digit',
       minute: '2-digit',
     }).format(date);
+  }
+
+  protected orderProgressPercent(status: string | null | undefined): number {
+    const normalized = this.normalizeStatus(status);
+    if (
+      normalized.includes('complete') ||
+      normalized.includes('closed') ||
+      normalized.includes('deliver') ||
+      normalized.includes('done') ||
+      normalized.includes('success') ||
+      normalized.includes('hoàn') ||
+      normalized.includes('hoan')
+    ) {
+      return 100;
+    }
+    if (
+      normalized.includes('cancel') ||
+      normalized.includes('fail') ||
+      normalized.includes('refund') ||
+      normalized.includes('hủy') ||
+      normalized.includes('huy')
+    ) {
+      return 25;
+    }
+    if (
+      normalized.includes('confirm') ||
+      normalized.includes('process') ||
+      normalized.includes('shipping') ||
+      normalized.includes('pending') ||
+      normalized.includes('active') ||
+      normalized.includes('đang') ||
+      normalized.includes('dang')
+    ) {
+      return 68;
+    }
+    return 45;
+  }
+
+  protected orderProgressColor(status: string | null | undefined): string {
+    const normalized = this.normalizeStatus(status);
+    if (
+      normalized.includes('complete') ||
+      normalized.includes('closed') ||
+      normalized.includes('deliver') ||
+      normalized.includes('done') ||
+      normalized.includes('success') ||
+      normalized.includes('hoàn') ||
+      normalized.includes('hoan')
+    ) {
+      return '#15803d';
+    }
+    if (
+      normalized.includes('cancel') ||
+      normalized.includes('fail') ||
+      normalized.includes('refund') ||
+      normalized.includes('hủy') ||
+      normalized.includes('huy')
+    ) {
+      return '#b91c1c';
+    }
+    return '#1d4ed8';
   }
 
   private loadGuests(): void {
@@ -268,28 +356,30 @@ export class GuestListComponent implements OnInit {
     this.buyOrders = [];
     this.rentOrders = [];
 
-    this.http.get<{ success: boolean; data?: GuestApi }>(`${this.apiUrl}/guest-customers/${guestId}`).subscribe({
-      next: (response) => {
-        if (!response.data) return;
-        const status = this.resolveGuestStatus(response.data);
-        const createdAt = response.data.created_at ?? response.data.createdAt ?? '';
-        this.selectedGuest = {
-          ...response.data,
-          status,
-          createdLabel: createdAt ? this.formatDateTime(createdAt) : '-',
-          lastOrderLabel: response.data.last_order_at
-            ? this.formatDateTime(response.data.last_order_at)
-            : 'Chưa có đơn',
-          addressLabel: this.formatGuestAddress(response.data),
-        };
-        this.detailLoading = false;
-        this.fetchOrders(guestId);
-      },
-      error: () => {
-        this.detailLoading = false;
-        this.notification.showError('Không thể tải chi tiết khách');
-      },
-    });
+    this.http
+      .get<{ success: boolean; data?: GuestApi }>(`${this.apiUrl}/guest-customers/${guestId}`)
+      .subscribe({
+        next: (response) => {
+          if (!response.data) {
+            this.detailLoading = false;
+            return;
+          }
+          const status = this.resolveGuestStatus(response.data);
+          const createdAt = response.data.created_at ?? response.data.createdAt ?? '';
+          this.selectedGuest = {
+            ...response.data,
+            status,
+            createdLabel: createdAt ? this.formatDateTime(createdAt) : '-',
+            addressLabel: this.formatGuestAddress(response.data),
+          };
+          this.detailLoading = false;
+          this.fetchOrders(guestId);
+        },
+        error: () => {
+          this.detailLoading = false;
+          this.notification.showError('Không thể tải chi tiết khách');
+        },
+      });
   }
 
   private fetchOrders(guestId: string): void {
@@ -375,9 +465,11 @@ export class GuestListComponent implements OnInit {
       email: guest.email || '-',
       status,
       orderCount: guest.order_count ?? 0,
-      totalSpent: guest.total_spent ?? 0,
-      lastOrderAt: guest.last_order_at ? this.formatDateTime(guest.last_order_at) : '-',
       createdAt: createdAt ? this.formatDate(createdAt) : '-',
     };
+  }
+
+  private normalizeStatus(value: string | null | undefined): string {
+    return String(value || '').trim().toLowerCase();
   }
 }

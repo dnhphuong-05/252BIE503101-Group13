@@ -11,6 +11,7 @@ type OrderView = 'sales' | 'rent' | 'returns';
 
 type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipping' | 'completed' | 'cancelled';
 type PaymentStatus = 'unpaid' | 'partial' | 'paid' | 'failed' | 'refunded';
+type ShippingStatus = 'pending' | 'ready_to_ship' | 'shipped' | 'delivered' | 'delivery_failed';
 type ContactChannel = 'zalo' | 'phone' | 'web';
 type RentStatus =
   | 'booked'
@@ -90,10 +91,18 @@ interface BuyOrderApi {
   guest_id?: string | null;
   customer_info: { full_name: string; phone: string; email?: string; address?: OrderAddress };
   total_amount: number;
+  shipping_fee?: number;
   payment_status: PaymentStatus;
+  payment_transaction_code?: string | null;
+  payment_method?: string | null;
   order_status: OrderStatus;
   shipping_provider?: string | null;
+  shipping_method?: string | null;
+  shipping_status?: ShippingStatus | null;
   tracking_code?: string | null;
+  tracking_created_at?: string | null;
+  estimated_delivery_at?: string | null;
+  shipping_status_detail?: string | null;
   contact_channel?: ContactChannel | null;
   contacted_at?: string | null;
   contacted_by?: string | null;
@@ -140,7 +149,6 @@ interface BuyOrderDetailApi extends BuyOrderApi {
     quantity: number;
     total_price?: number;
   }>;
-  payment_method?: string;
   paid_at?: string | null;
   admin_note?: string;
   cancel_reason?: string;
@@ -343,9 +351,15 @@ export class OrderListComponent implements OnInit {
   protected adminNoteDraft = '';
   protected cancelReasonDraft = '';
   protected shippingProviderDraft = '';
+  protected shippingMethodDraft = '';
+  protected shippingFeeDraft = '';
+  protected shippingStatusDraft: ShippingStatus = 'pending';
   protected trackingCodeDraft = '';
-  protected shippingStatusDraft = '';
+  protected trackingCreatedAtDraft = '';
+  protected estimatedDeliveryAtDraft = '';
+  protected shippingStatusDetailDraft = '';
   protected paymentStatusDraft: PaymentStatus = 'unpaid';
+  protected paymentTransactionCodeDraft = '';
   protected salesContactChannelDraft: ContactChannel | '' = '';
   protected rentAdminNoteDraft = '';
   protected rentCancelReasonDraft = '';
@@ -392,39 +406,56 @@ export class OrderListComponent implements OnInit {
   protected selectedReturnProgressStep: ReturnStatus | null = null;
 
   protected readonly orderStatusMeta: Record<OrderStatus, { label: string; class: string }> = {
-    pending: { label: 'Chờ xác nhận', class: 'badge badge-warning' },
-    confirmed: { label: 'Đã xác nhận', class: 'badge badge-info' },
-    processing: { label: 'Đang xử lý', class: 'badge badge-info' },
-    shipping: { label: 'Đang giao', class: 'badge badge-info' },
-    completed: { label: 'Hoàn thành', class: 'badge badge-success' },
-    cancelled: { label: 'Đã hủy', class: 'badge badge-neutral' },
+    pending: { label: 'Pending', class: 'badge badge-warning' },
+    confirmed: { label: 'Confirmed', class: 'badge badge-info' },
+    processing: { label: 'Processing', class: 'badge badge-info' },
+    shipping: { label: 'Shipping', class: 'badge badge-info' },
+    completed: { label: 'Completed', class: 'badge badge-success' },
+    cancelled: { label: 'Cancelled', class: 'badge badge-neutral' },
   };
 
   protected readonly paymentMeta: Record<PaymentStatus, { label: string; class: string }> = {
-    unpaid: { label: 'Chưa thanh toán', class: 'badge badge-error' },
-    partial: { label: 'Thanh toán một phần', class: 'badge badge-warning' },
-    paid: { label: 'Đã thanh toán', class: 'badge badge-success' },
-    failed: { label: 'Thất bại', class: 'badge badge-neutral' },
-    refunded: { label: 'Hoàn tiền', class: 'badge badge-neutral' },
+    unpaid: { label: 'Unpaid', class: 'badge badge-error' },
+    partial: { label: 'Partially paid', class: 'badge badge-warning' },
+    paid: { label: 'Paid', class: 'badge badge-success' },
+    failed: { label: 'Failed', class: 'badge badge-neutral' },
+    refunded: { label: 'Refunded', class: 'badge badge-neutral' },
   };
 
   protected readonly paymentStatusOptions: Array<{ value: PaymentStatus; label: string }> = [
-    { value: 'unpaid', label: 'Chưa thanh toán' },
-    { value: 'partial', label: 'Thanh toán một phần' },
-    { value: 'paid', label: 'Đã thanh toán' },
-    { value: 'failed', label: 'Thất bại' },
-    { value: 'refunded', label: 'Hoàn tiền' },
+    { value: 'unpaid', label: 'Unpaid' },
+    { value: 'partial', label: 'Partially paid' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'failed', label: 'Failed' },
+    { value: 'refunded', label: 'Refunded' },
   ];
   protected readonly rentPaymentStatusOptions: Array<{ value: PaymentStatus; label: string }> = [
-    { value: 'unpaid', label: 'Chưa thanh toán' },
-    { value: 'partial', label: 'Thanh toán một phần' },
-    { value: 'paid', label: 'Đã thanh toán' },
+    { value: 'unpaid', label: 'Unpaid' },
+    { value: 'partial', label: 'Partially paid' },
+    { value: 'paid', label: 'Paid' },
   ];
   protected readonly contactChannelOptions: Array<{ value: ContactChannel; label: string }> = [
     { value: 'zalo', label: 'Zalo' },
     { value: 'phone', label: 'Phone' },
     { value: 'web', label: 'Web' },
   ];
+  protected readonly shipmentCarrierOptions: Array<{ value: string; label: string }> = [
+    { value: 'GHN', label: 'GHN' },
+    { value: 'GHTK', label: 'GHTK' },
+    { value: 'JNT', label: 'J&T' },
+    { value: 'NOI_BO', label: 'Nội bộ' },
+  ];
+  protected readonly shippingMethodOptions: Array<{ value: string; label: string }> = [
+    { value: 'standard', label: 'Tiêu chuẩn' },
+    { value: 'express', label: 'Nhanh' },
+  ];
+  protected readonly shippingStatusMeta: Record<ShippingStatus, { label: string; class: string }> = {
+    pending: { label: 'Chờ xử lý', class: 'badge badge-warning' },
+    ready_to_ship: { label: 'Sẵn sàng giao', class: 'badge badge-info' },
+    shipped: { label: 'Đang giao', class: 'badge badge-info' },
+    delivered: { label: 'Đã giao', class: 'badge badge-success' },
+    delivery_failed: { label: 'Giao thất bại', class: 'badge badge-error' },
+  };
 
   private readonly salesTransitions: Record<OrderStatus, OrderStatus[]> = {
     pending: ['confirmed', 'cancelled'],
@@ -454,31 +485,31 @@ export class OrderListComponent implements OnInit {
     return_in_transit: ['received_inspecting'],
     received_inspecting: ['refund_processing', 'closed'],
     refund_processing: ['refunded'],
-    refunded: ['closed'],
-    closed: [],
+    refunded: ['closed', 'received_inspecting'],
+    closed: ['received_inspecting'],
   };
 
   protected readonly rentStatusMeta: Record<RentStatus, { label: string; class: string }> = {
-    booked: { label: 'Đã đặt', class: 'badge badge-warning' },
-    ongoing: { label: 'Đang thuê', class: 'badge badge-info' },
-    return_requested: { label: 'Yêu cầu trả', class: 'badge badge-warning' },
-    returning: { label: 'Đang trả', class: 'badge badge-info' },
-    returned: { label: 'Shop đã nhận', class: 'badge badge-info' },
-    closed: { label: 'Hoàn tất', class: 'badge badge-neutral' },
-    cancelled: { label: 'Đã hủy', class: 'badge badge-neutral' },
-    violated: { label: 'Vi phạm', class: 'badge badge-error' },
+    booked: { label: 'Booked', class: 'badge badge-warning' },
+    ongoing: { label: 'Ongoing', class: 'badge badge-info' },
+    return_requested: { label: 'Return requested', class: 'badge badge-warning' },
+    returning: { label: 'Returning', class: 'badge badge-info' },
+    returned: { label: 'Received by shop', class: 'badge badge-info' },
+    closed: { label: 'Closed', class: 'badge badge-neutral' },
+    cancelled: { label: 'Cancelled', class: 'badge badge-neutral' },
+    violated: { label: 'Violated', class: 'badge badge-error' },
   };
 
   protected readonly returnStatusMeta: Record<ReturnStatus, { label: string; class: string }> = {
-    submitted: { label: 'Đã gửi', class: 'badge badge-warning' },
-    need_more_info: { label: 'Cần bổ sung', class: 'badge badge-warning' },
+    submitted: { label: 'Đã gửi yêu cầu', class: 'badge badge-warning' },
+    need_more_info: { label: 'Cần bổ sung thông tin', class: 'badge badge-warning' },
     approved: { label: 'Đã duyệt', class: 'badge badge-info' },
-    awaiting_return_shipment: { label: 'Chờ gửi hàng', class: 'badge badge-info' },
-    return_in_transit: { label: 'Đang hoàn trả', class: 'badge badge-info' },
-    received_inspecting: { label: 'Đang kiểm tra', class: 'badge badge-warning' },
-    refund_processing: { label: 'Đang hoàn tiền', class: 'badge badge-info' },
+    awaiting_return_shipment: { label: 'Chờ gửi hàng trả', class: 'badge badge-info' },
+    return_in_transit: { label: 'Đang vận chuyển hàng trả', class: 'badge badge-info' },
+    received_inspecting: { label: 'Đã nhận, đang kiểm tra', class: 'badge badge-warning' },
+    refund_processing: { label: 'Đang xử lý hoàn tiền', class: 'badge badge-info' },
     refunded: { label: 'Đã hoàn tiền', class: 'badge badge-success' },
-    closed: { label: 'Đã đóng', class: 'badge badge-neutral' },
+    closed: { label: 'Hoàn tất', class: 'badge badge-neutral' },
   };
   protected readonly salesProgressFlow: OrderStatus[] = [
     'pending',
@@ -695,7 +726,7 @@ export class OrderListComponent implements OnInit {
         },
         error: (error) => {
           console.error('Failed to load rent orders:', error);
-          this.loadError = 'Không thể tải đơn thuê';
+          this.loadError = 'Unable to load rent orders';
           this.rentOrders = [];
           this.rentOrdersRaw = [];
           this.rentTotal = 0;
@@ -766,7 +797,7 @@ export class OrderListComponent implements OnInit {
         },
         error: (error) => {
           this.rentDetailLoading = false;
-          this.rentDetailError = error?.error?.message || 'Không thể tải chi tiết đơn thuê';
+          this.rentDetailError = error?.error?.message || 'Unable to load rent order details';
         },
       });
   }
@@ -860,16 +891,35 @@ export class OrderListComponent implements OnInit {
 
   protected markRentConfirmed(): void {
     if (!this.selectedRentDetail || this.rentActionLoading) return;
-    this.updateRentStatus(undefined, 'Xác nhận đơn thuê', false, false, {
+    this.updateRentStatus(undefined, 'Confirm rent order', false, false, {
       confirmed_at: new Date().toISOString(),
     });
   }
 
   protected updateSalesStatus(
     nextStatus: OrderStatus,
-    extraPayload?: { contact_channel?: ContactChannel | null; contacted_at?: string | null },
+    extraPayload?: {
+      contact_channel?: ContactChannel | null;
+      contacted_at?: string | null;
+      shipping_provider?: string;
+      tracking_code?: string;
+      shipping_status?: ShippingStatus;
+      shipping_status_detail?: string;
+      shipping_method?: string | null;
+      shipping_fee?: number;
+      estimated_delivery_at?: string | null;
+      cancel_reason?: string;
+      admin_note?: string;
+    },
+    successMessage?: string,
   ): void {
     if (!this.selectedSalesDetail || this.actionLoading) return;
+    const currentStatus = this.selectedSalesDetail.order_status;
+    if (currentStatus !== nextStatus && !this.canSalesTransitionTo(nextStatus)) {
+      this.detailError = `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`;
+      this.notification.showError(this.detailError);
+      return;
+    }
 
     const payload: {
       order_status: OrderStatus;
@@ -877,7 +927,11 @@ export class OrderListComponent implements OnInit {
       cancel_reason?: string;
       shipping_provider?: string;
       tracking_code?: string;
+      shipping_status?: ShippingStatus;
       shipping_status_detail?: string;
+      shipping_method?: string | null;
+      shipping_fee?: number;
+      estimated_delivery_at?: string | null;
       contact_channel?: ContactChannel | null;
       contacted_at?: string | null;
     } = {
@@ -885,25 +939,28 @@ export class OrderListComponent implements OnInit {
       admin_note: this.adminNoteDraft?.trim() || '',
     };
 
-    if (this.shippingStatusDraft?.trim()) {
-      payload.shipping_status_detail = this.shippingStatusDraft.trim();
+    if (this.shippingStatusDetailDraft?.trim()) {
+      payload.shipping_status_detail = this.shippingStatusDetailDraft.trim();
     }
 
     if (nextStatus === 'cancelled') {
-      if (!this.cancelReasonDraft.trim()) {
+      const cancelReason = extraPayload?.cancel_reason ?? this.cancelReasonDraft.trim();
+      if (!cancelReason) {
         this.detailError = 'Vui lòng nhập lý do hủy đơn.';
         return;
       }
-      payload.cancel_reason = this.cancelReasonDraft.trim();
+      payload.cancel_reason = cancelReason;
     }
 
+    const shippingProvider = extraPayload?.shipping_provider ?? this.shippingProviderDraft.trim();
+    const trackingCode = extraPayload?.tracking_code ?? this.trackingCodeDraft.trim();
     if (nextStatus === 'shipping') {
-      if (!this.shippingProviderDraft.trim() || !this.trackingCodeDraft.trim()) {
+      if (!shippingProvider || !trackingCode) {
         this.detailError = 'Vui lòng nhập nhà vận chuyển và mã vận đơn.';
         return;
       }
-      payload.shipping_provider = this.shippingProviderDraft.trim();
-      payload.tracking_code = this.trackingCodeDraft.trim();
+      payload.shipping_provider = shippingProvider;
+      payload.tracking_code = trackingCode;
     }
     if (extraPayload) {
       Object.assign(payload, extraPayload);
@@ -932,7 +989,7 @@ export class OrderListComponent implements OnInit {
             } else if (this.shouldShowSalesNoteToast) {
               this.notification.showSuccess('Đã lưu ghi chú');
             } else {
-              const message = this.getSalesToastMessage(nextStatus);
+              const message = successMessage || this.getSalesToastMessage(nextStatus);
               if (message) {
                 this.notification.showSuccess(message);
               }
@@ -954,14 +1011,17 @@ export class OrderListComponent implements OnInit {
       });
   }
 
-  protected updatePaymentStatus(): void {
+  protected updatePaymentStatus(successMessage?: string): void {
     if (!this.selectedSalesDetail || this.actionLoading) return;
     this.actionLoading = true;
     this.detailError = '';
     this.http
       .patch<ApiResponse<BuyOrderDetailApi>>(
         `${this.apiUrl}/buy-orders/${this.selectedSalesDetail.order_id}/payment-status`,
-        { payment_status: this.paymentStatusDraft },
+        {
+          payment_status: this.paymentStatusDraft,
+          payment_transaction_code: this.paymentTransactionCodeDraft || null,
+        },
       )
       .subscribe({
         next: (response) => {
@@ -974,7 +1034,7 @@ export class OrderListComponent implements OnInit {
               response.data.order_status,
               response.data.status_history,
             );
-            this.notification.showSuccess('Đã cập nhật trạng thái thanh toán');
+            this.notification.showSuccess(successMessage || 'Đã cập nhật trạng thái thanh toán');
           }
         },
         error: (error) => {
@@ -992,6 +1052,236 @@ export class OrderListComponent implements OnInit {
     if (!this.selectedSalesDetail) return;
     this.shouldShowSalesNoteToast = true;
     this.updateSalesStatus(this.selectedSalesDetail.order_status);
+  }
+
+  protected applySalesPaymentSimulation(status: PaymentStatus): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    this.paymentStatusDraft = status;
+    if (status === 'paid' && this.isOnlinePaymentMethod(this.selectedSalesDetail.payment_method)) {
+      this.paymentTransactionCodeDraft =
+        this.paymentTransactionCodeDraft || this.generatePaymentCode(this.selectedSalesDetail.payment_method);
+    }
+    if (status === 'unpaid' && this.isCodPaymentMethod(this.selectedSalesDetail.payment_method)) {
+      this.paymentTransactionCodeDraft = '';
+    }
+    this.updatePaymentStatus(`Đã cập nhật thanh toán: ${this.paymentMeta[status].label}`);
+  }
+
+  protected simulateOnlinePaymentSuccess(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    if (!this.isOnlinePaymentMethod(this.selectedSalesDetail.payment_method)) {
+      this.notification.showInfo('Đơn COD sẽ được cập nhật thanh toán khi hoàn tất đơn.');
+      return;
+    }
+    this.paymentStatusDraft = 'paid';
+    this.paymentTransactionCodeDraft =
+      this.paymentTransactionCodeDraft || this.generatePaymentCode(this.selectedSalesDetail.payment_method);
+    this.updatePaymentStatus('Đã xác nhận thanh toán thành công');
+  }
+
+  protected simulateOnlinePaymentFailed(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    if (!this.isOnlinePaymentMethod(this.selectedSalesDetail.payment_method)) {
+      this.notification.showInfo('Đơn COD sẽ được cập nhật thanh toán khi hoàn tất đơn.');
+      return;
+    }
+    this.paymentStatusDraft = 'failed';
+    this.updatePaymentStatus('Đã cập nhật trạng thái thanh toán thất bại');
+  }
+
+  protected updateSalesTrackingInfo(successMessage?: string): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    const provider = this.resolveShipmentProvider(this.shippingProviderDraft);
+    const trackingCode = String(this.trackingCodeDraft || '').trim();
+    if (!provider || !trackingCode) {
+      this.detailError = 'Vui lòng chọn đơn vị vận chuyển và tạo mã vận đơn.';
+      this.notification.showError(this.detailError);
+      return;
+    }
+
+    const shippingFee = this.parseNumber(this.shippingFeeDraft);
+    this.actionLoading = true;
+    this.detailError = '';
+    this.http
+      .patch<ApiResponse<BuyOrderDetailApi>>(
+        `${this.apiUrl}/buy-orders/${this.selectedSalesDetail.order_id}/tracking`,
+        {
+          shipping_provider: provider,
+          tracking_code: trackingCode,
+          shipping_status: this.shippingStatusDraft,
+          shipping_status_detail: this.shippingStatusDetailDraft || null,
+          shipping_method: this.shippingMethodDraft || null,
+          shipping_fee: shippingFee ?? 0,
+          estimated_delivery_at: this.estimatedDeliveryAtDraft || null,
+        },
+      )
+      .subscribe({
+        next: (response) => {
+          if (response.data) {
+            this.selectedSalesDetail = response.data;
+            this.hydrateSalesDrafts(response.data);
+            this.updateSalesRow(response.data);
+            this.selectedSalesProgressStep = this.resolveFlowStep(
+              this.salesProgressFlow,
+              response.data.order_status,
+              response.data.status_history,
+            );
+            this.notification.showSuccess(successMessage || 'Đã cập nhật thông tin vận chuyển');
+          }
+        },
+        error: (error) => {
+          this.detailError = error?.error?.message || 'Không thể cập nhật thông tin vận chuyển';
+          this.notification.showError(this.detailError);
+        },
+        complete: () => {
+          this.actionLoading = false;
+        },
+      });
+  }
+
+  protected createSalesTrackingCodeOnly(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    this.shippingProviderDraft = this.resolveShipmentProvider(this.shippingProviderDraft);
+    this.trackingCodeDraft = this.generateSalesTrackingCode(
+      this.shippingProviderDraft,
+      this.selectedSalesDetail.order_code,
+    );
+    this.shippingStatusDraft = 'ready_to_ship';
+    this.trackingCreatedAtDraft = new Date().toISOString();
+    if (!this.estimatedDeliveryAtDraft) {
+      this.estimatedDeliveryAtDraft = this.estimateDeliveryDateIso(this.shippingMethodDraft);
+    }
+    if (!this.shippingStatusDetailDraft) {
+      this.shippingStatusDetailDraft = 'Đã tạo mã vận đơn';
+    }
+    this.updateSalesTrackingInfo('Đã tạo mã vận đơn');
+  }
+
+  protected markSalesHandoverToCarrier(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    if (this.selectedSalesDetail.order_status !== 'processing') {
+      this.detailError = 'Chỉ được bàn giao vận chuyển khi đơn ở bước processing.';
+      this.notification.showError(this.detailError);
+      return;
+    }
+    if (!this.trackingCodeDraft.trim()) {
+      this.detailError = 'Vui lòng tạo mã vận đơn trước khi bàn giao.';
+      this.notification.showError(this.detailError);
+      return;
+    }
+    this.shippingStatusDraft = 'shipped';
+    this.updateSalesStatus(
+      'shipping',
+      {
+        shipping_provider: this.resolveShipmentProvider(this.shippingProviderDraft),
+        tracking_code: this.trackingCodeDraft.trim(),
+        shipping_status: 'shipped',
+        shipping_status_detail: this.shippingStatusDetailDraft || 'Đã bàn giao cho đơn vị vận chuyển',
+        shipping_method: this.shippingMethodDraft || null,
+        shipping_fee: this.parseNumber(this.shippingFeeDraft) ?? 0,
+        estimated_delivery_at: this.estimatedDeliveryAtDraft || null,
+      },
+      'Đã bàn giao đơn cho đơn vị vận chuyển',
+    );
+  }
+
+  protected markSalesDelivered(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    this.updateSalesStatus(
+      'completed',
+      {
+        shipping_status: 'delivered',
+        shipping_status_detail: this.shippingStatusDetailDraft || 'Đã giao hàng thành công',
+      },
+      'Đã đánh dấu giao hàng thành công',
+    );
+  }
+
+  protected markSalesDeliveryFailed(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    this.updateSalesStatus(
+      'processing',
+      {
+        shipping_status: 'delivery_failed',
+        shipping_status_detail: this.shippingStatusDetailDraft || 'Giao hàng thất bại',
+      },
+      'Đã đánh dấu giao thất bại và chuyển lại xử lý',
+    );
+  }
+
+  protected applyRentPaymentSimulation(status: PaymentStatus): void {
+    if (!this.selectedRentDetail || this.rentActionLoading) return;
+    this.rentPaymentStatusDraft = status;
+    this.updateRentStatus(undefined, 'Cập nhật thanh toán mô phỏng');
+  }
+
+  protected createSalesShipmentAndMove(): void {
+    if (!this.selectedSalesDetail || this.actionLoading) return;
+    const provider = this.resolveShipmentProvider(this.shippingProviderDraft);
+    const trackingCode = this.generateTrackingCode('SLS');
+    const shipmentNote = `Vận đơn tạo lúc ${this.formatDateTime(new Date().toISOString())}`;
+
+    this.shippingProviderDraft = provider;
+    this.trackingCodeDraft = trackingCode;
+    this.shippingStatusDraft = 'ready_to_ship';
+    this.shippingStatusDetailDraft = shipmentNote;
+    this.updateSalesTrackingInfo('Đã tạo vận đơn');
+  }
+
+  protected createRentShipmentOutDemo(): void {
+    if (!this.selectedRentDetail || this.rentActionLoading) return;
+    this.shippingOutProviderDraft = this.resolveShipmentProvider(this.shippingOutProviderDraft);
+    this.shippingOutTrackingDraft = this.generateTrackingCode('RNTOUT');
+    this.updateRentStatus(undefined, 'Tạo vận đơn giao mô phỏng');
+  }
+
+  protected createRentShipmentBackDemo(moveToReturnRequested = false): void {
+    if (!this.selectedRentDetail || this.rentActionLoading) return;
+    this.shippingBackProviderDraft = this.resolveShipmentProvider(this.shippingBackProviderDraft);
+    this.shippingBackTrackingDraft = this.generateTrackingCode('RNTBACK');
+    if (moveToReturnRequested && this.canRentTransitionTo('return_requested')) {
+      this.updateRentStatus('return_requested', 'Tạo mã vận đơn trả mô phỏng');
+      return;
+    }
+    this.updateRentStatus(undefined, 'Tạo mã vận đơn trả mô phỏng');
+  }
+
+  protected createReturnShipmentDemoAndMove(): void {
+    if (!this.selectedReturnDetail || this.returnActionLoading) return;
+    this.returnShippingProviderDraft = this.resolveShipmentProvider(this.returnShippingProviderDraft);
+    this.returnShippingTrackingDraft = this.generateTrackingCode('RET');
+    if (this.canReturnTransitionTo('awaiting_return_shipment')) {
+      this.updateReturnStatus('awaiting_return_shipment', 'Tạo mã vận đơn trả mô phỏng');
+      return;
+    }
+    this.updateReturnStatus(undefined, 'Tạo mã vận đơn trả mô phỏng');
+  }
+
+  protected viewCurrentSalesShipment(): void {
+    const provider = this.selectedSalesDetail?.shipping_provider || this.shippingProviderDraft || '-';
+    const tracking = this.selectedSalesDetail?.tracking_code || this.trackingCodeDraft || '-';
+    this.notification.showInfo(`Vận đơn hiện tại: ${provider} - ${tracking}`);
+  }
+
+  protected viewCurrentRentShipmentBack(): void {
+    const provider =
+      this.selectedRentDetail?.shipping_back?.provider || this.shippingBackProviderDraft || '-';
+    const tracking =
+      this.selectedRentDetail?.shipping_back?.tracking_code || this.shippingBackTrackingDraft || '-';
+    this.notification.showInfo(`Vận đơn trả: ${provider} - ${tracking}`);
+  }
+
+  protected viewCurrentReturnShipment(): void {
+    const provider =
+      this.selectedReturnDetail?.return_shipping?.provider || this.returnShippingProviderDraft || '-';
+    const tracking =
+      this.selectedReturnDetail?.return_shipping?.tracking_code || this.returnShippingTrackingDraft || '-';
+    this.notification.showInfo(`Vận đơn hoàn trả: ${provider} - ${tracking}`);
+  }
+
+  protected viewCurrentReturnReceipt(): void {
+    const receipt = this.selectedReturnDetail?.refund?.receipt_url || this.returnReceiptUrlDraft || '-';
+    this.notification.showInfo(`Biên nhận hoàn tiền: ${receipt}`);
   }
 
   protected updateRentStatus(
@@ -1069,11 +1359,6 @@ export class OrderListComponent implements OnInit {
     }
 
     if (nextStatus === 'return_requested') {
-      if (!this.selectedRentDetail.return_request?.requested_at) {
-        this.rentDetailError = 'Khách chưa gửi yêu cầu trả.';
-        this.rentActionLoading = false;
-        return;
-      }
       if (!this.shippingBackProviderDraft.trim() || !this.shippingBackTrackingDraft.trim()) {
         this.rentDetailError = 'Vui lòng nhập nhà vận chuyển và mã vận đơn trả.';
         this.rentActionLoading = false;
@@ -1192,7 +1477,7 @@ export class OrderListComponent implements OnInit {
           }
         },
         error: (error) => {
-          this.rentDetailError = error?.error?.message || 'Không thể cập nhật đơn thuê';
+          this.rentDetailError = error?.error?.message || 'Unable to update rent order';
           this.notification.showError(this.rentDetailError);
         },
         complete: () => {
@@ -1287,7 +1572,7 @@ export class OrderListComponent implements OnInit {
       pending: 'Đã chuyển về chờ xác nhận',
       confirmed: 'Đã xác nhận đơn',
       processing: 'Đã chuyển sang xử lý',
-      shipping: 'Đã tạo vận đơn & chuyển đang giao',
+      shipping: 'Đã tạo vận đơn và chuyển sang đang giao',
       completed: 'Đã hoàn thành đơn',
       cancelled: 'Đã hủy đơn',
     };
@@ -1304,28 +1589,31 @@ export class OrderListComponent implements OnInit {
     }
     if (logNote) {
       const logMap: Record<string, string> = {
-        'Xác nhận đơn thuê': 'Đã xác nhận đơn thuê',
+        'Confirm rent order': 'Rent order confirmed',
         'Tạo vận đơn giao': 'Đã tạo vận đơn giao',
+        'Tạo vận đơn giao mô phỏng': 'Đã tạo vận đơn giao mô phỏng',
         'Tạo mã vận đơn trả': 'Đã tạo mã vận đơn trả',
+        'Tạo mã vận đơn trả mô phỏng': 'Đã tạo mã vận đơn trả mô phỏng',
         'Đã liên hệ': 'Đã ghi nhận liên hệ',
         'Gửi nhắc nhở khách': 'Đã gửi nhắc nhở',
         'Cập nhật vi phạm': 'Đã lưu phí vi phạm',
+        'Cập nhật thanh toán mô phỏng': 'Đã cập nhật thanh toán mô phỏng',
       };
       if (logMap[logNote]) return logMap[logNote];
       return `Đã ${logNote.toLowerCase()}`;
     }
-    if (!status) return 'Đã cập nhật đơn thuê';
+    if (!status) return 'Rent order updated';
     const statusMap: Record<RentStatus, string> = {
-      booked: 'Đã cập nhật đơn thuê',
+      booked: 'Rent order updated',
       ongoing: 'Đã đánh dấu đã giao',
       return_requested: 'Đã tạo mã vận đơn trả',
-      returning: 'Đã cập nhật đơn thuê',
+      returning: 'Rent order updated',
       returned: 'Đã đánh dấu shop đã nhận',
       closed: 'Đã hoàn cọc & chốt đơn',
-      cancelled: 'Đã hủy đơn thuê',
+      cancelled: 'Rent order cancelled',
       violated: 'Đã chuyển vi phạm',
     };
-    return statusMap[status] || 'Đã cập nhật đơn thuê';
+    return statusMap[status] || 'Rent order updated';
   }
 
   private getReturnToastMessage(status?: ReturnStatus, logNote?: string): string {
@@ -1351,9 +1639,16 @@ export class OrderListComponent implements OnInit {
     this.adminNoteDraft = order.admin_note ?? '';
     this.cancelReasonDraft = order.cancel_reason ?? '';
     this.shippingProviderDraft = order.shipping_provider ?? '';
+    this.shippingMethodDraft = order.shipping_method ?? '';
+    this.shippingFeeDraft =
+      order.shipping_fee !== undefined && order.shipping_fee !== null ? `${order.shipping_fee}` : '';
+    this.shippingStatusDraft = this.resolveShippingStatus(order);
     this.trackingCodeDraft = order.tracking_code ?? '';
-    this.shippingStatusDraft = order.shipping_status_detail ?? '';
+    this.trackingCreatedAtDraft = order.tracking_created_at ?? '';
+    this.estimatedDeliveryAtDraft = order.estimated_delivery_at ?? '';
+    this.shippingStatusDetailDraft = order.shipping_status_detail ?? '';
     this.paymentStatusDraft = order.payment_status ?? 'unpaid';
+    this.paymentTransactionCodeDraft = order.payment_transaction_code ?? '';
     this.salesContactChannelDraft = order.contact_channel ?? '';
   }
 
@@ -1553,9 +1848,11 @@ export class OrderListComponent implements OnInit {
     this.rentCustomerFilter = 'all';
     this.returnStatusFilter = 'all';
     this.applyFilters();
+    this.refreshOrders();
   }
 
   protected refreshOrders(): void {
+    this.loadError = '';
     if (this.view() === 'sales') {
       this.loadSalesOrders();
       return;
@@ -1780,6 +2077,63 @@ export class OrderListComponent implements OnInit {
     return this.returnStatusMeta[status]?.label ?? status;
   }
 
+  protected isShipmentCarrierOption(value?: string | null): boolean {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return false;
+    return this.shipmentCarrierOptions.some((carrier) => carrier.label.toLowerCase() === normalized);
+  }
+
+  protected salesShippingStatusMeta(order?: BuyOrderDetailApi | null): { label: string; class: string } {
+    const status = this.resolveShippingStatus(order);
+    return this.shippingStatusMeta[status];
+  }
+
+  protected paymentMethodLabel(method?: string | null): string {
+    const normalized = String(method || '').trim().toLowerCase();
+    if (normalized === 'cod') return 'COD';
+    if (normalized === 'vnpay') return 'VNPAY';
+    if (normalized === 'momo') return 'MoMo';
+    if (normalized === 'bank_transfer') return 'Visa/Chuyển khoản';
+    return normalized ? normalized.toUpperCase() : '-';
+  }
+
+  protected shippingMethodLabel(method?: string | null): string {
+    const normalized = String(method || '').trim().toLowerCase();
+    if (normalized === 'express' || normalized === 'nhanh') return 'Nhanh';
+    if (normalized === 'standard' || normalized === 'tieu_chuan' || normalized === 'tiêu chuẩn') {
+      return 'Tiêu chuẩn';
+    }
+    return normalized ? normalized : '-';
+  }
+
+  protected estimatedDeliveryLabel(): string {
+    if (this.estimatedDeliveryAtDraft) {
+      return this.formatDateTime(this.estimatedDeliveryAtDraft);
+    }
+    if (this.shippingMethodLabel(this.shippingMethodDraft) === 'Nhanh') {
+      return '1-2 ngày';
+    }
+    if (this.shippingMethodLabel(this.shippingMethodDraft) === 'Tiêu chuẩn') {
+      return '3-5 ngày';
+    }
+    return '-';
+  }
+
+  protected isCodPaymentMethod(method?: string | null): boolean {
+    return String(method || '').trim().toLowerCase() === 'cod';
+  }
+
+  protected isOnlinePaymentMethod(method?: string | null): boolean {
+    const normalized = String(method || '').trim().toLowerCase();
+    return normalized === 'vnpay' || normalized === 'momo' || normalized === 'bank_transfer';
+  }
+
+  protected canEditSalesPayment(order?: BuyOrderDetailApi | null): boolean {
+    if (!order) return false;
+    if (!this.isOnlinePaymentMethod(order.payment_method)) return false;
+    return order.order_status !== 'completed' && order.order_status !== 'cancelled';
+  }
+
   protected selectSalesProgressStep(step: OrderStatus): void {
     this.selectedSalesProgressStep = step;
   }
@@ -1841,7 +2195,7 @@ export class OrderListComponent implements OnInit {
     const status = this.salesFocusedStep();
     switch (status) {
       case 'pending':
-        return ['Xác minh thông tin khách', 'Kiểm tra sản phẩm', 'Xác nhận đơn'];
+        return ['Xác minh thông tin khách', 'Kiểm tra sản phẩm', 'Ra quyết định đơn'];
       case 'confirmed':
         return ['Đã xác nhận', 'Chuẩn bị xử lý', 'Cập nhật thanh toán'];
       case 'processing':
@@ -1861,7 +2215,7 @@ export class OrderListComponent implements OnInit {
     const status = this.rentFocusedStep();
     switch (status) {
       case 'booked':
-        return ['Xác nhận đơn thuê', 'Tạo vận đơn giao', 'Chuẩn bị bàn giao'];
+        return ['Confirm rent order', 'Create outbound shipment', 'Prepare handover'];
       case 'ongoing':
         return ['Theo dõi thời gian thuê', 'Xử lý yêu cầu trả', 'Cập nhật trạng thái'];
       case 'return_requested':
@@ -1901,7 +2255,7 @@ export class OrderListComponent implements OnInit {
       case 'refunded':
         return ['Đã hoàn tiền', 'Đối soát chứng từ', 'Đóng yêu cầu'];
       case 'closed':
-        return ['Yêu cầu đã đóng', 'Lưu lịch sử', 'Kết thúc xử lý'];
+        return ['Yêu cầu đã hoàn tất', 'Lưu lịch sử', 'Kết thúc xử lý'];
       default:
         return [];
     }
@@ -1912,9 +2266,9 @@ export class OrderListComponent implements OnInit {
       case 'pending':
         return 'Xác nhận đơn';
       case 'confirmed':
-        return this.isGuestSalesDetail() ? 'Tạo vận đơn' : 'Bắt đầu xử lý';
+        return 'Bắt đầu xử lý';
       case 'processing':
-        return 'Tạo vận đơn & chuyển giao';
+        return 'Tạo mã vận đơn';
       case 'shipping':
         return 'Xác nhận hoàn thành';
       default:
@@ -1975,7 +2329,7 @@ export class OrderListComponent implements OnInit {
     const target = this.getSalesStepActionTarget(focused);
     if (!target || !this.canSalesTransitionTo(target)) return false;
     if (
-      target === 'completed' &&
+      focused === 'shipping' &&
       !this.selectedSalesDetail.customer_received_at &&
       !this.selectedSalesDetail.guest_id
     ) {
@@ -2016,10 +2370,23 @@ export class OrderListComponent implements OnInit {
 
   protected runSalesStepAction(): void {
     if (!this.canRunSalesStepAction()) {
+      if (
+        this.salesFocusedStep() === 'shipping' &&
+        !this.selectedSalesDetail?.customer_received_at &&
+        !this.selectedSalesDetail?.guest_id
+      ) {
+        this.notification.showInfo('Chờ khách hàng bấm "Đã nhận hàng" để admin xác nhận hoàn thành.');
+        return;
+      }
       this.notification.showInfo('Chỉ thao tác ở bước hiện tại theo đúng trình tự.');
       return;
     }
-    const target = this.getSalesStepActionTarget(this.salesFocusedStep());
+    const focused = this.salesFocusedStep();
+    if (focused === 'processing') {
+      this.createSalesShipmentAndMove();
+      return;
+    }
+    const target = this.getSalesStepActionTarget(focused);
     if (!target) return;
     this.updateSalesStatus(target);
   }
@@ -2034,10 +2401,14 @@ export class OrderListComponent implements OnInit {
       this.updateRentStatus(undefined, 'Gửi nhắc nhở khách', true);
       return;
     }
+    if (focused === 'ongoing') {
+      this.createRentShipmentBackDemo(true);
+      return;
+    }
     const target = this.getRentStepActionTarget(focused);
     if (!target) return;
     if (target === 'return_requested') {
-      this.updateRentStatus('return_requested', 'Tạo mã vận đơn trả');
+      this.createRentShipmentBackDemo(true);
       return;
     }
     this.updateRentStatus(target);
@@ -2049,6 +2420,10 @@ export class OrderListComponent implements OnInit {
       return;
     }
     const focused = this.returnFocusedStep();
+    if (focused === 'approved') {
+      this.createReturnShipmentDemoAndMove();
+      return;
+    }
     const target = this.getReturnStepActionTarget(focused);
     if (!target) return;
     this.updateReturnStatus(target, this.returnStepPrimaryActionLabel());
@@ -2056,7 +2431,7 @@ export class OrderListComponent implements OnInit {
 
   private getSalesStepActionTarget(step: OrderStatus): OrderStatus | null {
     if (step === 'pending') return 'confirmed';
-    if (step === 'confirmed') return this.isGuestSalesDetail() ? 'shipping' : 'processing';
+    if (step === 'confirmed') return 'processing';
     if (step === 'processing') return 'shipping';
     if (step === 'shipping') return 'completed';
     return null;
@@ -2102,6 +2477,50 @@ export class OrderListComponent implements OnInit {
 
   protected salesProgressPercent(): number {
     return this.getProgressPercent(this.salesProgressFlow.length, this.getSalesProgressIndex());
+  }
+
+  protected salesPaymentProgressPercent(order?: BuyOrderDetailApi | null): number {
+    const status = order?.payment_status ?? 'unpaid';
+    if (status === 'paid' || status === 'refunded') return 100;
+    if (status === 'partial') return 62;
+    if (status === 'failed') return 24;
+    return 10;
+  }
+
+  protected salesShippingProgressPercent(order?: BuyOrderDetailApi | null): number {
+    const status = this.resolveShippingStatus(order);
+    if (status === 'delivered') return 100;
+    if (status === 'shipped') return 74;
+    if (status === 'ready_to_ship') return 46;
+    if (status === 'delivery_failed') return 35;
+    return 12;
+  }
+
+  protected rentPaymentProgressPercent(order?: RentOrderDetailApi | null): number {
+    const status = order?.payment?.payment_status ?? 'unpaid';
+    if (status === 'paid' || status === 'refunded') return 100;
+    if (status === 'partial') return 62;
+    if (status === 'failed') return 24;
+    return 10;
+  }
+
+  protected rentShippingProgressPercent(order?: RentOrderDetailApi | null): number {
+    const status = order?.rent_status;
+    const hasOutboundTracking = Boolean(
+      order?.shipping_out?.tracking_code || order?.shipping_out?.provider || order?.shipping?.tracking_code,
+    );
+    const hasReturnTracking = Boolean(order?.shipping_back?.tracking_code || order?.shipping_back?.provider);
+
+    if (!status) return 10;
+    if (status === 'closed') return 100;
+    if (status === 'returned') return hasReturnTracking ? 88 : 80;
+    if (status === 'returning') return hasReturnTracking ? 74 : 66;
+    if (status === 'return_requested') return hasReturnTracking ? 60 : 52;
+    if (status === 'ongoing') return hasOutboundTracking ? 46 : 38;
+    if (status === 'booked') return hasOutboundTracking ? 24 : 14;
+    if (status === 'violated') return 68;
+    if (status === 'cancelled') return 0;
+    return 10;
   }
 
   protected rentProgressPercent(): number {
@@ -2202,6 +2621,33 @@ export class OrderListComponent implements OnInit {
 
   protected isGuestRentDetail(): boolean {
     return Boolean(this.selectedRentDetail?.guest_id);
+  }
+
+  protected showRentSettlementSection(): boolean {
+    const status = this.selectedRentDetail?.rent_status;
+    return status === 'returning' || status === 'returned' || status === 'violated' || status === 'closed';
+  }
+
+  protected showRentRefundSection(): boolean {
+    const status = this.selectedRentDetail?.rent_status;
+    return status === 'returned' || status === 'violated' || status === 'closed';
+  }
+
+  protected showRentActionSection(): boolean {
+    const status = this.selectedRentDetail?.rent_status;
+    return (
+      status === 'booked' ||
+      status === 'ongoing' ||
+      status === 'return_requested' ||
+      status === 'returning' ||
+      status === 'returned' ||
+      status === 'violated'
+    );
+  }
+
+  protected showRentCancelReasonField(): boolean {
+    const status = this.selectedRentDetail?.rent_status;
+    return status === 'booked' || status === 'ongoing' || status === 'return_requested' || status === 'cancelled';
   }
 
   protected formatAddressText(address?: OrderAddress): string {
@@ -2330,20 +2776,20 @@ export class OrderListComponent implements OnInit {
     }
     if (status === 'pending') {
       return contactedAt
-        ? { label: 'Đã liên hệ', class: 'badge badge-info' }
-        : { label: 'Yêu cầu', class: 'badge badge-warning' };
+        ? { label: 'Contacted', class: 'badge badge-info' }
+        : { label: 'Requested', class: 'badge badge-warning' };
     }
     if (status === 'confirmed' || status === 'processing') {
-      return { label: 'Đã chốt đơn', class: 'badge badge-info' };
+      return { label: 'Confirmed order', class: 'badge badge-info' };
     }
     if (status === 'shipping') {
-      return { label: 'Đang giao', class: 'badge badge-info' };
+      return { label: 'Shipping', class: 'badge badge-info' };
     }
     if (status === 'completed') {
-      return { label: 'Hoàn tất', class: 'badge badge-success' };
+      return { label: 'Completed', class: 'badge badge-success' };
     }
     if (status === 'cancelled') {
-      return { label: 'Đã hủy', class: 'badge badge-neutral' };
+      return { label: 'Cancelled', class: 'badge badge-neutral' };
     }
     return this.orderStatusMeta[status];
   }
@@ -2359,27 +2805,27 @@ export class OrderListComponent implements OnInit {
     }
     if (status === 'booked') {
       if (confirmedAt) {
-        return { label: 'Đã chốt thuê', class: 'badge badge-info' };
+        return { label: 'Rental confirmed', class: 'badge badge-info' };
       }
       if (contactedAt) {
-        return { label: 'Đã liên hệ', class: 'badge badge-info' };
+        return { label: 'Contacted', class: 'badge badge-info' };
       }
-      return { label: 'Yêu cầu thuê', class: 'badge badge-warning' };
+      return { label: 'Rental request', class: 'badge badge-warning' };
     }
     if (status === 'ongoing') {
-      return { label: 'Đang thuê', class: 'badge badge-info' };
+      return { label: 'Ongoing', class: 'badge badge-info' };
     }
     if (status === 'return_requested' || status === 'returning' || status === 'returned') {
-      return { label: 'Đã trả đồ', class: 'badge badge-info' };
+      return { label: 'Returned item', class: 'badge badge-info' };
     }
     if (status === 'closed') {
-      return { label: 'Hoàn tất', class: 'badge badge-neutral' };
+      return { label: 'Closed', class: 'badge badge-neutral' };
     }
     if (status === 'cancelled') {
-      return { label: 'Đã hủy', class: 'badge badge-neutral' };
+      return { label: 'Cancelled', class: 'badge badge-neutral' };
     }
     if (status === 'violated') {
-      return { label: 'Vi phạm', class: 'badge badge-error' };
+      return { label: 'Violated', class: 'badge badge-error' };
     }
     return this.rentStatusMeta[status];
   }
@@ -2545,6 +2991,90 @@ export class OrderListComponent implements OnInit {
     if (!provider && !tracking) return '-';
     if (provider && tracking) return `${provider} - ${tracking}`;
     return provider || tracking || '-';
+  }
+
+  private resolveShippingStatus(order?: BuyOrderDetailApi | null): ShippingStatus {
+    const rawStatus = String(order?.shipping_status || '').trim().toLowerCase() as ShippingStatus;
+    if (rawStatus && this.shippingStatusMeta[rawStatus]) {
+      return rawStatus;
+    }
+    const orderStatus = order?.order_status;
+    if (orderStatus === 'completed') return 'delivered';
+    if (orderStatus === 'shipping') return 'shipped';
+    if (orderStatus === 'processing' && String(order?.tracking_code || '').trim()) {
+      return 'ready_to_ship';
+    }
+    return 'pending';
+  }
+
+  private estimateDeliveryDateIso(shippingMethod?: string | null): string {
+    const normalized = String(shippingMethod || '').trim().toLowerCase();
+    const etaDays = normalized === 'express' || normalized === 'nhanh' ? 2 : 4;
+    const eta = new Date();
+    eta.setDate(eta.getDate() + etaDays);
+    return eta.toISOString();
+  }
+
+  private normalizeTrackingPrefix(carrier?: string | null): string {
+    const normalized = String(carrier || '').trim().toUpperCase();
+    if (normalized.includes('GHN')) return 'GHN';
+    if (normalized.includes('GHTK')) return 'GHTK';
+    if (normalized.includes('J&T') || normalized.includes('JNT') || normalized.includes('J T')) {
+      return 'JNT';
+    }
+    return 'SHIP';
+  }
+
+  private generateSalesTrackingCode(carrier: string, orderCode: string): string {
+    const prefix = this.normalizeTrackingPrefix(carrier);
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const orderTail = String(orderCode || '').replace(/\D/g, '').slice(-4).padStart(4, '0');
+    const random = Math.floor(10 + Math.random() * 90);
+    return `${prefix}${yy}${mm}${dd}${orderTail}${random}`;
+  }
+
+  private generatePaymentCode(method?: string | null): string {
+    const normalized = String(method || '').trim().toLowerCase();
+    const prefixMap: Record<string, string> = {
+      cod: 'COD',
+      vnpay: 'VNP',
+      momo: 'MOMO',
+      bank_transfer: 'VISA',
+    };
+    const prefix = prefixMap[normalized] || 'PAY';
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `${prefix}${yy}${mm}${dd}${random}`;
+  }
+
+  private resolveShipmentProvider(current?: string | null): string {
+    const normalized = String(current || '').trim();
+    if (!normalized) {
+      return this.shipmentCarrierOptions[0]?.label || 'GHN';
+    }
+    if (normalized.toUpperCase() === 'NOI_BO') {
+      return 'Nội bộ';
+    }
+    return normalized;
+  }
+
+  private generateTrackingCode(prefix: string): string {
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
+      now.getDate(),
+    ).padStart(2, '0')}`;
+    const timePart = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(
+      2,
+      '0',
+    )}`;
+    const randomPart = Math.floor(100 + Math.random() * 900);
+    return `${prefix}-${datePart}-${timePart}${randomPart}`;
   }
 
   private parseNumber(value?: string): number | null {

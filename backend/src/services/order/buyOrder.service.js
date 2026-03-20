@@ -2,6 +2,8 @@ import BaseService from "../BaseService.js";
 import mongoose from "mongoose";
 import BuyOrder from "../../models/order/BuyOrder.js";
 import BuyOrderItem from "../../models/order/BuyOrderItem.js";
+import RentOrder from "../../models/order/RentOrder.js";
+import TailorOrder from "../../models/order/TailorOrder.js";
 import GuestCustomer from "../../models/GuestCustomer.js";
 import User from "../../models/user/User.js";
 import ApiError from "../../utils/ApiError.js";
@@ -13,6 +15,16 @@ import returnService from "./return.service.js";
 const buildOrderLink = (orderId) => `/profile/orders/${orderId}`;
 const buildAdminOrderLink = (orderId) => `/orders/sales?order=${orderId}`;
 const buildAdminReturnLink = (returnId) => `/orders/returns?request=${returnId}`;
+const REPORT_TIMEZONE = "Asia/Ho_Chi_Minh";
+const ONLINE_PAYMENT_METHODS = new Set(["vnpay", "momo", "bank_transfer"]);
+const SHIPPING_STATUSES = new Set([
+  "pending",
+  "ready_to_ship",
+  "shipped",
+  "delivered",
+  "delivery_failed",
+]);
+const RETURN_REQUEST_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 
 const statusNotificationMap = {
   confirmed: {
@@ -112,6 +124,23 @@ class BuyOrderService extends BaseService {
     return `PHUC-BUY-${orderId.replace("ORD", "")}`;
   }
 
+  generatePaymentTransactionCode(paymentMethod = "PAY") {
+    const prefixMap = {
+      vnpay: "VNP",
+      momo: "MOMO",
+      bank_transfer: "BANK",
+      cod: "COD",
+    };
+    const methodKey = String(paymentMethod || "").trim().toLowerCase();
+    const prefix = prefixMap[methodKey] || "PAY";
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `${prefix}${yy}${mm}${dd}${random}`;
+  }
+
   /**
    * Generate order_item_id
    * Format: ITEM + YYMMDDnnnn (10 số)
@@ -146,6 +175,18 @@ class BuyOrderService extends BaseService {
           address.detail = address.address_detail;
         }
       }
+      const normalizedCustomerEmail =
+        typeof orderData?.customer_info?.email === "string"
+          ? orderData.customer_info.email.trim().toLowerCase()
+          : "";
+      if (orderData?.customer_info) {
+        orderData.customer_info.email = normalizedCustomerEmail;
+      }
+
+      if (orderData.guest_id && !normalizedCustomerEmail) {
+        throw ApiError.badRequest("Guest orders require email to send tracking information");
+      }
+
       // Validate: phải có user_id hoặc guest_id
       if (!orderData.user_id && !orderData.guest_id) {
         throw ApiError.badRequest("Đơn hàng phải có user_id hoặc guest_id");
@@ -168,6 +209,8 @@ class BuyOrderService extends BaseService {
       const shipping_fee = orderData.shipping_fee || 0;
       const discount_amount = orderData.discount_amount || 0;
       const total_amount = subtotal_amount + shipping_fee - discount_amount;
+      const trackingCode = orderData.tracking_code ?? null;
+      const hasTrackingCode = Boolean(String(trackingCode || "").trim());
 
       // Tạo order
       const order = await this.create({
@@ -186,7 +229,9 @@ class BuyOrderService extends BaseService {
         order_status: "pending",
         shipping_provider: orderData.shipping_provider ?? null,
         shipping_method: orderData.shipping_method ?? null,
-        tracking_code: orderData.tracking_code ?? null,
+        tracking_code: trackingCode,
+        shipping_status: hasTrackingCode ? "ready_to_ship" : "pending",
+        tracking_created_at: hasTrackingCode ? new Date() : null,
       });
 
       // Tạo order items trong collection riêng
@@ -396,12 +441,37 @@ class BuyOrderService extends BaseService {
       order.shipping_provider = payload.shipping_provider || null;
     }
 
+    if (payload.shipping_method !== undefined) {
+      order.shipping_method = payload.shipping_method || null;
+    }
+
+    if (payload.shipping_fee !== undefined && Number.isFinite(Number(payload.shipping_fee))) {
+      order.shipping_fee = Number(payload.shipping_fee);
+    }
+
+    if (payload.estimated_delivery_at !== undefined) {
+      order.estimated_delivery_at = payload.estimated_delivery_at
+        ? new Date(payload.estimated_delivery_at)
+        : null;
+    }
+
     if (payload.tracking_code !== undefined) {
       order.tracking_code = payload.tracking_code || null;
+      if (payload.tracking_code && !order.tracking_created_at) {
+        order.tracking_created_at = new Date();
+      }
     }
 
     if (payload.shipping_status_detail !== undefined) {
       order.shipping_status_detail = payload.shipping_status_detail || null;
+    }
+
+    const normalizedShippingStatus = String(payload.shipping_status || "")
+      .trim()
+      .toLowerCase();
+    const hasExplicitShippingStatus = SHIPPING_STATUSES.has(normalizedShippingStatus);
+    if (hasExplicitShippingStatus) {
+      order.shipping_status = normalizedShippingStatus;
     }
 
     if (nextStatus === "shipping") {
@@ -412,8 +482,14 @@ class BuyOrderService extends BaseService {
       }
       order.shipping_provider = provider;
       order.tracking_code = tracking;
+      if (!order.tracking_created_at) {
+        order.tracking_created_at = new Date();
+      }
       if (!order.shipped_at) {
         order.shipped_at = new Date();
+      }
+      if (!hasExplicitShippingStatus) {
+        order.shipping_status = "shipped";
       }
     }
 
@@ -447,6 +523,9 @@ class BuyOrderService extends BaseService {
       if (!order.delivered_at) {
         order.delivered_at = new Date();
       }
+      if (!hasExplicitShippingStatus) {
+        order.shipping_status = "delivered";
+      }
       if (order.payment_method === "cod" && order.payment_status !== "paid") {
         order.payment_status = "paid";
         if (!order.paid_at) {
@@ -468,6 +547,25 @@ class BuyOrderService extends BaseService {
         order.refund_status === "none"
       ) {
         order.refund_status = "pending";
+      }
+      if (
+        !hasExplicitShippingStatus &&
+        ["ready_to_ship", "shipped"].includes(order.shipping_status)
+      ) {
+        order.shipping_status = "delivery_failed";
+      }
+    }
+
+    if (!hasExplicitShippingStatus) {
+      if (nextStatus === "processing" && order.tracking_code && order.shipping_status === "pending") {
+        order.shipping_status = "ready_to_ship";
+      }
+      if (
+        ["pending", "confirmed"].includes(nextStatus) &&
+        !order.tracking_code &&
+        order.shipping_status !== "delivery_failed"
+      ) {
+        order.shipping_status = "pending";
       }
     }
 
@@ -590,14 +688,28 @@ class BuyOrderService extends BaseService {
     if (!order) {
       throw ApiError.notFound("Không tìm thấy đơn hàng");
     }
-    if (order.order_status !== "shipping") {
-      throw ApiError.badRequest("Đơn hàng chưa ở trạng thái đang giao");
+    if (order.order_status !== "completed") {
+      throw ApiError.badRequest("Chỉ có thể yêu cầu hoàn trả khi đơn đã hoàn thành");
     }
     if (
       order.return_request?.status &&
       !["closed", "refunded"].includes(order.return_request.status)
     ) {
       throw ApiError.badRequest("Đơn đã có yêu cầu hoàn trả đang xử lý");
+    }
+
+    const baseDateRaw =
+      order.customer_received_at || order.delivered_at || order.updated_at || order.created_at;
+    const baseDate = baseDateRaw ? new Date(baseDateRaw) : null;
+    if (!baseDate || Number.isNaN(baseDate.getTime())) {
+      throw ApiError.badRequest(
+        "Không xác định được thời điểm nhận hàng để tính thời hạn hoàn trả",
+      );
+    }
+
+    const deadlineMs = baseDate.getTime() + RETURN_REQUEST_WINDOW_MS;
+    if (Date.now() > deadlineMs) {
+      throw ApiError.badRequest("Đơn hàng đã quá hạn 3 ngày để yêu cầu hoàn trả");
     }
 
     const returnRequest = await returnService.createFromOrder(order, payload, actor);
@@ -649,15 +761,33 @@ class BuyOrderService extends BaseService {
 
     const previousStatus = order.payment_status;
     order.payment_status = paymentStatus;
+    if (payload.payment_transaction_code !== undefined) {
+      order.payment_transaction_code = payload.payment_transaction_code
+        ? String(payload.payment_transaction_code).trim()
+        : null;
+    }
 
     if (paymentStatus === "paid" || paymentStatus === "partial") {
       if (!order.paid_at) {
         order.paid_at = new Date();
       }
+      if (
+        ONLINE_PAYMENT_METHODS.has(String(order.payment_method || "").toLowerCase()) &&
+        !order.payment_transaction_code
+      ) {
+        order.payment_transaction_code = this.generatePaymentTransactionCode(order.payment_method);
+      }
     }
 
     if (paymentStatus === "unpaid") {
       order.paid_at = null;
+      if (order.payment_method === "cod") {
+        order.payment_transaction_code = null;
+      }
+    }
+
+    if (paymentStatus === "failed" && order.payment_method === "cod") {
+      order.payment_transaction_code = null;
     }
 
     if (paymentStatus === "refunded") {
@@ -693,12 +823,52 @@ class BuyOrderService extends BaseService {
       throw ApiError.notFound("Không tìm thấy đơn hàng");
     }
 
-    const { shipping_provider, tracking_code, shipping_status_detail } = payload;
+    const {
+      shipping_provider,
+      tracking_code,
+      shipping_status_detail,
+      shipping_status,
+      shipping_method,
+      shipping_fee,
+      estimated_delivery_at,
+    } = payload;
     order.shipping_provider = shipping_provider;
     order.tracking_code = tracking_code;
+    if (!order.tracking_created_at && tracking_code) {
+      order.tracking_created_at = new Date();
+    }
+    if (shipping_method !== undefined) {
+      order.shipping_method = shipping_method || null;
+    }
+    if (shipping_fee !== undefined && Number.isFinite(Number(shipping_fee))) {
+      order.shipping_fee = Number(shipping_fee);
+    }
+    if (estimated_delivery_at !== undefined) {
+      order.estimated_delivery_at = estimated_delivery_at ? new Date(estimated_delivery_at) : null;
+    }
 
     if (shipping_status_detail !== undefined) {
       order.shipping_status_detail = shipping_status_detail || null;
+    }
+
+    const normalizedStatus = String(shipping_status || "")
+      .trim()
+      .toLowerCase();
+    if (SHIPPING_STATUSES.has(normalizedStatus)) {
+      order.shipping_status = normalizedStatus;
+    } else if (order.order_status === "shipping") {
+      order.shipping_status = "shipped";
+    } else if (tracking_code) {
+      order.shipping_status = "ready_to_ship";
+    } else {
+      order.shipping_status = "pending";
+    }
+
+    if (order.shipping_status === "shipped" && !order.shipped_at) {
+      order.shipped_at = new Date();
+    }
+    if (order.shipping_status === "delivered" && !order.delivered_at) {
+      order.delivered_at = new Date();
     }
 
     if (order.order_status === "shipping" && !order.shipped_at) {
@@ -830,6 +1000,326 @@ class BuyOrderService extends BaseService {
 
     const stats = await this.model.aggregate(pipeline);
     return stats[0] || {};
+  }
+
+  normalizeDashboardDays(rawDays) {
+    const parsed = Number.parseInt(rawDays, 10);
+    if (!Number.isFinite(parsed)) return 30;
+    return Math.min(365, Math.max(7, parsed));
+  }
+
+  buildDashboardDateRange(days) {
+    const timezoneOffsetMs = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh
+    const now = Date.now();
+    const nowInTimezone = new Date(now + timezoneOffsetMs);
+
+    const endAtTimezoneMidnightUtc =
+      Date.UTC(
+        nowInTimezone.getUTCFullYear(),
+        nowInTimezone.getUTCMonth(),
+        nowInTimezone.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ) - timezoneOffsetMs;
+    const startAtTimezoneMidnightUtc =
+      Date.UTC(
+        nowInTimezone.getUTCFullYear(),
+        nowInTimezone.getUTCMonth(),
+        nowInTimezone.getUTCDate() - days + 1,
+        0,
+        0,
+        0,
+        0,
+      ) - timezoneOffsetMs;
+
+    return {
+      startDate: new Date(startAtTimezoneMidnightUtc),
+      endDate: new Date(endAtTimezoneMidnightUtc),
+    };
+  }
+
+  buildDashboardDateKeys(startDate, endDate) {
+    const timezoneOffsetMs = 7 * 60 * 60 * 1000; // Asia/Ho_Chi_Minh
+    const toDateKey = (value) => {
+      const shifted = new Date(value.getTime() + timezoneOffsetMs);
+      const year = shifted.getUTCFullYear();
+      const month = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(shifted.getUTCDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    const keys = [];
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      keys.push(toDateKey(cursor));
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    return keys;
+  }
+
+  buildTrendLabel(dateKey) {
+    const [year, month, day] = String(dateKey || "")
+      .split("-")
+      .map((part) => Number.parseInt(part, 10));
+    if (!year || !month || !day) return String(dateKey || "");
+    return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+  }
+
+  async getDashboardReport(options = {}) {
+    const days = this.normalizeDashboardDays(options.days);
+    const { startDate, endDate } = this.buildDashboardDateRange(days);
+
+    const buyTrendPipeline = [
+      {
+        $addFields: {
+          metric_date: {
+            $ifNull: [
+              "$customer_received_at",
+              {
+                $ifNull: [
+                  "$completed_at",
+                  {
+                    $ifNull: ["$delivered_at", "$updated_at"],
+                  },
+                ],
+              },
+            ],
+          },
+          profit_value: {
+            $max: [
+              {
+                $subtract: [{ $ifNull: ["$total_amount", 0] }, { $ifNull: ["$shipping_fee", 0] }],
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          order_status: "completed",
+          metric_date: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$metric_date",
+              timezone: REPORT_TIMEZONE,
+            },
+          },
+          revenue: { $sum: { $ifNull: ["$total_amount", 0] } },
+          profit: { $sum: "$profit_value" },
+          completed_orders: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, date: "$_id", revenue: 1, profit: 1, completed_orders: 1 } },
+    ];
+
+    const rentTrendPipeline = [
+      {
+        $addFields: {
+          metric_date: {
+            $ifNull: ["$settlement.settled_at", { $ifNull: ["$updated_at", "$created_at"] }],
+          },
+          revenue_value: {
+            $max: [
+              {
+                $add: [
+                  { $ifNull: ["$pricing.rent_fee_expected", 0] },
+                  { $ifNull: ["$settlement.penalty_total", 0] },
+                ],
+              },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          rent_status: { $in: ["closed", "violated"] },
+          metric_date: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$metric_date",
+              timezone: REPORT_TIMEZONE,
+            },
+          },
+          revenue: { $sum: "$revenue_value" },
+          profit: { $sum: "$revenue_value" },
+          completed_orders: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, date: "$_id", revenue: 1, profit: 1, completed_orders: 1 } },
+    ];
+
+    const tailorTrendPipeline = [
+      {
+        $addFields: {
+          metric_date: {
+            $ifNull: [
+              "$timeline.delivered_at",
+              {
+                $ifNull: [
+                  "$shipping.delivered_at",
+                  {
+                    $ifNull: ["$timeline.completed_at", "$updated_at"],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          status: { $in: ["completed", "delivered", "shipping"] },
+          metric_date: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$metric_date",
+              timezone: REPORT_TIMEZONE,
+            },
+          },
+          revenue: { $sum: { $ifNull: ["$pricing.total_amount", 0] } },
+          profit: { $sum: { $ifNull: ["$finance.expected_profit", 0] } },
+          completed_orders: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, date: "$_id", revenue: 1, profit: 1, completed_orders: 1 } },
+    ];
+
+    const [
+      buyTrendRows,
+      rentTrendRows,
+      tailorTrendRows,
+      buyTotalOrders,
+      rentTotalOrders,
+      tailorTotalOrders,
+      buyCancelledOrders,
+      rentCancelledOrders,
+      tailorCancelledOrders,
+    ] = await Promise.all([
+      this.model.aggregate(buyTrendPipeline),
+      RentOrder.aggregate(rentTrendPipeline),
+      TailorOrder.aggregate(tailorTrendPipeline),
+      this.model.countDocuments({
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+      RentOrder.countDocuments({
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+      TailorOrder.countDocuments({
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+      this.model.countDocuments({
+        order_status: "cancelled",
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+      RentOrder.countDocuments({
+        rent_status: "cancelled",
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+      TailorOrder.countDocuments({
+        status: "cancelled",
+        created_at: { $gte: startDate, $lte: endDate },
+      }),
+    ]);
+
+    const dateKeys = this.buildDashboardDateKeys(startDate, endDate);
+    const trendMap = new Map(
+      dateKeys.map((key) => [
+        key,
+        {
+          date: key,
+          label: this.buildTrendLabel(key),
+          revenue: 0,
+          profit: 0,
+          completed_orders: 0,
+        },
+      ]),
+    );
+
+    const mergeTrendRows = (rows) => {
+      (rows || []).forEach((row) => {
+        const key = row?.date;
+        if (!trendMap.has(key)) return;
+        const current = trendMap.get(key);
+        current.revenue += Number(row?.revenue || 0);
+        current.profit += Number(row?.profit || 0);
+        current.completed_orders += Number(row?.completed_orders || 0);
+      });
+    };
+
+    mergeTrendRows(buyTrendRows);
+    mergeTrendRows(rentTrendRows);
+    mergeTrendRows(tailorTrendRows);
+
+    const trend = dateKeys.map((key) => {
+      const item = trendMap.get(key);
+      return {
+        date: item.date,
+        label: item.label,
+        revenue: Math.round(item.revenue),
+        profit: Math.round(item.profit),
+        completed_orders: Math.round(item.completed_orders),
+      };
+    });
+
+    const summary = trend.reduce(
+      (accumulator, row) => ({
+        total_revenue: accumulator.total_revenue + row.revenue,
+        total_profit: accumulator.total_profit + row.profit,
+        completed_orders: accumulator.completed_orders + row.completed_orders,
+      }),
+      {
+        total_revenue: 0,
+        total_profit: 0,
+        completed_orders: 0,
+      },
+    );
+
+    const totalOrders = buyTotalOrders + rentTotalOrders + tailorTotalOrders;
+    const cancelledOrders = buyCancelledOrders + rentCancelledOrders + tailorCancelledOrders;
+    const averageOrderValue = summary.completed_orders
+      ? Math.round(summary.total_revenue / summary.completed_orders)
+      : 0;
+    const completionRate = totalOrders
+      ? Number(((summary.completed_orders / totalOrders) * 100).toFixed(1))
+      : 0;
+
+    return {
+      period: {
+        days,
+        from: dateKeys[0] || "",
+        to: dateKeys[dateKeys.length - 1] || "",
+        timezone: REPORT_TIMEZONE,
+      },
+      summary: {
+        total_revenue: Math.round(summary.total_revenue),
+        total_profit: Math.round(summary.total_profit),
+        completed_orders: Math.round(summary.completed_orders),
+        total_orders: totalOrders,
+        cancelled_orders: cancelledOrders,
+        completion_rate: completionRate,
+        average_order_value: averageOrderValue,
+      },
+      trend,
+      updated_at: new Date().toISOString(),
+    };
   }
 }
 

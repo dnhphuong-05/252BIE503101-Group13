@@ -24,6 +24,7 @@ import { ProfileWalletComponent } from './features/profile/profile-wallet/profil
 import { ProfileRecentlyViewedComponent } from './features/profile/profile-recently-viewed/profile-recently-viewed';
 import { ProfileChangePasswordComponent } from './features/profile/profile-change-password/profile-change-password';
 import { ProfileRentalsComponent } from './features/profile/profile-rentals/profile-rentals';
+import { ProfileReturnsRefundsComponent } from './features/profile/profile-returns-refunds/profile-returns-refunds';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -54,6 +55,7 @@ export const routes: Routes = [
           { path: 'measurements', component: ProfileMeasurementsComponent },
           { path: 'reviews-comments', component: ProfileReviewsCommentsComponent },
           { path: 'orders', component: ProfileOrdersComponent },
+          { path: 'returns-refunds', component: ProfileReturnsRefundsComponent },
           { path: 'rentals', component: ProfileRentalsComponent },
           { path: 'addresses', component: ProfileAddressesComponent },
           { path: 'wallet', component: ProfileWalletComponent },

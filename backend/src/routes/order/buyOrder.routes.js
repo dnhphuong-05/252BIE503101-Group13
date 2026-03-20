@@ -45,6 +45,19 @@ router.get(
 );
 
 /**
+ * @route   GET /api/buy-orders/dashboard-report
+ * @desc    Bao cao dashboard theo ngay
+ * @access  Private/Admin
+ */
+router.get(
+  "/dashboard-report",
+  protect,
+  requireAdmin,
+  validate({ query: validator.getDashboardReportSchema }),
+  buyOrderController.getDashboardReport
+);
+
+/**
  * @route   GET /api/buy-orders/user/:user_id
  * @desc    Lấy đơn hàng theo user_id
  * @access  Private

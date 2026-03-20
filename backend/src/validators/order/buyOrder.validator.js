@@ -184,16 +184,23 @@ export const createBuyOrderSchema = Joi.object({
     .max(100),
 })
   .custom((value, helpers) => {
-    // Validation: Pháº£i cÃ³ user_id HOáº¶C guest_id
     if (!value.user_id && !value.guest_id) {
-      return helpers.error("any.invalid", {
-        message: "ÄÆ¡n hÃ ng pháº£i cÃ³ user_id hoáº·c guest_id",
+      return helpers.error("any.custom", {
+        message: "Order must include user_id or guest_id",
       });
     }
+
+    const guestEmail = (value.customer_info?.email || "").trim();
+    if (value.guest_id && !guestEmail) {
+      return helpers.error("any.custom", {
+        message: "Guest orders require a valid email to receive tracking info",
+      });
+    }
+
     return value;
   })
   .messages({
-    "any.invalid": "ÄÆ¡n hÃ ng pháº£i cÃ³ user_id hoáº·c guest_id",
+    "any.custom": "{{#message}}",
   });
 
 // Schema cho query params khi láº¥y danh sÃ¡ch Ä‘Æ¡n hÃ ng
@@ -273,7 +280,13 @@ export const updateOrderStatusSchema = Joi.object({
   admin_note: Joi.string().trim().allow("").max(1000),
   shipping_provider: Joi.string().trim().allow("", null).max(100),
   tracking_code: Joi.string().trim().allow("", null).max(100),
+  shipping_status: Joi.string()
+    .valid("pending", "ready_to_ship", "shipped", "delivered", "delivery_failed")
+    .allow("", null),
   shipping_status_detail: Joi.string().trim().allow("", null).max(200),
+  shipping_method: Joi.string().trim().allow("", null).max(100),
+  shipping_fee: Joi.number().min(0).optional(),
+  estimated_delivery_at: Joi.date().iso().allow(null),
   contact_channel: Joi.string().valid("zalo", "phone", "web").allow("", null),
   contacted_at: Joi.date().iso().allow(null),
 });
@@ -287,6 +300,7 @@ export const updatePaymentStatusSchema = Joi.object({
       "any.required": "Tráº¡ng thÃ¡i thanh toÃ¡n lÃ  báº¯t buá»™c",
       "any.only": "Tráº¡ng thÃ¡i thanh toÃ¡n khÃ´ng há»£p lá»‡",
     }),
+  payment_transaction_code: Joi.string().trim().allow("", null).max(120),
 });
 
 // Schema cho cáº­p nháº­t thÃ´ng tin váº­n chuyá»ƒn
@@ -307,6 +321,12 @@ export const updateTrackingSchema = Joi.object({
       "any.required": "MÃ£ váº­n Ä‘Æ¡n lÃ  báº¯t buá»™c",
       "string.max": "MÃ£ váº­n Ä‘Æ¡n khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 100 kÃ½ tá»±",
     }),
+  shipping_status: Joi.string()
+    .valid("pending", "ready_to_ship", "shipped", "delivered", "delivery_failed")
+    .allow("", null),
+  shipping_method: Joi.string().trim().allow("", null).max(100),
+  shipping_fee: Joi.number().min(0).optional(),
+  estimated_delivery_at: Joi.date().iso().allow(null),
   shipping_status_detail: Joi.string().trim().allow("", null).max(200),
 });
 
@@ -359,5 +379,20 @@ export const getStatsSchema = Joi.object({
     .messages({
       "date.format": "NgÃ y káº¿t thÃºc pháº£i cÃ³ Ä‘á»‹nh dáº¡ng ISO 8601",
       "date.min": "NgÃ y káº¿t thÃºc pháº£i sau ngÃ y báº¯t Ä‘áº§u",
+    }),
+});
+
+// Schema cho dashboard report
+export const getDashboardReportSchema = Joi.object({
+  days: Joi.number()
+    .integer()
+    .min(7)
+    .max(365)
+    .default(30)
+    .messages({
+      "number.base": "Days phải là số",
+      "number.integer": "Days phải là số nguyên",
+      "number.min": "Days tối thiểu là 7",
+      "number.max": "Days tối đa là 365",
     }),
 });

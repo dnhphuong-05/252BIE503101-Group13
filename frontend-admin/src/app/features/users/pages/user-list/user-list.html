@@ -1,7 +1,7 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Người dùng</div>
+      <div class="page-title">Users</div>
       <div class="page-subtitle">{{ detailMode ? 'Chi tiết người dùng' : 'Danh sách, lọc và tìm kiếm' }}</div>
     </div>
     @if (detailMode) {
@@ -17,7 +17,7 @@
           <i class="fas fa-search"></i>
           <input
             class="input"
-            placeholder="Tìm theo tên, email, SĐT hoặc mã user"
+            placeholder="Tìm theo tên, email, số điện thoại hoặc mã người dùng"
             [(ngModel)]="searchTerm"
             (input)="onSearchInput()"
             (keyup.enter)="applyFilters()"
@@ -25,7 +25,7 @@
         </div>
       </div>
       <div class="toolbar-group">
-        <span class="text-sm text-primary-500">Tổng: {{ total }}</span>
+        <span class="text-sm text-primary-500">Hiển thị {{ users.length }} / {{ total }} người dùng</span>
       </div>
     </div>
 
@@ -57,7 +57,7 @@
     </div>
 
     @if (isLoading && users.length === 0) {
-      <div class="empty-state">Đang tải danh sách users...</div>
+      <div class="empty-state">Đang tải danh sách người dùng...</div>
     } @else if (loadError && users.length === 0) {
       <div class="empty-state">{{ loadError }}</div>
     } @else if (users.length === 0) {
@@ -66,13 +66,13 @@
       <table class="table user-table">
         <thead>
           <tr>
-            <th>User</th>
+            <th>Người dùng</th>
             <th>Liên hệ</th>
             <th>Đơn hàng</th>
             <th>Vai trò</th>
             <th>Trạng thái</th>
             <th>Ngày tạo</th>
-            <th>Hành động</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
         <tbody>
@@ -80,8 +80,14 @@
             <tr>
               <td>
                 <div class="item-cell">
-                  @if (user.avatar) {
-                    <img class="user-avatar-img" [src]="user.avatar" [alt]="user.name" />
+                  @if (user.avatar && !avatarErrorIds.has(user.id)) {
+                    <img
+                      class="user-avatar-img"
+                      [src]="user.avatar"
+                      [alt]="user.name"
+                      loading="lazy"
+                      (error)="onListAvatarError(user.id)"
+                    />
                   } @else {
                     <div class="user-avatar">{{ initials(user.name) }}</div>
                   }
@@ -127,7 +133,7 @@
 
     <div class="table-footer">
       <span class="text-sm text-primary-500">
-        Hiển thị {{ users.length }} / {{ total }} users
+        Hiển thị {{ users.length }} / {{ total }} người dùng
       </span>
       <div class="pagination">
         <button
@@ -153,53 +159,72 @@
 
     @if (detailMode) {
     @if (detailLoading) {
-      <div class="detail-loading">Đang tải chi tiết user...</div>
+      <div class="detail-loading">Đang tải chi tiết người dùng...</div>
     } @else if (selectedUser) {
       <div class="detail-drawer">
-        <div class="detail-header">
-          <div class="user-hero">
-            @if (selectedUser!.profile?.avatar) {
+        <div class="detail-hero">
+          <div class="detail-hero-main">
+            @if (selectedUser!.profile?.avatar && !detailAvatarFailed) {
               <img
                 class="user-avatar-img large"
                 [src]="selectedUser!.profile?.avatar"
                 [alt]="selectedUser!.profile?.full_name || selectedUser!.email"
+                (error)="onDetailAvatarError()"
               />
             } @else {
               <div class="user-avatar large">
                 {{ initials(selectedUser!.profile?.full_name || selectedUser!.email) }}
               </div>
             }
-            <div>
-              <div class="section-title">
+            <div class="hero-copy">
+              <div class="hero-name">
                 {{ selectedUser!.profile?.full_name || selectedUser!.email }}
               </div>
-              <div class="item-meta">
-                ID: {{ selectedUser!.user_id }} · {{ selectedUser!.createdLabel }}
+              <div class="hero-subtitle">
+                ID: {{ selectedUser!.user_id }} - {{ selectedUser!.createdLabel }}
               </div>
             </div>
           </div>
-          <span [class]="statusMeta[selectedUser!.status].class">
-            {{ statusMeta[selectedUser!.status].label }}
-          </span>
+          <div class="detail-hero-side">
+            <span [class]="statusMeta[selectedUser!.status].class">
+              {{ statusMeta[selectedUser!.status].label }}
+            </span>
+          </div>
         </div>
 
-        <div class="detail-grid">
-          <div>
-            <div class="item-meta">Email</div>
-            <div class="font-semibold">{{ selectedUser!.email }}</div>
+        <div class="detail-overview-grid">
+          <div class="overview-card overview-card-email">
+            <div class="overview-head">
+              <span class="overview-icon">
+                <i class="fas fa-envelope"></i>
+              </span>
+              <span class="overview-label">Email</span>
+            </div>
+            <div class="overview-main">{{ selectedUser!.email }}</div>
           </div>
-          <div>
-            <div class="item-meta">SĐT</div>
-            <div class="font-semibold">{{ selectedUser!.phone || '-' }}</div>
+          <div class="overview-card overview-card-phone">
+            <div class="overview-head">
+              <span class="overview-icon">
+                <i class="fas fa-phone"></i>
+              </span>
+              <span class="overview-label">SĐT</span>
+            </div>
+            <div class="overview-main">{{ selectedUser!.phone || '-' }}</div>
           </div>
-          <div>
-            <div class="item-meta">Vai trò</div>
+          <div class="overview-card overview-card-role">
+            <div class="overview-head">
+              <span class="overview-icon">
+                <i class="fas fa-bullseye"></i>
+              </span>
+              <span class="overview-label">Vai trò</span>
+            </div>
             @if (canManageRoles()) {
               <select
                 class="select select-compact"
-                [(ngModel)]="roleDraft"
-                (change)="updateRole(roleDraft!)"
-                [disabled]="selectedUser!.role === 'super_admin'"
+                [value]="selectedUser!.role"
+                (change)="requestRoleChange($event)"
+                [disabled]="selectedUser!.role === 'super_admin' || isUpdating || roleConfirmOpen"
+                style="width: 100%; max-width: none"
               >
                 @for (option of roleFilters; track option.value) {
                   @if (option.value !== 'all' && option.value !== 'super_admin') {
@@ -208,10 +233,67 @@
                 }
               </select>
             } @else {
-              <span [class]="roleMeta[selectedUser!.role].class">
+              <span [ngClass]="['overview-tag', roleMeta[selectedUser!.role].class]">
                 {{ roleMeta[selectedUser!.role].label }}
               </span>
             }
+          </div>
+        </div>
+
+        <div class="overview-note">
+          <span
+            style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 6px 10px;
+              border-radius: 999px;
+              background: #eef6ff;
+              border: 1px solid #c8dcf5;
+            "
+          >
+            Đơn mua
+            <strong>{{ selectedUser!.buy_order_count ?? buyOrders.length }}</strong>
+          </span>
+          <span
+            style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 6px 10px;
+              border-radius: 999px;
+              background: #ecfaf2;
+              border: 1px solid #ccebd9;
+            "
+          >
+            Đơn thuê
+            <strong>{{ selectedUser!.rent_order_count ?? rentOrders.length }}</strong>
+          </span>
+          <span
+            style="
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              padding: 6px 10px;
+              border-radius: 999px;
+              background: #fdf3ea;
+              border: 1px solid #f3dbc5;
+            "
+          >
+            Điểm
+            <strong>{{ selectedUser!.loyalty?.total_points ?? 0 }}</strong>
+          </span>
+        </div>
+
+        <div class="detail-actions">
+          <span class="item-meta">Tác vụ tài khoản</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto">
+            <button class="btn btn-secondary btn-sm" type="button" (click)="toggleStatus()">
+              {{ selectedUser!.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa' }}
+            </button>
+            <button class="btn btn-ghost btn-sm" type="button" (click)="resetPassword()">
+              Reset Password
+            </button>
           </div>
         </div>
 
@@ -283,6 +365,23 @@
         <div class="detail-section">
           <div class="section-title">Số đo gần nhất</div>
           @if (selectedUser!.latest_measurement) {
+            <div class="item-meta">
+              Độ đầy đủ số đo: {{ measurementCompleteness(selectedUser!.latest_measurement) }}%
+            </div>
+            <div
+              style="
+                width: 100%;
+                height: 8px;
+                border-radius: 999px;
+                background: #ece4d8;
+                overflow: hidden;
+              "
+            >
+              <span
+                style="display: block; height: 100%; border-radius: inherit; background: #0f766e"
+                [style.width.%]="measurementCompleteness(selectedUser!.latest_measurement)"
+              ></span>
+            </div>
             <div class="measurement-grid">
               <div>
                 <div class="item-meta">Ngày đo</div>
@@ -370,6 +469,22 @@
                       <div>
                         <div class="font-semibold">{{ order.code }}</div>
                         <div class="item-meta">{{ order.createdAt }}</div>
+                        <div
+                          style="
+                            margin-top: 6px;
+                            width: 170px;
+                            height: 6px;
+                            border-radius: 999px;
+                            background: #ece4d8;
+                            overflow: hidden;
+                          "
+                        >
+                          <span
+                            style="display: block; height: 100%; border-radius: inherit"
+                            [style.width.%]="orderProgressPercent(order.status)"
+                            [style.background]="orderProgressColor(order.status)"
+                          ></span>
+                        </div>
                       </div>
                       <div class="order-meta">
                         <span class="item-meta">{{ order.status }}</span>
@@ -394,6 +509,22 @@
                       <div>
                         <div class="font-semibold">{{ order.code }}</div>
                         <div class="item-meta">{{ order.createdAt }}</div>
+                        <div
+                          style="
+                            margin-top: 6px;
+                            width: 170px;
+                            height: 6px;
+                            border-radius: 999px;
+                            background: #ece4d8;
+                            overflow: hidden;
+                          "
+                        >
+                          <span
+                            style="display: block; height: 100%; border-radius: inherit"
+                            [style.width.%]="orderProgressPercent(order.status)"
+                            [style.background]="orderProgressColor(order.status)"
+                          ></span>
+                        </div>
                       </div>
                       <div class="order-meta">
                         <span class="item-meta">{{ order.status }}</span>
@@ -418,6 +549,32 @@
               <div class="item-meta">Hạng</div>
               <div class="font-semibold">{{ selectedUser!.loyalty?.tier || '-' }}</div>
             </div>
+          </div>
+          <div class="item-meta">
+            @if (loyaltyPointsToNextTier() > 0) {
+              Còn {{ loyaltyPointsToNextTier() }} điểm để lên hạng {{ loyaltyNextTierLabel() }}
+            } @else {
+              Đã đạt hạng cao nhất: {{ loyaltyNextTierLabel() }}
+            }
+          </div>
+          <div
+            style="
+              width: 100%;
+              height: 8px;
+              border-radius: 999px;
+              background: #ece4d8;
+              overflow: hidden;
+            "
+          >
+            <span
+              style="
+                display: block;
+                height: 100%;
+                border-radius: inherit;
+                background: linear-gradient(90deg, #8b1c35, #d97706);
+              "
+              [style.width.%]="loyaltyProgressPercent()"
+            ></span>
           </div>
 
           @if (loyaltyLoading) {
@@ -450,15 +607,70 @@
           }
         </div>
 
-        <div class="detail-actions">
-          <button class="btn btn-secondary btn-sm" type="button" (click)="toggleStatus()">
-            {{ selectedUser!.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa' }}
-          </button>
-          <button class="btn btn-ghost btn-sm" type="button" (click)="resetPassword()">
-            Reset mật khẩu
-          </button>
-        </div>
       </div>
+
+      @if (roleConfirmOpen && pendingRoleChange) {
+        <div
+          (click)="cancelRoleChange()"
+          style="
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(17, 24, 39, 0.56);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+          "
+        >
+          <div
+            (click)="$event.stopPropagation()"
+            style="
+              width: min(520px, 100%);
+              border-radius: 18px;
+              border: 1px solid #e6cad5;
+              background: linear-gradient(170deg, #fff7fb 0%, #fff 100%);
+              box-shadow: 0 24px 56px rgba(15, 23, 42, 0.3);
+              padding: 20px;
+              display: grid;
+              gap: 14px;
+            "
+          >
+            <div
+              style="
+                display: inline-flex;
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+                align-items: center;
+                justify-content: center;
+                background: #f7e3eb;
+                color: #8b1c35;
+                font-size: 16px;
+              "
+            >
+              <i class="fas fa-user-shield"></i>
+            </div>
+
+            <div style="font-size: 19px; font-weight: 600; color: #2f1d17">
+              Xác nhận đổi vai trò
+            </div>
+            <div style="font-size: 14px; line-height: 1.6; color: #694f43">
+              Bạn có chắc muốn chuyển từ <strong>{{ currentRoleLabelForConfirm }}</strong> sang
+              <strong>{{ nextRoleLabelForConfirm }}</strong> không?
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px">
+              <button class="btn btn-ghost btn-sm" type="button" (click)="cancelRoleChange()">
+                Hủy
+              </button>
+              <button class="btn btn-primary btn-sm" type="button" (click)="confirmRoleChange()">
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     }
     }
   </div>

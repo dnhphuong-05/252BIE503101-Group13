@@ -12,7 +12,6 @@ import {
 import { AuthService, User } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { CancelOrderModalComponent } from '../../../shared/components/cancel-order-modal/cancel-order-modal';
-import { ReturnRequestModalComponent } from '../../../shared/components/return-request-modal/return-request-modal';
 
 interface Order {
   id: string;
@@ -22,6 +21,7 @@ interface Order {
   totalAmount: number;
   items: OrderItem[];
   customerReceivedAt?: string | null;
+  deliveredAt?: string | null;
   returnStatus?: string | null;
 }
 
@@ -42,7 +42,7 @@ type OrdersTab = 'all' | OrderStatus;
 @Component({
   selector: 'app-profile-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink, CancelOrderModalComponent, ReturnRequestModalComponent],
+  imports: [CommonModule, RouterLink, CancelOrderModalComponent],
   templateUrl: './profile-orders.html',
   styleUrl: './profile-orders.css',
 })
@@ -59,10 +59,8 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
   showCancelModal = false;
   cancelingOrder: Order | null = null;
   isCanceling = false;
-  showReturnModal = false;
-  returningOrder: Order | null = null;
   confirmingOrderId: string | null = null;
-  returningOrderId: string | null = null;
+  private readonly returnRequestWindowMs = 3 * 24 * 60 * 60 * 1000;
 
   tabs: Array<{ id: OrdersTab; label: string; count: number }> = [
     { id: 'all', label: 'Tất cả', count: 0 },
@@ -119,6 +117,7 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
             status: this.normalizeStatus(order.order_status),
             totalAmount: order.total_amount || 0,
             customerReceivedAt: order.customer_received_at || null,
+            deliveredAt: order.delivered_at || null,
             returnStatus: order.return_request?.status || null,
             items: (order.items || []).map((item: BuyOrderItemList) => ({
               id: item.order_item_id || item.product_id?.toString() || '',
@@ -262,10 +261,6 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
     return order.status === 'shipping' && !order.customerReceivedAt && !order.returnStatus;
   }
 
-  canRequestReturn(order: Order): boolean {
-    return order.status === 'shipping' && !order.returnStatus && !order.customerReceivedAt;
-  }
-
   canReviewItem(order: Order, item: OrderItem): boolean {
     return order.status === 'completed' && !!item.productId;
   }
@@ -311,42 +306,26 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
   }
 
   openReturnModal(order: Order) {
-    if (!this.canRequestReturn(order) || this.returningOrderId) return;
-    this.returningOrder = order;
-    this.showReturnModal = true;
-  }
+    const eligibility = this.getReturnEligibility(order);
+    if (eligibility.eligible) {
+      this.router.navigate(['/profile/returns-refunds'], {
+        queryParams: { order: order.id },
+      });
+      return;
+    }
 
-  closeReturnModal() {
-    if (this.returningOrderId) return;
-    this.showReturnModal = false;
-    this.returningOrder = null;
-  }
+    if (eligibility.reason === 'expired') {
+      this.toastService.warning('Đơn hàng đã quá hạn 3 ngày để yêu cầu hoàn trả.');
+      return;
+    }
 
-  submitReturnRequest(payload: { reason: string; note?: string }) {
-    if (!this.returningOrder || this.returningOrderId) return;
-    const orderId = this.returningOrder.id;
-    this.returningOrderId = orderId;
-    this.buyOrderService.requestReturn(orderId, payload).subscribe({
-      next: (response: any) => {
-        const status = response?.data?.return_request?.status || 'submitted';
-        this.orders = this.orders.map((item) =>
-          item.id === orderId ? { ...item, returnStatus: status } : item,
-        );
-        this.filteredOrders = this.filteredOrders.map((item) =>
-          item.id === orderId ? { ...item, returnStatus: status } : item,
-        );
-        this.toastService.success('Đã gửi yêu cầu hoàn trả.');
-        this.returningOrderId = null;
-        this.showReturnModal = false;
-        this.returningOrder = null;
-      },
-      error: (error: HttpErrorResponse) => {
-        const message =
-          error?.error?.message || 'Không thể gửi yêu cầu hoàn trả. Vui lòng thử lại.';
-        this.toastService.error(message);
-        this.returningOrderId = null;
-      },
-    });
+    if (eligibility.reason === 'already_requested') {
+      this.toastService.info('Đơn hàng đã có yêu cầu hoàn trả. Chuyển sang Returns & Refunds.');
+      this.router.navigate(['/profile/returns-refunds']);
+      return;
+    }
+
+    this.toastService.info('Chỉ có thể yêu cầu hoàn trả với đơn đã hoàn thành.');
   }
 
   private normalizeStatus(value?: string): OrderStatus {
@@ -362,6 +341,37 @@ export class ProfileOrdersComponent implements OnInit, OnDestroy {
       return value as OrderStatus;
     }
     return 'pending';
+  }
+
+  private getReturnEligibility(
+    order: Order,
+  ): { eligible: boolean; reason?: 'status' | 'already_requested' | 'expired' | 'missing_date' } {
+    if (order.status !== 'completed') {
+      return { eligible: false, reason: 'status' };
+    }
+
+    if (order.returnStatus) {
+      return { eligible: false, reason: 'already_requested' };
+    }
+
+    const baseDate = this.resolveReturnWindowBaseDate(order);
+    if (!baseDate) {
+      return { eligible: false, reason: 'missing_date' };
+    }
+
+    const deadline = baseDate.getTime() + this.returnRequestWindowMs;
+    if (Date.now() > deadline) {
+      return { eligible: false, reason: 'expired' };
+    }
+
+    return { eligible: true };
+  }
+
+  private resolveReturnWindowBaseDate(order: Order): Date | null {
+    const raw = order.customerReceivedAt || order.deliveredAt || order.orderDate;
+    if (!raw) return null;
+    const date = new Date(raw);
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 }
 

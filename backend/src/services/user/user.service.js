@@ -188,6 +188,10 @@ class UserService extends BaseService {
     if (data.size_standard !== undefined) {
       profileUpdates.size_standard = data.size_standard;
     }
+    if (data.job_title !== undefined) profileUpdates.job_title = data.job_title;
+    if (data.department !== undefined) profileUpdates.department = data.department;
+    if (data.bio !== undefined) profileUpdates.bio = data.bio;
+    if (data.timezone !== undefined) profileUpdates.timezone = data.timezone;
 
     if (Object.keys(profileUpdates).length > 0) {
       const existingProfile = await UserProfile.findOne({
