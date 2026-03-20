@@ -9,10 +9,12 @@
 
 .auth-container {
   min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--dark-maroon);
   background:
     radial-gradient(circle at top left, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0)),
     url('/assets/images/banner.png');
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   display: flex;

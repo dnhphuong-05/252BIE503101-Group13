@@ -305,11 +305,18 @@ class BuyOrderService extends BaseService {
               full_address: full_address,
             },
             items: orderData.items.map((item) => ({
+              product_id: item.product_id,
               name: item.name,
               price: item.price,
               quantity: item.quantity,
               total: item.price * item.quantity,
               sku: item.sku,
+              thumbnail: item.thumbnail || "",
+              image: item.image || item.thumbnail || "",
+              attributes: {
+                ...(item.size ? { size: item.size } : {}),
+                ...(item.color ? { color: item.color } : {}),
+              },
             })),
             subtotal: subtotal_amount,
             shippingFee: shipping_fee,

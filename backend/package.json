@@ -10,7 +10,6 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate:keys": "node generate-env-keys.js",
     "setup:env": "node generate-env-keys.js",
-    "check:security": "node pre-commit-check.js",
     "validate:env": "node -e \"require('dotenv').config(); const required = ['MONGODB_URI', 'JWT_SECRET']; const missing = required.filter(k => !process.env[k]); if (missing.length) { console.error('Missing:', missing); process.exit(1); } else console.log('✅ All required env vars present');\"",
     "kill:port": "node kill-port.js",
     "restart": "node kill-port.js 3000 && npm start",

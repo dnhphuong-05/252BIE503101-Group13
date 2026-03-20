@@ -2,12 +2,25 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import Product from "../../models/Product.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class EmailService {
   constructor() {
+    this.assetBaseUrl = this.resolveAssetBaseUrl();
+    this.smtpUser = "";
+    this.smtpPass = "";
+    this.mailFromRaw = "no-reply@phuc.local";
+    this.mailFromAddress = "no-reply@phuc.local";
+    this.smtpHost = "smtp.gmail.com";
+    this.smtpPort = 587;
+    this.transporter = null;
+    this.refreshMailerConfig();
+  }
+
+  refreshMailerConfig() {
     const smtpHost = process.env.MAIL_HOST || process.env.SMTP_HOST || "smtp.gmail.com";
     const smtpPort = Number(process.env.MAIL_PORT || process.env.SMTP_PORT || 587);
     const smtpUser =
@@ -20,9 +33,10 @@ class EmailService {
       process.env.SMTP_PASSWORD ||
       process.env.EMAIL_PASSWORD;
 
-    this.smtpUser = smtpUser;
-    this.smtpPass = smtpPass;
-
+    this.smtpHost = smtpHost;
+    this.smtpPort = smtpPort;
+    this.smtpUser = smtpUser || "";
+    this.smtpPass = smtpPass || "";
     this.mailFromRaw =
       process.env.MAIL_FROM ||
       process.env.EMAIL_FROM ||
@@ -31,12 +45,12 @@ class EmailService {
     this.mailFromAddress = this.extractEmailAddress(this.mailFromRaw);
 
     this.transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
+      host: this.smtpHost,
+      port: this.smtpPort,
+      secure: this.smtpPort === 465,
       auth: {
-        user: smtpUser,
-        pass: smtpPass,
+        user: this.smtpUser,
+        pass: this.smtpPass,
       },
     });
   }
@@ -88,39 +102,242 @@ class EmailService {
     }).format(amount);
   }
 
-  generateOrderItemsHTML(items) {
+  buildCloudinaryFetchUrl(sourceUrl, transformation = "f_auto,q_auto") {
+    const source = String(sourceUrl || "").trim();
+    if (!source) return "";
+    const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || "").trim();
+    if (!cloudName) return source;
+    return `https://res.cloudinary.com/${cloudName}/image/fetch/${transformation}/${encodeURIComponent(source)}`;
+  }
+
+  getCloudinaryPlaceholderImageUrl() {
+    const explicitPlaceholder = process.env.MAIL_IMAGE_PLACEHOLDER_URL || process.env.EMAIL_IMAGE_PLACEHOLDER_URL;
+    if (explicitPlaceholder && String(explicitPlaceholder).trim()) {
+      return String(explicitPlaceholder).trim();
+    }
+
+    const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || "").trim();
+    if (!cloudName) {
+      return "https://dummyimage.com/160x160/f3f4f6/9ca3af.png?text=PHUC";
+    }
+    return `https://res.cloudinary.com/${cloudName}/image/upload/f_png,w_160,h_160,c_fill/vietphuc/email/product-placeholder.png`;
+  }
+
+  getHeaderIconUrl() {
+    const explicitIcon = process.env.MAIL_HEADER_ICON_URL || process.env.EMAIL_HEADER_ICON_URL;
+    if (explicitIcon && String(explicitIcon).trim()) {
+      return String(explicitIcon).trim();
+    }
+    const cloudName = String(process.env.CLOUDINARY_CLOUD_NAME || "").trim();
+    if (!cloudName) {
+      return "";
+    }
+    return `https://res.cloudinary.com/${cloudName}/image/upload/f_png,w_64,h_64,c_fit/vietphuc/email/fa-circle-check-white.png`;
+  }
+
+  resolveAssetBaseUrl() {
+    const candidates = [
+      process.env.ASSET_BASE_URL,
+      process.env.BACKEND_PUBLIC_URL,
+      process.env.BACKEND_URL,
+      process.env.API_URL,
+      process.env.FRONTEND_URL,
+    ];
+    const rawBase =
+      candidates.find((value) => typeof value === "string" && value.trim()) ||
+      "http://localhost:3000";
+    return String(rawBase).trim().replace(/\/+$/, "");
+  }
+
+  pickImageValue(item) {
+    const candidates = [
+      item?.image,
+      item?.thumbnail,
+      item?.thumbnail_snapshot,
+      item?.imageUrl,
+      item?.image_url,
+      item?.photo,
+      Array.isArray(item?.images) ? item.images[0] : "",
+      Array.isArray(item?.gallery) ? item.gallery[0] : "",
+    ];
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+      if (typeof candidate === "object") {
+        const nested = candidate.secure_url || candidate.url || candidate.path;
+        if (typeof nested === "string" && nested.trim()) {
+          return nested.trim();
+        }
+      }
+    }
+
+    return "";
+  }
+
+  resolveImageUrl(rawValue) {
+    const value = String(rawValue || "").trim().replace(/\\/g, "/");
+    if (!value) return "";
+    if (/^(https?:|data:)/i.test(value)) return value;
+    if (value.startsWith("//")) return `https:${value}`;
+
+    const normalizedPath = value.startsWith("/") ? value : `/${value}`;
+    return `${this.assetBaseUrl}${normalizedPath}`;
+  }
+
+  isLocalOrPrivateUrl(rawUrl) {
+    try {
+      const parsed = new URL(rawUrl);
+      const host = parsed.hostname.toLowerCase();
+      return (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "::1" ||
+        host === "0.0.0.0" ||
+        host.endsWith(".local") ||
+        /^10\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+      );
+    } catch (_error) {
+      return true;
+    }
+  }
+
+  normalizeImageForEmail(rawValue) {
+    const resolved = this.resolveImageUrl(rawValue);
+    if (!resolved) {
+      return this.getCloudinaryPlaceholderImageUrl();
+    }
+
+    if (/res\.cloudinary\.com/i.test(resolved)) {
+      return resolved;
+    }
+
+    if (this.isLocalOrPrivateUrl(resolved)) {
+      return this.getCloudinaryPlaceholderImageUrl();
+    }
+
+    return resolved;
+  }
+
+  normalizeProductId(rawValue) {
+    const parsed = Number(rawValue);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  async enrichItemsWithProductImages(items = []) {
+    const normalizedItems = Array.isArray(items) ? items.map((item) => ({ ...item })) : [];
+    const missingIds = new Set();
+
+    for (const item of normalizedItems) {
+      const hasImage = Boolean(this.pickImageValue(item));
+      if (hasImage) continue;
+      const id = this.normalizeProductId(item?.product_id ?? item?.productId);
+      if (id !== null) {
+        missingIds.add(id);
+      }
+    }
+
+    if (!missingIds.size) {
+      return normalizedItems;
+    }
+
+    try {
+      const products = await Product.find({ product_id: { $in: [...missingIds] } })
+        .select("product_id thumbnail images")
+        .lean();
+
+      const productImageMap = new Map();
+      for (const product of products) {
+        const imageValue = this.pickImageValue(product);
+        if (imageValue) {
+          productImageMap.set(Number(product.product_id), imageValue);
+        }
+      }
+
+      for (const item of normalizedItems) {
+        if (this.pickImageValue(item)) continue;
+        const id = this.normalizeProductId(item?.product_id ?? item?.productId);
+        if (id === null) continue;
+        const fallbackImage = productImageMap.get(id);
+        if (fallbackImage) {
+          item.image = fallbackImage;
+          if (!item.thumbnail) {
+            item.thumbnail = fallbackImage;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error enriching email items with product images:", error);
+    }
+
+    return normalizedItems;
+  }
+
+  generateOrderItemsHTML(items = []) {
     return items
-      .map(
-        (item) => `
+      .map((item) => {
+        const safeName = this.escapeHtml(item?.name || "San pham");
+        const quantity = Math.max(1, Number(item?.quantity) || 1);
+        const unitPrice = Number(item?.price) || 0;
+        const itemTotal = Number(item?.total);
+        const lineTotal = Number.isFinite(itemTotal) ? itemTotal : unitPrice * quantity;
+
+        const rawImage = this.pickImageValue(item);
+        const imageUrl = this.normalizeImageForEmail(rawImage);
+        const imageMarkup = imageUrl
+          ? `<img src="${this.escapeHtml(imageUrl)}" alt="${safeName}" class="product-image" width="80" height="80">`
+          : `<div class="product-image-placeholder">Anh san pham</div>`;
+
+        const attributes =
+          item?.attributes && typeof item.attributes === "object"
+            ? Object.entries(item.attributes)
+                .filter(([, value]) => value !== undefined && value !== null && String(value).trim())
+                .map(([key, value]) => `${this.escapeHtml(key)}: ${this.escapeHtml(value)}`)
+                .join(" | ")
+            : "";
+
+        const metaLine = attributes
+          ? `${attributes}<br />So luong: x${quantity}`
+          : `So luong: x${quantity}`;
+
+        return `
       <div class="product-item">
-        <img src="${item.image || "https://via.placeholder.com/80"}" alt="${item.name}" class="product-image">
-        <div class="product-info">
-          <div class="product-name">${item.name}</div>
-          <div class="product-meta">
-            ${
-              item.attributes
-                ? Object.entries(item.attributes)
-                    .map(([k, v]) => `${k}: ${v}`)
-                    .join(" | ")
-                : ""
-            }
-            <br>So luong: x${item.quantity}
-          </div>
-          <div class="product-price">${this.formatCurrency(item.price * item.quantity)}</div>
-        </div>
+        <table class="product-table" role="presentation" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="product-image-cell" width="96">${imageMarkup}</td>
+            <td class="product-info-cell">
+              <div class="product-name">${safeName}</div>
+              <div class="product-meta">${metaLine}</div>
+              <div class="product-price">${this.formatCurrency(lineTotal)}</div>
+            </td>
+          </tr>
+        </table>
       </div>
-    `,
-      )
+    `;
+      })
       .join("");
   }
 
   async sendOrderConfirmation(orderData) {
     try {
+      this.refreshMailerConfig();
+      if (!this.smtpUser || !this.smtpPass) {
+        return {
+          success: false,
+          error: "Missing SMTP credentials (MAIL_USER/SMTP_USER and MAIL_PASSWORD/SMTP_PASSWORD)",
+        };
+      }
+
       if (!orderData?.customer?.email) {
         return { success: false, error: "Customer email is missing" };
       }
 
       const template = this.loadTemplate("order-confirmation");
+      const enrichedItems = await this.enrichItemsWithProductImages(orderData.items || []);
       const data = {
         ORDER_CODE: orderData.orderCode,
         ORDER_STATUS: orderData.status || "Cho xac nhan",
@@ -128,11 +345,12 @@ class EmailService {
         CUSTOMER_PHONE: orderData.customer.phone,
         CUSTOMER_EMAIL: orderData.customer.email || "Khong co",
         SHIPPING_ADDRESS: orderData.customer.full_address,
-        ORDER_ITEMS: this.generateOrderItemsHTML(orderData.items),
+        ORDER_ITEMS: this.generateOrderItemsHTML(enrichedItems),
         SUBTOTAL: this.formatCurrency(orderData.subtotal),
         SHIPPING_FEE: this.formatCurrency(orderData.shippingFee || 0),
         TOTAL_AMOUNT: this.formatCurrency(orderData.total),
         TRACKING_URL: orderData.trackingUrl,
+        HEADER_ICON_URL: this.getHeaderIconUrl(),
         ORDER_DATE: new Date().toLocaleDateString("vi-VN"),
       };
 
@@ -159,6 +377,7 @@ class EmailService {
 
   async sendRegisterInvitation(inviteData) {
     try {
+      this.refreshMailerConfig();
       if (!this.smtpUser || !this.smtpPass) {
         return {
           success: false,
@@ -244,6 +463,14 @@ class EmailService {
 
   async sendNewOrderNotificationToAdmin(orderData) {
     try {
+      this.refreshMailerConfig();
+      if (!this.smtpUser || !this.smtpPass) {
+        return {
+          success: false,
+          error: "Missing SMTP credentials (MAIL_USER/SMTP_USER and MAIL_PASSWORD/SMTP_PASSWORD)",
+        };
+      }
+
       const html = `
         <h2>Don hang moi: ${orderData.orderCode}</h2>
         <p><strong>Khach hang:</strong> ${orderData.customer.full_name}</p>
