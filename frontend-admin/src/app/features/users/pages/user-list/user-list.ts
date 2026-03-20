@@ -11,6 +11,7 @@ import { UserRole } from '../../../../models/auth.model';
 
 type UserStatus = 'active' | 'blocked';
 type UserRoleLabel = 'customer' | 'staff' | 'admin' | 'super_admin';
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 interface UserRow {
   id: string;
@@ -332,10 +333,12 @@ export class UserListComponent implements OnInit {
 
   protected resetPassword(): void {
     if (!this.selectedUser || this.passwordUpdating) return;
-    const password = window.prompt('Nhập mật khẩu tạm (>=8 ký tự)');
+    const password = window.prompt(
+      'Nhập mật khẩu tạm (>=6 ký tự, gồm chữ hoa, số, ký tự đặc biệt)',
+    );
     if (!password) return;
-    if (password.length < 8) {
-      this.notification.showWarning('Mật khẩu phải có ít nhất 8 ký tự');
+    if (password.length < 6 || !passwordComplexPattern.test(password)) {
+      this.notification.showWarning('Mật khẩu phải có >=6 ký tự, gồm chữ hoa, số, ký tự đặc biệt');
       return;
     }
 

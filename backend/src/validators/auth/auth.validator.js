@@ -8,15 +8,10 @@ const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 export const register = {
   body: Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string()
-      .min(8)
-      .pattern(passwordComplexPattern)
-      .required()
-      .messages({
-        "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
-        "string.pattern.base":
-          "Mật khẩu phải gồm chữ hoa, số và ký tự đặc biệt",
-      }),
+    password: Joi.string().min(6).pattern(passwordComplexPattern).required().messages({
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
+    }),
     confirmPassword: Joi.string()
       .valid(Joi.ref("password"))
       .required()
@@ -28,8 +23,8 @@ export const register = {
     phone: Joi.string()
       .pattern(/^(0[3|5|7|8|9])+([0-9]{8})$/)
       .messages({
-        "string.pattern.base": "Sá»‘ Ä‘iá»‡n thoáº¡i khÃ´ng há»£p lá»‡",
-        "any.required": "Sá»‘ Ä‘iá»‡n thoáº¡i lÃ  báº¯t buá»™c",
+        "string.pattern.base": "Số điện thoại không hợp lệ",
+        "any.required": "Số điện thoại là bắt buộc",
       }),
     phoneNumber: Joi.string()
       .pattern(/^(0[3|5|7|8|9])+([0-9]{8})$/)
@@ -82,15 +77,10 @@ export const forgotPassword = {
 export const resetPassword = {
   body: Joi.object({
     token: Joi.string().required(),
-    password: Joi.string()
-      .min(8)
-      .pattern(passwordComplexPattern)
-      .required()
-      .messages({
-        "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
-        "string.pattern.base":
-          "Mật khẩu phải gồm chữ hoa, số và ký tự đặc biệt",
-      }),
+    password: Joi.string().min(6).pattern(passwordComplexPattern).required().messages({
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
+    }),
     confirmPassword: Joi.string().valid(Joi.ref("password")).required(),
   }),
 };

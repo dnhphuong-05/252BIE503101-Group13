@@ -275,11 +275,8 @@
   min-height: 18px;
 }
 
-.password-hint {
-  margin-top: 4px;
-  font-size: 0.72rem;
-  color: rgba(86, 11, 24, 0.75);
-  font-family: 'Arial', 'Helvetica', sans-serif;
+.error-message span {
+  display: block;
 }
 
 .error-message.general-error {

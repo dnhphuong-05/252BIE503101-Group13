@@ -1,6 +1,8 @@
 import Joi from "joi";
 import { Roles } from "../../constants/roles.js";
 
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 /**
  * Validator for creating staff or admin user
  */
@@ -21,9 +23,10 @@ export const createStaffOrAdmin = {
       .messages({
         "string.pattern.base": "Số điện thoại phải có 10-11 chữ số",
       }),
-    password: Joi.string().min(8).required().messages({
+    password: Joi.string().min(6).pattern(passwordComplexPattern).required().messages({
       "string.empty": "Mật khẩu không được để trống",
-      "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
     }),
     role: Joi.string().valid(Roles.STAFF, Roles.ADMIN).required().messages({
       "any.only": "Role phải là staff hoặc admin",
@@ -65,9 +68,10 @@ export const updateStatus = {
  */
 export const resetPassword = {
   body: Joi.object({
-    password: Joi.string().min(8).required().messages({
+    password: Joi.string().min(6).pattern(passwordComplexPattern).required().messages({
       "string.empty": "Mật khẩu không được để trống",
-      "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
     }),
   }),
 };

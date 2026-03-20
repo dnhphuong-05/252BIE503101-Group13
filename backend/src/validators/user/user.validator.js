@@ -3,6 +3,7 @@ import Joi from "joi";
 const idSchema = Joi.string().required();
 const vietnamPhoneSchema = Joi.string().pattern(/^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/);
 const addressDetailSchema = Joi.string().trim().min(6);
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 const paginationSchema = {
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
@@ -13,7 +14,10 @@ export const createUser = {
   body: Joi.object({
     full_name: Joi.string().trim().max(100).required(),
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).max(100).required(),
+    password: Joi.string().min(6).max(100).pattern(passwordComplexPattern).required().messages({
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
+    }),
     phone: vietnamPhoneSchema.required(),
     avatar: Joi.string().uri().allow(""),
     gender: Joi.string().valid("male", "female", "other").allow(null),
@@ -49,7 +53,10 @@ export const changePassword = {
   }),
   body: Joi.object({
     currentPassword: Joi.string().required(),
-    newPassword: Joi.string().min(6).max(100).required(),
+    newPassword: Joi.string().min(6).max(100).pattern(passwordComplexPattern).required().messages({
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
+    }),
   }),
 };
 
