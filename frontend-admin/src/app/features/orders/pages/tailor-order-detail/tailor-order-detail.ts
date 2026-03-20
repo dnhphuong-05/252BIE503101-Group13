@@ -149,11 +149,11 @@ export class TailorOrderDetailComponent implements OnInit {
   protected form: any = this.createEmptyForm();
   protected productOptions: ProductReferenceOption[] = [];
   protected selectedStep: TailorProgressStep = 'created';
-  protected legacyStatusMode = false;
   protected detailLoading = true;
   protected productLoading = false;
   protected actionLoading = false;
   protected shipmentLoading = false;
+  protected remainingPaymentDraft = 0;
   protected detailError = '';
   protected uploadingAttachment: Record<TailorAttachmentTarget, boolean> = {
     customer_reference: false,
@@ -190,7 +190,7 @@ export class TailorOrderDetailComponent implements OnInit {
   protected get activeProgressStatus(): TailorProgressStep {
     if (!this.selectedOrder) return 'created';
     if (this.isCancelled) return this.getLastReachedProgressStatus();
-    if (this.normalizedStatus === 'delivered') return 'finalized';
+    if (this.normalizedStatus === 'delivered') return this.isFullyPaid ? 'finalized' : 'delivered';
     return this.progressSteps.includes(this.normalizedStatus as TailorProgressStep)
       ? (this.normalizedStatus as TailorProgressStep)
       : this.getLastReachedProgressStatus();
@@ -235,7 +235,27 @@ export class TailorOrderDetailComponent implements OnInit {
   }
 
   protected get balanceDue(): number {
-    return Math.max(0, this.totalAmount - Number(this.form.paidAmount || 0));
+    return Math.max(0, this.totalAmount - this.paidAmountValue);
+  }
+
+  protected get paidAmountValue(): number {
+    return Math.max(0, Number(this.form.paidAmount || 0));
+  }
+
+  protected get depositAmountValue(): number {
+    return Math.max(0, Number(this.form.depositAmount || 0));
+  }
+
+  protected get remainingAfterDeposit(): number {
+    return Math.max(0, this.totalAmount - this.depositAmountValue);
+  }
+
+  protected get hasDepositConfirmed(): boolean {
+    return this.depositAmountValue > 0 && this.paidAmountValue >= this.depositAmountValue;
+  }
+
+  protected get isFullyPaid(): boolean {
+    return this.totalAmount > 0 && this.balanceDue <= 0;
   }
 
   protected progressLabel(step: TailorProgressStep): string {
@@ -288,25 +308,108 @@ export class TailorOrderDetailComponent implements OnInit {
   }
 
   protected get hasShipmentUpdated(): boolean {
-    return Boolean(this.selectedOrder?.timeline?.shipment_created_at);
+    return Boolean(
+      this.selectedOrder?.timeline?.shipment_created_at ||
+        this.selectedOrder?.shipping?.tracking_code ||
+        String(this.form.trackingCode || '').trim(),
+    );
   }
 
   protected get canConfirmDelivered(): boolean {
-    return this.canMoveTo('delivered') && this.hasShipmentUpdated && !this.shipmentLoading && !this.actionLoading;
+    return (
+      this.canMoveTo('delivered') &&
+      this.hasShipmentUpdated &&
+      !this.shipmentLoading &&
+      !this.actionLoading
+    );
   }
 
   protected get canConfirmCompletedStep(): boolean {
-    return this.normalizedStatus === 'completed' && this.canMoveTo('delivered') && !this.actionLoading;
+    return (
+      this.normalizedStatus === 'completed' &&
+      this.canMoveTo('delivered') &&
+      this.hasDepositConfirmed &&
+      !this.actionLoading
+    );
   }
 
   protected confirmCompletedAndOpenDelivery(): void {
     if (!this.selectedOrder || !this.canConfirmCompletedStep) {
-      this.notification.showError('Chưa thể chuyển sang tab Đang giao.');
+      this.notification.showError('Can xac nhan tien coc truoc khi chuyen sang buoc Dang giao.');
       return;
     }
 
     this.selectedStep = 'delivered';
-    this.notification.showInfo('Đã chuyển sang tab Đang giao. Hãy tạo vận đơn trước khi xác nhận đã giao.');
+    this.notification.showInfo('Da chuyen sang buoc Dang giao.');
+  }
+
+  protected updateDepositByRemaining(value: number | string): void {
+    const parsed = Number(value);
+    const normalizedRemaining = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+    const clampedRemaining = Math.min(this.totalAmount, normalizedRemaining);
+    this.form.depositAmount = Math.max(0, this.totalAmount - clampedRemaining);
+  }
+
+  protected async confirmDepositPayment(): Promise<void> {
+    if (!this.selectedOrder || this.actionLoading || this.shipmentLoading) return;
+
+    const depositAmount = Math.max(0, Number(this.form.depositAmount || 0));
+    if (depositAmount <= 0) {
+      this.notification.showError('Vui long nhap so tien coc.');
+      return;
+    }
+    if (depositAmount > this.totalAmount) {
+      this.notification.showError('So tien coc khong the lon hon tong tien.');
+      return;
+    }
+
+    this.form.paidAmount = depositAmount;
+    if (!this.form.paymentDate) {
+      this.form.paymentDate = this.toInputDate(new Date().toISOString());
+    }
+    this.remainingPaymentDraft = Math.max(0, this.totalAmount - depositAmount);
+
+    const saved = await this.saveTailorOrder(false);
+    if (!saved) return;
+
+    this.notification.showSuccess('Da xac nhan tien coc.');
+  }
+
+  protected async confirmRemainingPayment(): Promise<void> {
+    if (!this.selectedOrder || this.actionLoading || this.shipmentLoading) return;
+    if (this.normalizedStatus !== 'delivered') {
+      this.notification.showError('Chi xac nhan thanh toan phan con lai sau khi don da giao thanh cong.');
+      return;
+    }
+
+    if (this.balanceDue <= 0) {
+      this.notification.showInfo('Don hang da thanh toan du.');
+      return;
+    }
+
+    const parsedAmount = Number(this.remainingPaymentDraft);
+    const collected = Number.isFinite(parsedAmount) ? Math.max(0, parsedAmount) : 0;
+    if (collected <= 0) {
+      this.notification.showError('Vui long nhap so tien khach vua thanh toan.');
+      return;
+    }
+    if (collected > this.balanceDue) {
+      this.notification.showError('So tien vua nhap lon hon cong no con lai.');
+      return;
+    }
+
+    this.form.paidAmount = this.paidAmountValue + collected;
+    this.form.paymentDate = this.toInputDate(new Date().toISOString());
+
+    const saved = await this.saveTailorOrder(false);
+    if (!saved) return;
+
+    this.remainingPaymentDraft = this.balanceDue;
+    if (this.isFullyPaid) {
+      this.notification.showSuccess('Khach da thanh toan du. Don duoc danh dau hoan tat.');
+    } else {
+      this.notification.showSuccess('Da cap nhat thanh toan phan con lai.');
+    }
   }
 
   protected get customerReferenceImages(): string[] {
@@ -358,10 +461,10 @@ export class TailorOrderDetailComponent implements OnInit {
         return ['Thử/chỉnh sửa', 'Yêu cầu sửa', 'Số đo bổ sung'];
       case 'completed':
         return this.canConfirmCompletedStep
-          ? ['\u004b\u0069\u1ec3m tra s\u1ea3n ph\u1ea9m', '\u0110\u1ed1i so\u00e1t c\u00f4ng n\u1ee3', 'X\u00e1c nh\u1eadn chuy\u1ec3n b\u01b0\u1edbc']
-          : ['\u0110\u00e3 x\u00e1c nh\u1eadn ho\u00e0n th\u00e0nh', 'Theo d\u00f5i tab \u0110ang giao'];
+          ? ['Xac nhan tien coc', 'Doi soat cong no', 'Xac nhan chuyen buoc']
+          : ['Cho xac nhan tien coc', 'Theo doi tab Dang giao'];
       case 'delivered':
-        return ['Hình thức nhận', 'Đơn vị vận chuyển', 'Tạo vận đơn', 'Xác nhận đã giao'];
+        return ['Thong tin van don', 'Xac nhan da giao', 'Thu tien con lai', 'Kiem tra cong no'];
       case 'finalized':
         return ['Đơn đã hoàn tất', 'Đối soát công nợ', 'Kiểm tra lịch sử trạng thái'];
       default:
@@ -430,21 +533,7 @@ export class TailorOrderDetailComponent implements OnInit {
     }
 
     this.actionLoading = true;
-    const fallbackStatus = this.toLegacyCompatStatus(status);
-    const statusForApi = status === 'completed' ? fallbackStatus : status;
     const payload = this.buildPayloadByStep(this.selectedStep);
-    const applyStatusResult = (data: any): boolean => {
-      if (data) this.applyDetail(data);
-      const actualStatus = this.normalizeStatus(data?.status);
-      if (actualStatus !== status) {
-        this.notification.showError(
-          `\u0110\u00e3 l\u01b0u d\u1eef li\u1ec7u nh\u01b0ng ch\u01b0a chuy\u1ec3n \u0111\u01b0\u1ee3c sang b\u01b0\u1edbc ${this.statusMeta[status].label}.`,
-        );
-        return false;
-      }
-      this.notification.showSuccess('\u0110\u00e3 c\u1eadp nh\u1eadt tr\u1ea1ng th\u00e1i.');
-      return true;
-    };
 
     try {
       const response = await firstValueFrom(
@@ -452,39 +541,22 @@ export class TailorOrderDetailComponent implements OnInit {
           `${this.apiUrl}/tailor-orders/${this.selectedOrder.tailor_order_id}`,
           {
             ...payload,
-            status: statusForApi,
+            status,
             status_note: note,
             cancel_reason: this.form.cancelReason || '',
           },
         ),
       );
-      if (!applyStatusResult(response.data)) return;
-    } catch (error: any) {
-      if (
-        this.shouldFallbackLegacyStatus(error) && fallbackStatus !== status
-      ) {
-        try {
-          const response = await firstValueFrom(
-            this.http.patch<ApiResponse<any>>(
-              `${this.apiUrl}/tailor-orders/${this.selectedOrder.tailor_order_id}`,
-              {
-                ...payload,
-                status: fallbackStatus,
-                status_note: note,
-                cancel_reason: this.form.cancelReason || '',
-              },
-            ),
-          );
-          if (!applyStatusResult(response.data)) return;
-          return;
-        } catch (fallbackError: any) {
-          this.notification.showError(
-            this.resolveApiError(fallbackError, 'Không thể cập nhật trạng thái.'),
-          );
-          return;
-        }
+      if (response.data) this.applyDetail(response.data);
+      const actualStatus = this.normalizeStatus(response.data?.status);
+      if (actualStatus !== status) {
+        this.notification.showError(
+          `Đã lưu dữ liệu nhưng chưa chuyển được sang bước ${this.statusMeta[status].label}.`,
+        );
+        return;
       }
-
+      this.notification.showSuccess('Đã cập nhật trạng thái.');
+    } catch (error: any) {
       this.notification.showError(this.resolveApiError(error, 'Không thể cập nhật trạng thái.'));
     } finally {
       this.actionLoading = false;
@@ -493,11 +565,11 @@ export class TailorOrderDetailComponent implements OnInit {
 
   protected async createShipment(): Promise<void> {
     if (!this.selectedOrder) return;
-    const carrierName = String(this.form.carrierName || '').trim();
-    if (!carrierName) {
-      this.notification.showError('Vui lòng chọn đơn vị vận chuyển trước khi tạo vận đơn.');
+    if (!this.hasDepositConfirmed) {
+      this.notification.showError('Vui long xac nhan tien coc truoc khi tao van don.');
       return;
     }
+    const carrierName = String(this.form.carrierName || '').trim();
 
     const saved = await this.saveTailorOrder(false);
     if (!saved) return;
@@ -508,13 +580,13 @@ export class TailorOrderDetailComponent implements OnInit {
         this.http.post<ApiResponse<any>>(
           `${this.apiUrl}/tailor-orders/${this.selectedOrder.tailor_order_id}/generate-shipment`,
           {
-            carrier_name: carrierName,
+            carrier_name: carrierName || undefined,
             note: this.form.shipmentNote,
           },
         ),
       );
       if (response.data) this.applyDetail(response.data);
-      this.notification.showSuccess('Đã tạo vận đơn.');
+      this.notification.showSuccess('Da tao van don gia lap. Vui long xac nhan da giao khi giao thanh cong.');
     } catch (error: any) {
       this.notification.showError(this.resolveApiError(error, 'Không thể tạo vận đơn.'));
     } finally {
@@ -589,8 +661,15 @@ export class TailorOrderDetailComponent implements OnInit {
     const rawTitle = String(order.product?.title || '').trim();
     const displayTitle = this.isAutoGeneratedTitle(rawTitle) ? '' : rawTitle;
 
-    this.legacyStatusMode = this.detectLegacyStatusMode(order);
-    this.selectedOrder = { ...order, status: this.normalizeStatus(order.status) };
+    this.selectedOrder = {
+      ...order,
+      status: this.normalizeStatus(order.status),
+      shipping: {
+        ...(order.shipping || {}),
+        carrier_name: this.normalizeCarrierName(order.shipping?.carrier_name),
+        note: this.normalizeShipmentNote(order.shipping?.note),
+      },
+    };
     this.form = {
       ...this.createEmptyForm(),
       customerCode: order.customer?.customer_code || order.customer?.user_id || order.customer?.guest_id || '',
@@ -659,11 +738,12 @@ export class TailorOrderDetailComponent implements OnInit {
       labelCode: order.shipping?.label_code || '',
       estimatedDeliveryDate: this.toInputDate(order.shipping?.estimated_delivery_at),
       actualDeliveryDate: this.toInputDate(order.shipping?.actual_delivery_at || order.shipping?.delivered_at),
-      shipmentNote: order.shipping?.note || '',
+      shipmentNote: this.normalizeShipmentNote(order.shipping?.note),
       adminNote: order.admin_note || '',
       cancelReason: order.cancel_reason || '',
     };
     const activeStep = this.activeProgressStatus;
+    this.remainingPaymentDraft = this.balanceDue;
     this.selectedStep =
       this.selectedStep === 'delivered' && activeStep === 'completed'
         ? 'delivered'
@@ -706,20 +786,11 @@ export class TailorOrderDetailComponent implements OnInit {
       return 'Vui lòng nhập giá báo trước khi chuyển bước.';
     }
 
+    if (nextStatus === 'delivered' && !this.hasDepositConfirmed) {
+      return 'Vui long xac nhan tien coc truoc khi xac nhan da giao.';
+    }
+
     return null;
-  }
-
-  private detectLegacyStatusMode(order: any): boolean {
-    const legacyStatuses = new Set(['confirmed_request', 'quoted', 'order_confirmed', 'shipping']);
-    const rawStatus = String(order?.status || '').trim();
-    if (legacyStatuses.has(rawStatus)) return true;
-
-    const history = Array.isArray(order?.status_history) ? order.status_history : [];
-    return history.some(
-      (entry: any) =>
-        legacyStatuses.has(String(entry?.from || '').trim()) ||
-        legacyStatuses.has(String(entry?.to || '').trim()),
-    );
   }
 
   private resolveApiError(error: any, fallback: string): string {
@@ -737,6 +808,12 @@ export class TailorOrderDetailComponent implements OnInit {
     if (rawMessage.includes('Please update shipment details before confirming delivered')) {
       return 'Vui lòng tạo vận đơn trước khi xác nhận đã giao.';
     }
+    if (rawMessage.includes('Deposit payment must be confirmed before generating shipment')) {
+      return 'Vui long xac nhan tien coc truoc khi tao van don.';
+    }
+    if (rawMessage.includes('Deposit payment must be confirmed before confirming delivered')) {
+      return 'Vui long xac nhan tien coc truoc khi chuyen sang Dang giao.';
+    }
     const transitionMatch = rawMessage.match(
       /Cannot move tailor order from ([a-z_]+) to ([a-z_]+)\.?/i,
     );
@@ -751,35 +828,6 @@ export class TailorOrderDetailComponent implements OnInit {
       return `\u004b\u0068\u00f4ng th\u1ec3 chuy\u1ec3n tr\u1ea1ng th\u00e1i t\u1eeb ${fromLabel} sang ${toLabel}.`;
     }
     return rawMessage || fallback;
-  }
-
-  private shouldFallbackLegacyStatus(error: any): boolean {
-    const details = error?.error?.errors;
-    if (!Array.isArray(details)) return false;
-    return details.some(
-      (item) =>
-        String(item?.field || '').trim() === 'body.status' &&
-        String(item?.message || '').includes('must be one of'),
-    );
-  }
-
-  private toLegacyCompatStatus(status: TailorOrderStatus): TailorOrderStatus | string {
-    switch (status) {
-      case 'created':
-        return 'confirmed_request';
-      case 'consulted':
-        return 'quoted';
-      case 'sample_confirmed':
-        return 'order_confirmed';
-      case 'fitting_adjustment':
-        return 'tailoring';
-      case 'completed':
-        return 'shipping';
-      case 'delivered':
-        return 'completed';
-      default:
-        return status;
-    }
   }
 
   private buildUpdatePayload() {
@@ -964,6 +1012,8 @@ export class TailorOrderDetailComponent implements OnInit {
       case 'delivered':
         return {
           ...shared,
+          pricing: full.pricing,
+          finance: full.finance,
           shipping: full.shipping,
         };
       case 'finalized':
@@ -976,8 +1026,25 @@ export class TailorOrderDetailComponent implements OnInit {
   private normalizeCarrierName(value: unknown): string {
     const raw = String(value || '').trim();
     if (!raw) return '';
+    const lowered = raw.toLowerCase();
+    if (lowered.includes('phuc express') || lowered.includes('mock')) return '';
     const upper = raw.toUpperCase();
     if (upper === 'GHTK' || upper === 'GHN') return upper;
+    return raw;
+  }
+
+  private normalizeShipmentNote(value: unknown): string {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const lowered = raw.toLowerCase();
+    if (
+      lowered.includes('carrier contact simulated for the project') ||
+      lowered.includes('mock shipping code') ||
+      lowered.includes('đã tạo vận đơn từ trang quản trị') ||
+      lowered.includes('da tao van don tu trang quan tri')
+    ) {
+      return '';
+    }
     return raw;
   }
 
@@ -1135,7 +1202,7 @@ export class TailorOrderDetailComponent implements OnInit {
       case 'delivered':
         return this.selectedOrder.timeline?.delivered_at || this.selectedOrder.shipping?.actual_delivery_at || this.selectedOrder.shipping?.delivered_at || null;
       case 'finalized':
-        return this.selectedOrder.timeline?.delivered_at || this.selectedOrder.shipping?.actual_delivery_at || this.selectedOrder.shipping?.delivered_at || null;
+        return this.selectedOrder.finance?.payment_date || this.selectedOrder.timeline?.delivered_at || this.selectedOrder.shipping?.actual_delivery_at || this.selectedOrder.shipping?.delivered_at || null;
       default:
         return null;
     }
@@ -1246,5 +1313,3 @@ export class TailorOrderDetailComponent implements OnInit {
     };
   }
 }
-
-

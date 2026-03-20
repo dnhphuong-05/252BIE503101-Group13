@@ -19,7 +19,7 @@
         <div>
           <div class="section-title">Đơn #{{ selectedOrder.tailor_order_id }}</div>
           <div class="item-meta">
-            Nguồn inbox #{{ selectedOrder.source_contact_id }} - {{ formatDateTime(orderCreatedAt) }}
+            Tạo lúc {{ formatDateTime(orderCreatedAt) }}
           </div>
         </div>
         <div class="header-badges">
@@ -421,36 +421,52 @@
 
           @if (selectedStep === 'completed') {
             <div class="detail-section">
-              <div class="section-title">Hoàn thành</div>
+              <div class="section-title">Hoan tat</div>
               <div class="completed-layout">
                 <div class="completed-card">
-                  <div class="completed-card-title">Sẵn sàng chuyển sang giao hàng</div>
-                  <ul class="completed-checklist">
-                    <li>Đã hoàn tất may đo và kiểm tra sản phẩm.</li>
-                    <li>Đã rà soát thông tin thanh toán và công nợ.</li>
-                    <li>Bước tiếp theo: tạo vận đơn ở tab Đang giao.</li>
-                  </ul>
-                  <div class="field-hint">Xác nhận bước này để chuyển sang tab Đang giao.</div>
+                  <div class="completed-card-title">Xac nhan tien coc</div>
+                  <div class="form-grid completed-payment-grid">
+                    <div class="filter-field">
+                      <span class="filter-label">So tien da coc</span>
+                      <input class="input" type="number" min="0" [(ngModel)]="form.depositAmount" />
+                    </div>
+                    <div class="filter-field">
+                      <span class="filter-label">So tien con lai</span>
+                      <input
+                        class="input"
+                        type="number"
+                        min="0"
+                        [ngModel]="remainingAfterDeposit"
+                        (ngModelChange)="updateDepositByRemaining($event)"
+                      />
+                    </div>
+                  </div>
+                  <div class="field-hint">
+                    Da thu: {{ formatCurrency(form.paidAmount) }} | Con no: {{ formatCurrency(balanceDue) }}
+                  </div>
                 </div>
                 <div class="completed-card">
-                  <div class="completed-card-title">Tóm tắt trước bàn giao</div>
+                  <div class="completed-card-title">Tom tat truoc ban giao</div>
                   <div class="info-list">
-                    <div><span>Khách hàng</span><strong>{{ form.fullName || '-' }}</strong></div>
-                    <div><span>Mẫu</span><strong>{{ form.referenceProductName || form.title || '-' }}</strong></div>
-                    <div><span>Tổng tiền</span><strong>{{ formatCurrency(totalAmount) }}</strong></div>
-                    <div><span>Đã thanh toán</span><strong>{{ formatCurrency(form.paidAmount) }}</strong></div>
-                    <div><span>Còn nợ</span><strong>{{ formatCurrency(balanceDue) }}</strong></div>
-                    <div><span>Hoàn thành lúc</span><strong>{{ progressTime('completed') }}</strong></div>
+                    <div><span>Khach hang</span><strong>{{ form.fullName || '-' }}</strong></div>
+                    <div><span>Mau</span><strong>{{ form.referenceProductName || form.title || '-' }}</strong></div>
+                    <div><span>Tong tien</span><strong>{{ formatCurrency(totalAmount) }}</strong></div>
+                    <div><span>Da thanh toan</span><strong>{{ formatCurrency(form.paidAmount) }}</strong></div>
+                    <div><span>Con no</span><strong>{{ formatCurrency(balanceDue) }}</strong></div>
+                    <div><span>Hoan thanh luc</span><strong>{{ progressTime('completed') }}</strong></div>
                   </div>
                 </div>
               </div>
               <div class="status-actions">
+                <button class="btn btn-secondary btn-sm" type="button" (click)="confirmDepositPayment()">
+                  Xac nhan coc
+                </button>
                 @if (canConfirmCompletedStep) {
                   <button class="btn btn-primary btn-sm" type="button" (click)="confirmCompletedAndOpenDelivery()">
-                    Xác nhận
+                    Chuyen sang Dang giao
                   </button>
                 } @else {
-                  <span class="field-hint">Đơn đã qua bước Hoàn thành, tiếp tục xử lý tại tab Đang giao.</span>
+                  <span class="field-hint">Can xac nhan coc de mo buoc Dang giao.</span>
                 }
               </div>
             </div>
@@ -458,10 +474,10 @@
 
           @if (selectedStep === 'delivered') {
             <div class="detail-section">
-              <div class="section-title">Đang giao</div>
+              <div class="section-title">Dang giao</div>
               <div class="form-grid">
                 <div class="filter-field">
-                  <span class="filter-label">Hình thức nhận</span>
+                  <span class="filter-label">Hinh thuc nhan</span>
                   <select class="select" [(ngModel)]="form.receiveMethod">
                     @for (method of receiveMethodOptions; track method.value) {
                       <option [value]="method.value">{{ method.label }}</option>
@@ -469,9 +485,9 @@
                   </select>
                 </div>
                 <div class="filter-field">
-                  <span class="filter-label">Đơn vị vận chuyển</span>
+                  <span class="filter-label">Don vi van chuyen</span>
                   <select class="select" [(ngModel)]="form.carrierName">
-                    <option value="">Chọn đơn vị vận chuyển</option>
+                    <option value="">Chon don vi van chuyen</option>
                     @for (carrier of shipmentCarrierOptions; track carrier.value) {
                       <option [value]="carrier.value">{{ carrier.label }}</option>
                     }
@@ -480,26 +496,59 @@
                     }
                   </select>
                 </div>
-                <div class="filter-field"><span class="filter-label">Mã vận đơn</span><input class="input" [(ngModel)]="form.trackingCode" /></div>
-                <div class="filter-field"><span class="filter-label">Mã nhãn</span><input class="input" [(ngModel)]="form.labelCode" /></div>
-                <div class="filter-field"><span class="filter-label">Ngày giao dự kiến</span><input class="input" type="date" [(ngModel)]="form.estimatedDeliveryDate" /></div>
-                <div class="filter-field"><span class="filter-label">Ngày giao thực tế</span><input class="input" type="date" [(ngModel)]="form.actualDeliveryDate" /></div>
-                <div class="filter-field full-width"><span class="filter-label">Ghi chú giao hàng</span><textarea class="input textarea" rows="2" [(ngModel)]="form.shipmentNote"></textarea></div>
+                <div class="filter-field"><span class="filter-label">Ma van don</span><input class="input" [(ngModel)]="form.trackingCode" /></div>
+                <div class="filter-field"><span class="filter-label">Ma nhan</span><input class="input" [(ngModel)]="form.labelCode" /></div>
+                <div class="filter-field">
+                  <span class="filter-label">Ngay giao du kien (don vi van chuyen cap)</span>
+                  <input class="input" [value]="form.estimatedDeliveryDate || 'Tu dong gia lap'" readonly />
+                </div>
+                <div class="filter-field">
+                  <span class="filter-label">Ngay giao thuc te</span>
+                  <input class="input" [value]="form.actualDeliveryDate || 'Tu dong khi xac nhan da giao'" readonly />
+                </div>
+                <div class="filter-field full-width"><span class="filter-label">Ghi chu giao hang</span><textarea class="input textarea" rows="2" [(ngModel)]="form.shipmentNote"></textarea></div>
+
+                <div class="completed-card payment-card full-width">
+                  <div class="completed-card-title">Thu tien con lai sau giao hang</div>
+                  <div class="form-grid completed-payment-grid">
+                    <div class="filter-field">
+                      <span class="filter-label">Cong no hien tai</span>
+                      <input class="input" type="text" [value]="formatCurrency(balanceDue)" readonly />
+                    </div>
+                    <div class="filter-field">
+                      <span class="filter-label">So tien khach vua thanh toan</span>
+                      <input class="input" type="number" min="0" [(ngModel)]="remainingPaymentDraft" />
+                    </div>
+                  </div>
+                </div>
               </div>
               <div class="status-actions">
-                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Lưu</button>
-                <button class="btn btn-secondary btn-sm" type="button" (click)="createShipment()" [disabled]="shipmentLoading">
-                  {{ shipmentLoading ? 'Đang tạo...' : 'Tạo vận đơn' }}
-                </button>
+                <button class="btn btn-secondary btn-sm" type="button" (click)="saveTailorOrder()">Luu</button>
                 @if (canMoveTo('delivered')) {
-                  <button class="btn btn-primary btn-sm" type="button" [disabled]="!canConfirmDelivered" (click)="confirmAndMove('delivered', 'Đã giao hàng cho khách.', 'Xác nhận đã giao?')">
-                    Xác nhận đã giao
+                  <button class="btn btn-secondary btn-sm" type="button" (click)="createShipment()" [disabled]="shipmentLoading || hasShipmentUpdated">
+                    {{ shipmentLoading ? 'Dang xu ly...' : hasShipmentUpdated ? 'Da co van don' : 'Tao van don gia lap' }}
+                  </button>
+                  <button
+                    class="btn btn-primary btn-sm"
+                    type="button"
+                    [disabled]="!canConfirmDelivered"
+                    (click)="confirmAndMove('delivered', 'Da giao hang thanh cong.', 'Xac nhan da giao hang thanh cong?')"
+                  >
+                    Xac nhan da giao thanh cong
                   </button>
                 }
+                @if (canMoveTo('delivered') && !hasShipmentUpdated) {
+                  <span class="field-hint">Can tao van don truoc khi xac nhan giao thanh cong.</span>
+                }
+                @if (normalizedStatus === 'delivered') {
+                  <button class="btn btn-primary btn-sm" type="button" (click)="confirmRemainingPayment()" [disabled]="actionLoading || balanceDue <= 0">
+                    Xac nhan thu tien con lai
+                  </button>
+                }
+                @if (normalizedStatus === 'delivered' && balanceDue <= 0) {
+                  <span class="field-hint">Don da thanh toan du, buoc Hoan tat se tu dong hien thi.</span>
+                }
               </div>
-              @if (!hasShipmentUpdated) {
-                <div class="field-hint">Vui lòng bấm "Tạo vận đơn" trước khi xác nhận đã giao.</div>
-              }
             </div>
           }
 
@@ -585,6 +634,3 @@
     </div>
   }
 </div>
-
-
-

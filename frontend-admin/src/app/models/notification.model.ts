@@ -127,7 +127,7 @@ export const getAdminNotificationMeta = (
   ) {
     return {
       category: 'contact',
-      badge: 'Liên hệ',
+      badge: 'Contact',
       icon: 'fas fa-envelope-open-text',
     };
   }
@@ -135,7 +135,7 @@ export const getAdminNotificationMeta = (
   if (notification.type === 'return_requested') {
     return {
       category: 'returns',
-      badge: 'Hoàn trả',
+      badge: 'Return',
       icon: 'fas fa-rotate-left',
     };
   }
@@ -150,7 +150,7 @@ export const getAdminNotificationMeta = (
     ) {
       return {
         category: 'rent',
-        badge: 'Trả hàng',
+        badge: 'Return',
         icon: 'fas fa-truck-fast',
       };
     }
@@ -158,14 +158,14 @@ export const getAdminNotificationMeta = (
     if (notification.type === 'rent_cancelled' || notification.type === 'rent_violated') {
       return {
         category: 'rent',
-        badge: 'Đơn thuê',
+        badge: 'Rent order',
         icon: 'fas fa-triangle-exclamation',
       };
     }
 
     return {
       category: 'rent',
-      badge: 'Đơn thuê',
+      badge: 'Rent order',
       icon: 'fas fa-calendar-check',
     };
   }
@@ -173,7 +173,7 @@ export const getAdminNotificationMeta = (
   if (notification.type === 'order_cancelled') {
     return {
       category: 'sales',
-      badge: 'Đơn mua',
+      badge: 'Sales order',
       icon: 'fas fa-ban',
     };
   }
@@ -181,14 +181,14 @@ export const getAdminNotificationMeta = (
   if (notification.type === 'order_received') {
     return {
       category: 'sales',
-      badge: 'Đơn mua',
+      badge: 'Sales order',
       icon: 'fas fa-box-open',
     };
   }
 
   return {
     category: 'sales',
-    badge: 'Đơn mua',
+    badge: 'Sales order',
     icon: 'fas fa-bag-shopping',
   };
 };

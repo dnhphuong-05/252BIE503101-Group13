@@ -46,6 +46,26 @@ const userProfileSchema = new mongoose.Schema(
       enum: ["XS", "S", "M", "L", "XL"],
       default: null,
     },
+    job_title: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    bio: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    timezone: {
+      type: String,
+      trim: true,
+      default: "Asia/Bangkok",
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },

@@ -1,0 +1,137 @@
+<div class="page-shell profile-page">
+  <div class="page-header profile-header">
+    <div class="title-block">
+      <div class="page-title">Profile</div>
+      <div class="page-subtitle">Manage your account identity details.</div>
+    </div>
+
+    <div class="page-actions">
+      <button class="btn btn-ghost" type="button" (click)="resetProfile()">Reset</button>
+      <button class="btn btn-primary" type="button" (click)="saveProfile()" [disabled]="isSaving()">
+        @if (isSaving()) {
+          <span class="spinner"></span>
+        }
+        <span>{{ isSaving() ? 'Saving...' : 'Save changes' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <section class="card profile-hero">
+    <div class="profile-hero-main">
+      @if (currentUser()?.avatar) {
+        <img class="hero-avatar-image" [src]="currentUser()?.avatar" [alt]="profile().displayName || 'Avatar'" />
+      } @else {
+        <div class="hero-avatar">{{ initials() }}</div>
+      }
+
+      <div class="hero-copy">
+        <h2>{{ profile().displayName || currentUser()?.name || 'Admin User' }}</h2>
+        <p>{{ profile().title }}</p>
+        <div class="hero-pills">
+          <span class="hero-pill">{{ accountMeta().role }}</span>
+          <span class="hero-pill muted">{{ profile().department }}</span>
+          <span class="hero-pill muted">Stored in user_profiles</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-completion">
+      <div class="completion-top">
+        <span>Profile completeness</span>
+        <strong>{{ profileStrength() }}%</strong>
+      </div>
+      <div class="completion-track">
+        <div class="completion-fill" [style.width.%]="profileStrength()"></div>
+      </div>
+      <p>Keep this profile complete so teammates can identify responsibilities faster.</p>
+    </div>
+  </section>
+
+  <div class="profile-grid">
+    <section class="card profile-editor">
+      <div class="card-title">Account Details</div>
+
+      <div class="editor-grid">
+        <label class="field">
+          <span class="label">Display name</span>
+          <input
+            class="input"
+            [ngModel]="profile().displayName"
+            (ngModelChange)="onFieldChange('displayName', $event)"
+          />
+        </label>
+
+        <label class="field">
+          <span class="label">Email</span>
+          <input class="input" [value]="currentUser()?.email || ''" readonly />
+        </label>
+
+        <label class="field">
+          <span class="label">Phone</span>
+          <input class="input" [ngModel]="profile().phone" (ngModelChange)="onFieldChange('phone', $event)" />
+        </label>
+
+        <label class="field">
+          <span class="label">Title</span>
+          <input class="input" [ngModel]="profile().title" (ngModelChange)="onFieldChange('title', $event)" />
+        </label>
+
+        <label class="field">
+          <span class="label">Department</span>
+          <input
+            class="input"
+            [ngModel]="profile().department"
+            (ngModelChange)="onFieldChange('department', $event)"
+          />
+        </label>
+
+        <label class="field full">
+          <span class="label">Bio</span>
+          <textarea
+            class="textarea"
+            rows="4"
+            [ngModel]="profile().bio"
+            (ngModelChange)="onFieldChange('bio', $event)"
+          ></textarea>
+        </label>
+      </div>
+    </section>
+
+    <aside class="profile-side">
+      <section class="card side-card">
+        <div class="card-title">Quick Snapshot</div>
+        <div class="snapshot-list">
+          @for (stat of quickStats(); track stat.label) {
+            <div class="snapshot-item">
+              <span class="snapshot-icon">
+                <i [class]="stat.icon"></i>
+              </span>
+              <div>
+                <span>{{ stat.label }}</span>
+                <strong>{{ stat.value }}</strong>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <section class="card side-card soft">
+        <div class="card-title">Account Timeline</div>
+        <div class="timeline-list">
+          <div class="timeline-item">
+            <span>Created</span>
+            <strong>{{ accountMeta().createdAt }}</strong>
+          </div>
+          <div class="timeline-item">
+            <span>Last update</span>
+            <strong>{{ accountMeta().updatedAt }}</strong>
+          </div>
+          <div class="timeline-item">
+            <span>Status</span>
+            <strong>Active</strong>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

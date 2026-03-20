@@ -81,9 +81,15 @@ export interface BuyOrderListItem {
   total_amount?: number;
   created_at?: string;
   createdAt?: string;
+  delivered_at?: string | null;
   items?: BuyOrderItem[];
   customer_received_at?: string | null;
-  return_request?: { status?: string | null };
+  return_request?: {
+    return_id?: string | null;
+    status?: string | null;
+    requested_at?: string | null;
+    updated_at?: string | null;
+  };
 }
 
 export interface BuyOrdersResponse {

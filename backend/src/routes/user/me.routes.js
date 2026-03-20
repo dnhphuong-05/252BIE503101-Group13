@@ -22,6 +22,8 @@ router.get("/profile", controller.getProfile);
 router.put("/profile", validate(validator.updateProfile), controller.updateProfile);
 router.put("/profile/password", validate(validator.changePassword), controller.changePassword);
 router.post("/profile/avatar", uploadAvatar.single("avatar"), controller.uploadAvatar);
+router.get("/settings", controller.getSettings);
+router.put("/settings", validate(validator.updateSettings), controller.updateSettings);
 
 router.get("/addresses", controller.getAddresses);
 router.post("/addresses", validate(validator.addAddress), controller.addAddress);

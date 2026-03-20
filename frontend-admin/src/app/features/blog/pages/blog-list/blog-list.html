@@ -1,11 +1,11 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Bài viết</div>
-      <div class="page-subtitle">Quản lý trạng thái đăng bài, lưu trữ và hiển thị nội dung.</div>
+      <div class="page-title">Posts</div>
+      <div class="page-subtitle">Quản lý trạng thái xuất bản, lưu trữ và hiển thị nội dung.</div>
     </div>
     <div class="page-actions">
-      <button class="btn btn-secondary btn-sm" type="button">Export</button>
+      <button class="btn btn-secondary btn-sm" type="button">Xuất file</button>
       <button class="btn btn-primary" [routerLink]="['/blog/posts/new']">
         <i class="fas fa-plus"></i>
         Bài viết mới
@@ -20,7 +20,7 @@
           <i class="fas fa-search"></i>
           <input
             class="input"
-            placeholder="Tìm kiếm tiêu đề, tác giả, thẻ"
+            placeholder="Tìm tiêu đề, tác giả, thẻ"
             [(ngModel)]="searchTerm"
             (input)="onSearchInput()"
             (keyup.enter)="applyFilters()"
@@ -41,7 +41,7 @@
             [(ngModel)]="bulkAction"
             [disabled]="!selectedCount || isBulkRunning"
           >
-            <option value="">Bulk actions</option>
+            <option value="">Chọn thao tác</option>
             @for (option of bulkActionOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
@@ -104,7 +104,7 @@
       <div class="filter-actions">
         <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
         <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
-          Làm mới
+          Refresh
         </button>
       </div>
     </div>
@@ -165,7 +165,7 @@
                   <img class="item-thumb" [src]="post.thumbnail" [alt]="post.title" />
                   <div class="min-w-0">
                     <div class="item-title">{{ post.title }}</div>
-                    <div class="item-meta">#{{ post.blogId }} · {{ post.author }}</div>
+                    <div class="item-meta">#{{ post.blogId }} - {{ post.author }}</div>
                   </div>
                 </div>
               </td>

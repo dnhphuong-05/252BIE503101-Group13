@@ -80,6 +80,11 @@ export class AuthService {
     });
   }
 
+  refreshCurrentUser(): void {
+    if (!this.isAuthenticated()) return;
+    this.refreshProfile();
+  }
+
   login(credentials: LoginRequest): Observable<ApiResponse<LoginResponse>> {
     this.authStateSignal.update((state) => ({ ...state, isLoading: true }));
 

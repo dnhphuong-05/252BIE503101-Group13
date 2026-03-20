@@ -1,14 +1,14 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">Sản phẩm</div>
+      <div class="page-title">Products</div>
       <div class="page-subtitle">Quản lý toàn bộ sản phẩm đang bán, cho thuê và may đo</div>
     </div>
     <div class="page-actions">
-      <button class="btn btn-secondary btn-sm" type="button">Import</button>
+      <button class="btn btn-secondary btn-sm" type="button">Nhập dữ liệu</button>
       <button class="btn btn-primary" [routerLink]="['/products/new']">
         <i class="fas fa-plus"></i>
-        Sản phẩm mới
+        Thêm sản phẩm
       </button>
     </div>
   </div>
@@ -41,7 +41,7 @@
             [(ngModel)]="bulkAction"
             [disabled]="!selectedCount || isBulkRunning"
           >
-            <option value="">Bulk actions</option>
+            <option value="">Chọn thao tác</option>
             @for (option of bulkActionOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
             }
@@ -104,7 +104,7 @@
       <div class="filter-actions">
         <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
         <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">
-          Làm mới
+          Refresh
         </button>
       </div>
     </div>
@@ -124,7 +124,7 @@
     } @else if (isLoading && products.length === 0) {
       <div class="empty-state">Đang tải sản phẩm...</div>
     } @else if (products.length === 0) {
-      <div class="empty-state">Không có sản phẩm phù hợp.</div>
+      <div class="empty-state">Không tìm thấy sản phẩm phù hợp.</div>
     } @else {
       <table class="table">
         <thead>
@@ -200,7 +200,7 @@
                   >
                     Sửa
                   </button>
-                  @if (product.status !== 'archived') {
+                  @if (product.status !== 'archive') {
                     <button
                       class="btn btn-ghost btn-sm"
                       (click)="onArchive(product)"

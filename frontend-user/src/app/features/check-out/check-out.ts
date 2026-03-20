@@ -441,7 +441,7 @@ export class CheckOut implements OnInit, OnDestroy {
         }
         return '';
       case 'email':
-        if (!email) return '';
+        if (!email) return 'Vui lòng nhập email để nhận thông tin theo dõi đơn hàng.';
         if (!this.emailPattern.test(email)) return 'Email chưa đúng định dạng.';
         return '';
       case 'province':

@@ -83,6 +83,12 @@ export const createRentOrder = {
           message: "Rent order requires user_id or guest_id",
         });
       }
+      const guestEmail = (value.customer_info?.email || "").trim();
+      if (value.guest_id && !guestEmail) {
+        return helpers.error("any.custom", {
+          message: "Guest rent orders require email to receive tracking",
+        });
+      }
       if (
         value.customer_info?.delivery_method === "ship" &&
         !value.customer_info?.address

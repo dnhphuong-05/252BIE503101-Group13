@@ -5,8 +5,10 @@ import UserLoyalty from "../../models/user/UserLoyalty.js";
 import LoyaltyTransaction from "../../models/user/LoyaltyTransaction.js";
 import UserMeasurement from "../../models/user/UserMeasurement.js";
 import UserProfile from "../../models/user/UserProfile.js";
+import UserAdminSetting from "../../models/user/UserAdminSetting.js";
 import userService from "../../services/user/user.service.js";
 import loyaltyService from "../../services/user/loyalty.service.js";
+import { Roles } from "../../constants/roles.js";
 import catchAsync from "../../utils/catchAsync.js";
 import ApiError from "../../utils/ApiError.js";
 import { successResponse } from "../../utils/response.js";
@@ -46,6 +48,39 @@ const mapAddressPayload = (body) => {
     is_default: body.is_default ?? body.isDefault ?? false,
   };
 };
+
+const DEFAULT_SETTINGS = {
+  email_notifications: true,
+  order_notifications: true,
+  return_notifications: true,
+  contact_notifications: true,
+  compact_table: false,
+  reduce_motion: false,
+  language: "en",
+  timezone: "Asia/Bangkok",
+  start_page: "dashboard",
+  auto_refresh_seconds: 45,
+  enable_two_factor: false,
+  session_timeout: "30 minutes",
+};
+
+const ADMIN_WORKSPACE_ROLES = new Set([Roles.STAFF, Roles.ADMIN, Roles.SUPER_ADMIN]);
+
+const serializeSettings = (doc = null) => ({
+  email_notifications: doc?.email_notifications ?? DEFAULT_SETTINGS.email_notifications,
+  order_notifications: doc?.order_notifications ?? DEFAULT_SETTINGS.order_notifications,
+  return_notifications: doc?.return_notifications ?? DEFAULT_SETTINGS.return_notifications,
+  contact_notifications: doc?.contact_notifications ?? DEFAULT_SETTINGS.contact_notifications,
+  compact_table: doc?.compact_table ?? DEFAULT_SETTINGS.compact_table,
+  reduce_motion: doc?.reduce_motion ?? DEFAULT_SETTINGS.reduce_motion,
+  language: doc?.language ?? DEFAULT_SETTINGS.language,
+  timezone: doc?.timezone ?? DEFAULT_SETTINGS.timezone,
+  start_page: doc?.start_page ?? DEFAULT_SETTINGS.start_page,
+  auto_refresh_seconds:
+    doc?.auto_refresh_seconds ?? DEFAULT_SETTINGS.auto_refresh_seconds,
+  enable_two_factor: doc?.enable_two_factor ?? DEFAULT_SETTINGS.enable_two_factor,
+  session_timeout: doc?.session_timeout ?? DEFAULT_SETTINGS.session_timeout,
+});
 
 
 export const getSummary = catchAsync(async (req, res) => {
@@ -161,8 +196,13 @@ export const getProfile = catchAsync(async (req, res) => {
 
 export const updateProfile = catchAsync(async (req, res) => {
   const payload = { ...req.body };
+  const isAdminWorkspaceUser = ADMIN_WORKSPACE_ROLES.has(req.user.role);
+
   if (payload.fullName && !payload.full_name) {
     payload.full_name = payload.fullName;
+  }
+  if (payload.jobTitle && payload.job_title === undefined) {
+    payload.job_title = payload.jobTitle;
   }
   if (payload.gender) {
     payload.gender = normalizeGender(payload.gender);
@@ -170,12 +210,67 @@ export const updateProfile = catchAsync(async (req, res) => {
   if (payload.birthday === "") {
     payload.birthday = null;
   }
+  if (isAdminWorkspaceUser && payload.timezone !== undefined) {
+    const normalizedTimezone =
+      typeof payload.timezone === "string"
+        ? payload.timezone.trim()
+        : payload.timezone;
 
-  const updatedUser = await userService.updateProfile(req.user._id, payload);
+    await UserAdminSetting.findOneAndUpdate(
+      { user_id: req.user.user_id },
+      {
+        $set: {
+          timezone:
+            normalizedTimezone === ""
+              ? DEFAULT_SETTINGS.timezone
+              : normalizedTimezone,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+
+    delete payload.timezone;
+  }
+
+  let updatedUser = await userService.updateProfile(req.user._id, payload);
+
+  if (isAdminWorkspaceUser) {
+    await UserProfile.updateOne(
+      { user_id: req.user.user_id },
+      { $unset: { timezone: "" } },
+    );
+    updatedUser = await userService.getById(req.user._id.toString());
+  }
+
   const profile = updatedUser.profile || null;
   const loyalty = updatedUser.loyalty || null;
 
   successResponse(res, buildAuthUser(updatedUser, profile, loyalty), "Profile updated successfully");
+});
+
+export const getSettings = catchAsync(async (req, res) => {
+  const setting = await UserAdminSetting.findOne({ user_id: req.user.user_id }).lean();
+  successResponse(
+    res,
+    serializeSettings(setting),
+    "Settings retrieved successfully",
+  );
+});
+
+export const updateSettings = catchAsync(async (req, res) => {
+  const payload = { ...req.body };
+
+  const setting = await UserAdminSetting.findOneAndUpdate(
+    { user_id: req.user.user_id },
+    { $set: payload },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  ).lean();
+
+  successResponse(
+    res,
+    serializeSettings(setting),
+    "Settings updated successfully",
+  );
 });
 
 export const changePassword = catchAsync(async (req, res) => {

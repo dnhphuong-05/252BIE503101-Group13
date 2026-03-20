@@ -2,7 +2,7 @@
   <div class="page-header">
     <div class="title-block">
       <div class="page-title">Ratings & Reviews</div>
-      <div class="page-subtitle">Track product rating stats and customer reviews.</div>
+      <div class="page-subtitle">Theo dõi thống kê đánh giá sản phẩm và nhận xét của khách hàng.</div>
     </div>
     <div class="page-actions">
       <button class="btn btn-ghost btn-sm" type="button" (click)="refresh()" [disabled]="!selectedProductId">
@@ -14,14 +14,14 @@
   <div class="card filter-card">
     <div class="filter-grid">
       <div class="filter-field">
-        <span class="filter-label">Product</span>
+        <span class="filter-label">Sản phẩm</span>
         <select
           class="select"
           [(ngModel)]="selectedProductId"
           (change)="onProductChange()"
           [disabled]="productsLoading"
         >
-          <option value="">Select a product</option>
+          <option value="">Chọn sản phẩm</option>
           @for (product of filteredProducts; track product.id) {
             <option [value]="product.id">{{ product.name }}</option>
           }
@@ -29,16 +29,16 @@
       </div>
 
       <div class="filter-field">
-        <span class="filter-label">Search</span>
+        <span class="filter-label">Tìm kiếm</span>
         <input
           class="input"
-          placeholder="Search product name"
+          placeholder="Tìm tên sản phẩm"
           [(ngModel)]="productSearch"
         />
       </div>
 
       <div class="filter-actions">
-        <button class="btn btn-ghost btn-sm" type="button" (click)="productSearch = ''">Clear</button>
+        <button class="btn btn-ghost btn-sm" type="button" (click)="productSearch = ''">Xóa</button>
       </div>
     </div>
 
@@ -48,21 +48,21 @@
   </div>
 
   @if (!selectedProductId) {
-    <div class="empty-state">Select a product to view rating and review details.</div>
+    <div class="empty-state">Chọn sản phẩm để xem chi tiết đánh giá và nhận xét.</div>
   } @else {
     <div class="rating-grid">
       <div class="card rating-card">
         <div class="rating-header">
           <div>
-            <div class="card-title">Rating summary</div>
+            <div class="card-title">Tổng quan đánh giá</div>
             <div class="text-sm text-primary-500">
-              {{ selectedProduct?.name || 'Product' }}
+              {{ selectedProduct?.name || 'Sản phẩm' }}
             </div>
           </div>
         </div>
 
         @if (ratingLoading) {
-          <div class="loading-state">Loading rating stats...</div>
+          <div class="loading-state">Đang tải thống kê đánh giá...</div>
         } @else if (ratingError) {
           <div class="error-state">{{ ratingError }}</div>
         } @else if (ratingStats) {
@@ -73,13 +73,13 @@
                 <i class="fa-star" [class.fas]="star <= ratingStats.rating_average" [class.far]="star > ratingStats.rating_average"></i>
               }
             </div>
-            <div class="rating-count">{{ ratingStats.rating_count }} reviews</div>
+            <div class="rating-count">{{ ratingStats.rating_count }} đánh giá</div>
           </div>
 
           <div class="rating-bars">
             @for (star of distributionStars; track star) {
               <div class="rating-bar-row">
-                <span class="bar-label">{{ star }} star</span>
+                <span class="bar-label">{{ star }} sao</span>
                 <div class="bar-track">
                   <div class="bar-fill" [style.width.%]="getRatingPercent(star)"></div>
                 </div>
@@ -88,23 +88,23 @@
             }
           </div>
         } @else {
-          <div class="loading-state">No rating data.</div>
+          <div class="loading-state">Chưa có dữ liệu đánh giá.</div>
         }
       </div>
 
       <div class="card stats-card">
-        <div class="card-title">Quick stats</div>
+        <div class="card-title">Thống kê nhanh</div>
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-label">Total reviews</div>
+            <div class="stat-label">Tổng đánh giá</div>
             <div class="stat-value">{{ reviewTotal }}</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">Showing</div>
+            <div class="stat-label">Đang hiển thị</div>
             <div class="stat-value">{{ reviews.length }}</div>
           </div>
           <div class="stat-item">
-            <div class="stat-label">Verified</div>
+            <div class="stat-label">Đã xác thực</div>
             <div class="stat-value">
               {{ verifiedCount }}
             </div>
@@ -129,7 +129,7 @@
         </div>
 
         <div class="sort-box">
-          <label>Sort</label>
+          <label>Sắp xếp</label>
           <select class="select" [(ngModel)]="sortFilter" (change)="onSortChange(sortFilter)">
             @for (option of sortOptions; track option.value) {
               <option [value]="option.value">{{ option.label }}</option>
@@ -139,18 +139,18 @@
       </div>
 
       @if (reviewsLoading) {
-        <div class="loading-state">Loading reviews...</div>
+        <div class="loading-state">Đang tải đánh giá...</div>
       } @else if (reviewsError) {
         <div class="error-state">{{ reviewsError }}</div>
       } @else if (reviews.length === 0) {
-        <div class="empty-state">No reviews found.</div>
+        <div class="empty-state">Không tìm thấy đánh giá nào.</div>
       } @else {
         <div class="review-list">
           @for (review of reviews; track review.id) {
             <div class="review-card">
               <div class="review-header">
                 <div class="review-user">
-                  <div class="avatar">{{ review.userName[0] || 'U' }}</div>
+                  <div class="avatar">{{ review.userName[0] || 'K' }}</div>
                   <div>
                     <div class="user-name">{{ review.userName }}</div>
                     <div class="review-date">{{ formatDate(review.createdAt) }}</div>
@@ -165,9 +165,9 @@
               </div>
 
               <div class="review-meta">
-                <span class="meta-pill">Helpful {{ review.helpful }}</span>
+                <span class="meta-pill">Hữu ích {{ review.helpful }}</span>
                 @if (review.verified) {
-                  <span class="meta-pill verified">Verified purchase</span>
+                  <span class="meta-pill verified">Đã mua hàng</span>
                 }
               </div>
 
@@ -177,7 +177,7 @@
                 <div class="review-images">
                   @for (image of review.images; track $index) {
                     <div class="review-image">
-                      <img [src]="image" alt="Review image" />
+                      <img [src]="image" alt="Ảnh đánh giá" />
                     </div>
                   }
                 </div>
@@ -186,7 +186,7 @@
               @if (review.reply; as reply) {
                 <div class="review-reply">
                   <div class="reply-header">
-                    <span class="reply-label">Reply from {{ reply.responder || 'Shop' }}</span>
+                    <span class="reply-label">Phản hồi từ {{ reply.responder || 'Cửa hàng' }}</span>
                     @if (reply.respondedAt) {
                       <span class="reply-time">{{ formatDate(reply.respondedAt) }}</span>
                     }
@@ -223,15 +223,15 @@
 
         <div class="pagination">
           <button class="btn btn-ghost btn-sm" (click)="onPageChange(reviewPage - 1)" [disabled]="reviewPage <= 1">
-            Prev
+            Trước
           </button>
-          <span class="page-info">Page {{ reviewPage }} / {{ reviewPages }}</span>
+          <span class="page-info">Trang {{ reviewPage }} / {{ reviewPages }}</span>
           <button
             class="btn btn-ghost btn-sm"
             (click)="onPageChange(reviewPage + 1)"
             [disabled]="reviewPage >= reviewPages"
           >
-            Next
+            Sau
           </button>
         </div>
       }

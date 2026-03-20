@@ -1,9 +1,9 @@
 <div class="page-shell">
   <div class="page-header">
     <div class="title-block">
-      <div class="page-title">{{ isEditMode ? 'Chỉnh sửa bài viết' : 'Bài viết mới' }}</div>
+      <div class="page-title">{{ isEditMode ? 'Edit post' : 'New post' }}</div>
       <div class="page-subtitle">
-        Đồng bộ form với collection <code>blog_posts</code> và cấu hình SEO cho bài viết.
+        Tạo bài viết mới với nội dung, hình ảnh và thông tin SEO đầy đủ.
       </div>
     </div>
     <div class="page-actions">
@@ -178,15 +178,15 @@
         </div>
         <div class="section-grid">
           <div>
-            <label class="label">Tên tác giả</label>
+            <label class="label">Tác giả name</label>
             <input class="input" [(ngModel)]="post.authorName" />
           </div>
           <div>
-            <label class="label">Vai trò tác giả</label>
+            <label class="label">Tác giả role</label>
             <input class="input" [(ngModel)]="post.authorRole" placeholder="Stylist, Biên tập viên..." />
           </div>
           <div>
-            <label class="label">Author ID <span class="hint">Tùy chọn</span></label>
+            <label class="label">Tác giả ID <span class="hint">Tùy chọn</span></label>
             <input class="input" type="number" min="1" [(ngModel)]="post.authorId" />
           </div>
           <div>
@@ -250,7 +250,7 @@
         <div class="preview-stats">
           <div>
             <span class="preview-label">Tác giả</span>
-            <strong>{{ post.authorName || 'Admin' }}</strong>
+            <strong>{{ post.authorName || 'Quản trị viên' }}</strong>
           </div>
           <div>
             <span class="preview-label">Vai trò</span>

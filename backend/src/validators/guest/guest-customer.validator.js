@@ -124,6 +124,21 @@ const getGuestCustomer = {
 };
 
 /**
+ * Validator cho gui email moi dang ky
+ */
+const inviteRegister = {
+  params: Joi.object({
+    guestId: Joi.string()
+      .pattern(/^GST\d{6}$/)
+      .required()
+      .messages({
+        "string.pattern.base": "Guest ID không hợp lệ",
+        "any.required": "Guest ID là bắt buộc",
+      }),
+  }),
+};
+
+/**
  * Validator cho delete guest customer
  */
 const deleteGuestCustomer = {
@@ -225,6 +240,7 @@ export {
   createGuestCustomer,
   updateGuestCustomer,
   getGuestCustomer,
+  inviteRegister,
   deleteGuestCustomer,
   getGuestCustomersList,
   findByPhone,

@@ -641,7 +641,11 @@ export class RentalCheckout implements OnInit, OnDestroy {
       return 'Địa chỉ chi tiết cần có ít nhất 6 ký tự.';
     }
 
-    if (email && !this.emailPattern.test(email)) {
+    if (!email) {
+      return 'Vui lòng nhập email để nhận thông tin theo dõi đơn thuê.';
+    }
+
+    if (!this.emailPattern.test(email)) {
       return 'Email không hợp lệ.';
     }
 

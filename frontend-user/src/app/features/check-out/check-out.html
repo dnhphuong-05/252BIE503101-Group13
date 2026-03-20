@@ -101,13 +101,13 @@
                   </div>
 
                   <div class="form-field">
-                    <label>Email</label>
+                    <label>Email *</label>
                     <input
                       type="email"
                       [(ngModel)]="guestInfo.email"
                       (blur)="markGuestFieldTouched('email')"
                       [class.is-invalid]="hasGuestFieldError('email')"
-                      placeholder="Email (không bắt buộc)"
+                      placeholder="Nhap email de nhan thong tin don"
                     />
                     @if (getGuestFieldError('email')) {
                       <span class="field-error">{{ getGuestFieldError('email') }}</span>
@@ -557,3 +557,4 @@
     (goToLogin)="goToLoginForVoucher()"
   ></app-login-prompt-modal>
 </div>
+

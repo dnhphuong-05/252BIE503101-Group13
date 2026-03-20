@@ -61,6 +61,16 @@ export const routes: Routes = [
         path: 'users',
         loadChildren: () => import('./features/users/users.routes').then((m) => m.USERS_ROUTES),
       },
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./features/account/pages/profile/profile').then((m) => m.ProfileComponent),
+      },
+      {
+        path: 'settings',
+        loadComponent: () =>
+          import('./features/account/pages/settings/settings').then((m) => m.SettingsComponent),
+      },
       // TODO: Implement vouchers and wallet features
       // {
       //   path: 'vouchers',

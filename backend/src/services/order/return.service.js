@@ -11,7 +11,7 @@ const STATUS_FLOW = {
   return_in_transit: ["received_inspecting"],
   received_inspecting: ["refund_processing", "closed"],
   refund_processing: ["refunded"],
-  refunded: ["received_inspecting"],
+  refunded: ["closed", "received_inspecting"],
   closed: ["received_inspecting"],
 };
 

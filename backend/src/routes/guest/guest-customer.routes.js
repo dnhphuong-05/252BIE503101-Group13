@@ -2,6 +2,8 @@ import express from "express";
 import * as guestCustomerController from "../../controllers/guest/guest-customer.controller.js";
 import * as guestCustomerValidator from "../../validators/guest/guest-customer.validator.js";
 import { validate } from "../../middlewares/validate.middleware.js";
+import { protect } from "../../middlewares/auth.middleware.js";
+import { requireAdmin } from "../../middlewares/role.middleware.js";
 
 const router = express.Router();
 
@@ -61,6 +63,19 @@ router.get(
   "/",
   validate(guestCustomerValidator.getGuestCustomersList),
   guestCustomerController.getGuestCustomers,
+);
+
+/**
+ * @route POST /api/guest-customers/:guestId/invite-register
+ * @desc Gui email moi guest customer dang ky tai khoan
+ * @access Admin+
+ */
+router.post(
+  "/:guestId/invite-register",
+  protect,
+  requireAdmin,
+  validate(guestCustomerValidator.inviteRegister),
+  guestCustomerController.inviteRegister,
 );
 
 /**

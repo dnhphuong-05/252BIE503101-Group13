@@ -1,0 +1,227 @@
+<div class="page-shell settings-page">
+  <div class="page-header settings-header">
+    <div class="title-block">
+      <div class="page-title">Settings</div>
+      <div class="page-subtitle">Configure notifications, workspace behavior, and security for admin workspace.</div>
+    </div>
+
+    <div class="page-actions">
+      <button class="btn btn-ghost" type="button" (click)="resetSettings()">Reset</button>
+      <button class="btn btn-primary" type="button" (click)="saveSettings()" [disabled]="isSaving()">
+        @if (isSaving()) {
+          <span class="spinner"></span>
+        }
+        <span>{{ isSaving() ? 'Saving...' : 'Save settings' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <section class="card settings-hero">
+    <div class="settings-hero-main">
+      <div class="hero-icon">
+        <i class="fas fa-sliders"></i>
+      </div>
+      <div class="hero-copy">
+        <h2>{{ currentUser()?.name || 'Admin' }}</h2>
+        <p>Use one place to keep your admin workspace clean, focused, and secure.</p>
+      </div>
+    </div>
+
+    <div class="hero-summary">
+      @for (item of summary(); track item.label) {
+        <div class="summary-item">
+          <span class="summary-icon">
+            <i [class]="item.icon"></i>
+          </span>
+          <div>
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <div class="settings-layout">
+    <section class="card settings-card">
+      <div class="card-title">Notification Preferences</div>
+
+      <div class="settings-list">
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Email digest</strong>
+            <p>Receive daily summary via email.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().emailNotifications"
+            (ngModelChange)="updateSetting('emailNotifications', $event)"
+          />
+        </label>
+
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Sales order alerts</strong>
+            <p>Notify when new sales orders need confirmation.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().orderNotifications"
+            (ngModelChange)="updateSetting('orderNotifications', $event)"
+          />
+        </label>
+
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Return order updates</strong>
+            <p>Notify on return requests and status changes.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().returnNotifications"
+            (ngModelChange)="updateSetting('returnNotifications', $event)"
+          />
+        </label>
+
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Contact inbox alerts</strong>
+            <p>Notify when customers send new messages.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().contactNotifications"
+            (ngModelChange)="updateSetting('contactNotifications', $event)"
+          />
+        </label>
+      </div>
+    </section>
+
+    <section class="card settings-card">
+      <div class="card-title">Workspace</div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span class="label">Start page</span>
+          <select
+            class="select"
+            [ngModel]="settings().startPage"
+            (ngModelChange)="updateSetting('startPage', $event)"
+          >
+            <option value="dashboard">Dashboard</option>
+            <option value="orders/list">Sales orders</option>
+            <option value="orders/rent">Rent orders</option>
+            <option value="notifications">Notifications</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="label">Language</span>
+          <select
+            class="select"
+            [ngModel]="settings().language"
+            (ngModelChange)="updateSetting('language', $event)"
+          >
+            <option value="en">English</option>
+            <option value="vi">Vietnamese</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="label">Timezone</span>
+          <select
+            class="select"
+            [ngModel]="settings().timezone"
+            (ngModelChange)="updateSetting('timezone', $event)"
+          >
+            <option value="Asia/Bangkok">Asia/Bangkok</option>
+            <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh</option>
+            <option value="Asia/Singapore">Asia/Singapore</option>
+            <option value="UTC">UTC</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="label">Auto refresh (seconds)</span>
+          <input
+            class="input"
+            type="number"
+            min="15"
+            max="300"
+            step="15"
+            [ngModel]="settings().autoRefreshSeconds"
+            (ngModelChange)="updateSetting('autoRefreshSeconds', +$event)"
+          />
+        </label>
+      </div>
+
+      <div class="settings-list compact">
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Compact tables</strong>
+            <p>Reduce row height and spacing in list views.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().compactTable"
+            (ngModelChange)="updateSetting('compactTable', $event)"
+          />
+        </label>
+
+        <label class="switch-row">
+          <div class="switch-copy">
+            <strong>Reduce motion</strong>
+            <p>Lower animation intensity for better focus.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().reduceMotion"
+            (ngModelChange)="updateSetting('reduceMotion', $event)"
+          />
+        </label>
+      </div>
+    </section>
+
+    <section class="card settings-card">
+      <div class="card-title">Security</div>
+
+      <div class="form-grid">
+        <label class="field">
+          <span class="label">Session timeout</span>
+          <select
+            class="select"
+            [ngModel]="settings().sessionTimeout"
+            (ngModelChange)="updateSetting('sessionTimeout', $event)"
+          >
+            <option value="15 minutes">15 minutes</option>
+            <option value="30 minutes">30 minutes</option>
+            <option value="60 minutes">60 minutes</option>
+          </select>
+        </label>
+
+        <label class="switch-row bordered">
+          <div class="switch-copy">
+            <strong>Two-factor authentication</strong>
+            <p>Require a second verification step for sign in.</p>
+          </div>
+          <input
+            type="checkbox"
+            [ngModel]="settings().enableTwoFactor"
+            (ngModelChange)="updateSetting('enableTwoFactor', $event)"
+          />
+        </label>
+      </div>
+    </section>
+
+    <section class="card settings-card danger-zone">
+      <div class="card-title">Account Access</div>
+      <p class="danger-note">
+        Sign out from this device if you are using a shared or public workstation.
+      </p>
+      <button class="btn btn-secondary" type="button" (click)="signOut()">
+        <i class="fas fa-right-from-bracket"></i>
+        <span>Sign out</span>
+      </button>
+    </section>
+  </div>
+</div>

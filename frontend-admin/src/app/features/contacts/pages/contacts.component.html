@@ -54,8 +54,8 @@
         </div>
 
         <div class="filter-actions">
-          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Đặt lại</button>
-          <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">Làm mới</button>
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetFilters()">Reset</button>
+          <button class="btn btn-secondary btn-sm" type="button" (click)="applyFilters()">Refresh</button>
         </div>
       </div>
 
@@ -172,17 +172,38 @@
           </div>
 
           <div class="detail-grid">
-            <div>
-              <div class="item-meta">Email</div>
-              <div class="font-semibold">{{ selectedMessage.email }}</div>
+            <div class="contact-info-card info-email">
+              <div class="info-head">
+                <span class="info-icon">
+                  <i class="fas fa-envelope"></i>
+                </span>
+                <span class="info-label">Email</span>
+              </div>
+              <a class="info-value info-link" [href]="'mailto:' + selectedMessage.email">
+                {{ selectedMessage.email }}
+              </a>
             </div>
-            <div>
-              <div class="item-meta">SĐT</div>
-              <div class="font-semibold">{{ selectedMessage.phone }}</div>
+
+            <div class="contact-info-card info-phone">
+              <div class="info-head">
+                <span class="info-icon">
+                  <i class="fas fa-phone"></i>
+                </span>
+                <span class="info-label">S&#272;T</span>
+              </div>
+              <a class="info-value info-link" [href]="'tel:' + formatPhoneLink(selectedMessage.phone)">
+                {{ selectedMessage.phone }}
+              </a>
             </div>
-            <div>
-              <div class="item-meta">Mục đích</div>
-              <div class="font-semibold">{{ selectedMessage.purposeLabel }}</div>
+
+            <div class="contact-info-card info-purpose">
+              <div class="info-head">
+                <span class="info-icon">
+                  <i class="fas fa-bullseye"></i>
+                </span>
+                <span class="info-label">M&#7909;c &#273;&#237;ch</span>
+              </div>
+              <div class="purpose-pill">{{ selectedMessage.purposeLabel }}</div>
             </div>
           </div>
 

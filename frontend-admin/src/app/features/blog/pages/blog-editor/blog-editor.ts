@@ -244,7 +244,7 @@ export class BlogEditorComponent {
       tags: '',
       readingTime: null,
       authorId: this.extractNumericId(currentUser?.id),
-      authorName: currentUser?.name || 'Admin',
+      authorName: currentUser?.name || 'Quản trị viên',
       authorRole: this.resolveDefaultAuthorRole(currentUser?.role),
       metaTitle: '',
       metaDescription: '',
@@ -336,7 +336,7 @@ export class BlogEditorComponent {
     const currentUser = this.authService.currentUser();
     const authorId =
       this.extractNumericId(this.post.authorId) ?? this.extractNumericId(currentUser?.id);
-    const authorName = this.post.authorName.trim() || currentUser?.name || 'Admin';
+    const authorName = this.post.authorName.trim() || currentUser?.name || 'Quản trị viên';
     const authorRole =
       this.post.authorRole.trim() || this.resolveDefaultAuthorRole(currentUser?.role);
 
@@ -552,11 +552,11 @@ export class BlogEditorComponent {
   private resolveDefaultAuthorRole(role: string | undefined): string {
     switch (role) {
       case 'super_admin':
-        return 'Super Admin';
+        return 'Quản trị cấp cao';
       case 'admin':
-        return 'Quan tri vien';
+        return 'Quản trị viên';
       case 'staff':
-        return 'Nhan vien';
+        return 'Nhân viên';
       default:
         return '';
     }

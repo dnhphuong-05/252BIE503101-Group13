@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -64,26 +64,26 @@ export class TailorOrdersComponent implements OnInit, OnDestroy {
   private searchTimer?: ReturnType<typeof setTimeout>;
 
   protected readonly statusMeta: Record<TailorOrderStatus, { label: string; class: string }> = {
-    created: { label: 'M\u1edbi t\u1ea1o', class: 'badge badge-warning' },
-    consulted: { label: '\u0110\u00e3 t\u01b0 v\u1ea5n', class: 'badge badge-info' },
-    sample_confirmed: { label: '\u0110\u00e3 ch\u1ed1t m\u1eabu', class: 'badge badge-info' },
-    tailoring: { label: '\u0110ang may', class: 'badge badge-info' },
-    fitting_adjustment: { label: 'Ch\u1edd th\u1eed/ch\u1ec9nh s\u1eeda', class: 'badge badge-info' },
-    completed: { label: 'Ho\u00e0n th\u00e0nh', class: 'badge badge-success' },
-    delivered: { label: '\u0110\u00e3 giao', class: 'badge badge-success' },
-    cancelled: { label: '\u0110\u00e3 h\u1ee7y', class: 'badge badge-neutral' },
+    created: { label: 'Created', class: 'badge badge-warning' },
+    consulted: { label: 'Consulted', class: 'badge badge-info' },
+    sample_confirmed: { label: 'Sample confirmed', class: 'badge badge-info' },
+    tailoring: { label: 'Tailoring', class: 'badge badge-info' },
+    fitting_adjustment: { label: 'Fitting/alteration', class: 'badge badge-info' },
+    completed: { label: 'Completed', class: 'badge badge-success' },
+    delivered: { label: 'Delivered', class: 'badge badge-success' },
+    cancelled: { label: 'Cancelled', class: 'badge badge-neutral' },
   };
 
   protected readonly statusFilters: Array<{ value: TailorOrderStatus | 'all'; label: string }> = [
-    { value: 'all', label: 'T\u1ea5t c\u1ea3 tr\u1ea1ng th\u00e1i' },
-    { value: 'created', label: 'M\u1edbi t\u1ea1o' },
-    { value: 'consulted', label: '\u0110\u00e3 t\u01b0 v\u1ea5n' },
-    { value: 'sample_confirmed', label: '\u0110\u00e3 ch\u1ed1t m\u1eabu' },
-    { value: 'tailoring', label: '\u0110ang may' },
-    { value: 'fitting_adjustment', label: 'Ch\u1edd th\u1eed/ch\u1ec9nh s\u1eeda' },
-    { value: 'completed', label: 'Ho\u00e0n th\u00e0nh' },
-    { value: 'delivered', label: '\u0110\u00e3 giao' },
-    { value: 'cancelled', label: '\u0110\u00e3 h\u1ee7y' },
+    { value: 'all', label: 'All statuses' },
+    { value: 'created', label: 'Created' },
+    { value: 'consulted', label: 'Consulted' },
+    { value: 'sample_confirmed', label: 'Sample confirmed' },
+    { value: 'tailoring', label: 'Tailoring' },
+    { value: 'fitting_adjustment', label: 'Fitting/alteration' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'delivered', label: 'Delivered' },
+    { value: 'cancelled', label: 'Cancelled' },
   ];
 
   protected orders: TailorOrderRow[] = [];
@@ -144,7 +144,7 @@ export class TailorOrdersComponent implements OnInit, OnDestroy {
   protected openDetail(order: TailorOrderRow): void {
     const id = String(order.id || '').trim();
     if (!id) {
-      this.notification.showError('Không tìm thấy mã đơn để xem chi tiết.');
+      this.notification.showError('Order ID not found for detail view.');
       return;
     }
     this.router.navigate(['/orders/tailor', id]);
@@ -200,7 +200,7 @@ export class TailorOrdersComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Failed to load tailor orders:', error);
-          this.loadError = error?.error?.message || 'Kh\u00f4ng th\u1ec3 t\u1ea3i danh s\u00e1ch \u0111\u01a1n may \u0111o.';
+          this.loadError = error?.error?.message || 'Unable to load tailor orders.';
           this.orders = [];
           this.total = 0;
           this.pages = 1;
@@ -221,9 +221,9 @@ export class TailorOrdersComponent implements OnInit, OnDestroy {
 
     return {
       id: resolvedId || '',
-      customer: order.customer?.full_name || 'Kh\u00e1ch h\u00e0ng',
+      customer: order.customer?.full_name || 'Customer',
       phone: order.customer?.phone || '-',
-      title: order.product?.title || order.product?.reference_product_name || '\u0110\u01a1n may \u0111o',
+      title: order.product?.title || order.product?.reference_product_name || 'Tailor order',
       status: this.normalizeStatus(order.status),
       totalAmount: Number(order.pricing?.total_amount || 0),
       updatedAt: this.formatDate(order.updated_at || order.created_at),

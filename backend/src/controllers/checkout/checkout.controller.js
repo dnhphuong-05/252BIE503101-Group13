@@ -267,12 +267,18 @@ export const createCheckout = catchAsync(async (req, res) => {
   if (!guestItems || guestItems.length === 0) {
     throw ApiError.badRequest("Không có sản phẩm để thanh toán");
   }
+  const normalizedGuestEmail =
+    typeof customer_info.email === "string" ? customer_info.email.trim().toLowerCase() : "";
+  if (!normalizedGuestEmail) {
+    throw ApiError.badRequest("Guest checkout requires email to receive order tracking");
+  }
+
 
   const normalizedAddress = normalizeAddress(customer_info.address);
   const guestCustomer = await guestCustomerService.createOrUpdateGuest({
     full_name: customer_info.full_name,
     phone: customer_info.phone,
-    email: customer_info.email || null,
+    email: normalizedGuestEmail,
     address: normalizedAddress,
   });
 
@@ -286,7 +292,7 @@ export const createCheckout = catchAsync(async (req, res) => {
     customer_info: {
       full_name: guestCustomer.full_name,
       phone: guestCustomer.phone,
-      email: guestCustomer.email || "",
+      email: guestCustomer.email || normalizedGuestEmail,
       address: normalizedAddress,
     },
     items: orderItems,
@@ -300,3 +306,4 @@ export const createCheckout = catchAsync(async (req, res) => {
 
   return createdResponse(res, result, "Đặt hàng thành công");
 });
+

@@ -1,0 +1,87 @@
+<div class="returns-page">
+  <header class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <i class="fas fa-undo-alt"></i>
+        Đơn hoàn trả
+      </h1>
+      <p class="page-subtitle">Quản lý yêu cầu trả hàng và hoàn tiền sau khi nhận đơn.</p>
+    </div>
+    <div class="header-note">Hiệu lực trong 3 ngày kể từ lúc nhận hàng</div>
+  </header>
+
+  @if (isLoading) {
+    <div class="state-card">Đang tải dữ liệu...</div>
+  }
+
+  @if (!isLoading && loadError) {
+    <div class="state-card error">{{ loadError }}</div>
+  }
+
+  @if (!isLoading && !loadError) {
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Đơn có thể hoàn trả</h2>
+        <span class="panel-count">{{ eligibleOrders.length }} đơn hợp lệ</span>
+      </div>
+
+      @if (eligibleOrders.length) {
+        <div class="order-list">
+          @for (order of eligibleOrders; track order.id) {
+            <article class="order-card">
+              <div class="order-meta">
+                <div class="order-code">{{ order.orderCode }}</div>
+                <div class="order-date">Ngày mua: {{ formatDate(order.orderDate) }}</div>
+              </div>
+              <div class="order-total">{{ formatPrice(order.totalAmount) }}</div>
+              <div class="order-extra">
+                <span>Còn {{ getReturnDaysLeft(order) }} ngày</span>
+              </div>
+              <button class="btn-request" type="button" (click)="openReturnModal(order)">
+                Yêu cầu hoàn trả
+              </button>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty">Không có đơn nào còn trong thời hạn 3 ngày.</div>
+      }
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Yêu cầu hoàn trả</h2>
+        <span class="panel-count">{{ submittedOrders.length }} yêu cầu</span>
+      </div>
+
+      @if (submittedOrders.length) {
+        <div class="order-list">
+          @for (order of submittedOrders; track order.id) {
+            <article class="order-card">
+              <div class="order-meta">
+                <div class="order-code">{{ order.orderCode }}</div>
+                <div class="order-date">
+                  Gửi yêu cầu: {{ formatDate(order.returnRequestedAt || order.orderDate) }}
+                </div>
+              </div>
+              <div class="order-total">{{ formatPrice(order.totalAmount) }}</div>
+              <div class="status-badge">
+                {{ getReturnStatusLabel(order.returnStatus) }}
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty">Chưa có yêu cầu trả hàng nào.</div>
+      }
+    </section>
+  }
+
+  <app-return-request-modal
+    [show]="showReturnModal"
+    [orderCode]="selectedOrder?.orderCode || ''"
+    [loading]="returningOrderId === selectedOrder?.id"
+    (close)="closeReturnModal()"
+    (submit)="submitReturnRequest($event)"
+  ></app-return-request-modal>
+</div>

@@ -121,20 +121,20 @@ export class ProductReviewsComponent implements OnInit {
   readonly stars = [1, 2, 3, 4, 5];
   readonly distributionStars = [5, 4, 3, 2, 1];
   readonly ratingFilters: Array<{ label: string; value: RatingFilter }> = [
-    { label: 'All', value: 'all' as const },
-    { label: '5 stars', value: 5 },
-    { label: '4 stars', value: 4 },
-    { label: '3 stars', value: 3 },
-    { label: '2 stars', value: 2 },
-    { label: '1 star', value: 1 },
+    { label: 'Tất cả', value: 'all' as const },
+    { label: '5 sao', value: 5 },
+    { label: '4 sao', value: 4 },
+    { label: '3 sao', value: 3 },
+    { label: '2 sao', value: 2 },
+    { label: '1 sao', value: 1 },
   ];
 
   readonly sortOptions: Array<{ label: string; value: SortKey; sortBy: string; sortOrder: 'asc' | 'desc' }> = [
-    { label: 'Newest', value: 'newest', sortBy: 'created_at', sortOrder: 'desc' },
-    { label: 'Oldest', value: 'oldest', sortBy: 'created_at', sortOrder: 'asc' },
-    { label: 'Most helpful', value: 'helpful', sortBy: 'helpful_count', sortOrder: 'desc' },
-    { label: 'Rating high → low', value: 'rating_desc', sortBy: 'rating', sortOrder: 'desc' },
-    { label: 'Rating low → high', value: 'rating_asc', sortBy: 'rating', sortOrder: 'asc' },
+    { label: 'Mới nhất', value: 'newest', sortBy: 'created_at', sortOrder: 'desc' },
+    { label: 'Cũ nhất', value: 'oldest', sortBy: 'created_at', sortOrder: 'asc' },
+    { label: 'Hữu ích nhất', value: 'helpful', sortBy: 'helpful_count', sortOrder: 'desc' },
+    { label: 'Điểm cao đến thấp', value: 'rating_desc', sortBy: 'rating', sortOrder: 'desc' },
+    { label: 'Điểm thấp đến cao', value: 'rating_asc', sortBy: 'rating', sortOrder: 'asc' },
   ];
 
   ngOnInit(): void {
@@ -222,7 +222,7 @@ export class ProductReviewsComponent implements OnInit {
         },
         error: (error) => {
           console.error('Failed to load products:', error);
-          this.productsError = 'Unable to load products.';
+          this.productsError = 'Không thể tải danh sách sản phẩm.';
           this.productsLoading = false;
         },
       });
@@ -244,7 +244,7 @@ export class ProductReviewsComponent implements OnInit {
         },
         error: (error) => {
           console.error('Failed to load rating stats:', error);
-          this.ratingError = 'Unable to load rating stats.';
+          this.ratingError = 'Không thể tải thống kê đánh giá.';
           this.ratingStats = null;
           this.ratingLoading = false;
         },
@@ -288,7 +288,7 @@ export class ProductReviewsComponent implements OnInit {
         },
         error: (error) => {
           console.error('Failed to load reviews:', error);
-          this.reviewsError = 'Unable to load reviews.';
+          this.reviewsError = 'Không thể tải danh sách đánh giá.';
           this.reviews = [];
           this.reviewTotal = 0;
           this.reviewPages = 0;
@@ -302,14 +302,14 @@ export class ProductReviewsComponent implements OnInit {
       review.admin_reply && review.admin_reply.reply_text && !review.admin_reply.is_deleted
         ? {
             content: review.admin_reply.reply_text,
-            responder: review.admin_reply.replied_by?.full_name || 'Shop',
+            responder: review.admin_reply.replied_by?.full_name || 'Cửa hàng',
             respondedAt: review.admin_reply.updated_at || review.admin_reply.created_at,
           }
         : null;
 
     return {
       id: review.review_id || review.id || review._id || '',
-      userName: review.user_name || 'Guest',
+      userName: review.user_name || 'Khách',
       rating: review.rating || 0,
       comment: review.comment || '',
       createdAt: review.created_at || new Date().toISOString(),
@@ -321,7 +321,7 @@ export class ProductReviewsComponent implements OnInit {
         (review.seller_response?.content
           ? {
               content: review.seller_response.content,
-              responder: review.seller_response.responder_name || 'Shop',
+              responder: review.seller_response.responder_name || 'Cửa hàng',
               respondedAt: review.seller_response.responded_at,
             }
           : null),

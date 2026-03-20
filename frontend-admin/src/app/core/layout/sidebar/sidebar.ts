@@ -1,8 +1,20 @@
-import { Component, input, output, inject, computed, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { UserRole } from '../../../models';
+import { Subscription, filter } from 'rxjs';
 
 interface MenuItem {
   label: string;
@@ -21,15 +33,18 @@ interface MenuSection {
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.css',
 })
-export class SidebarComponent {
+export class SidebarComponent implements AfterViewInit, OnDestroy {
   public readonly isCollapsed = input.required<boolean>();
   public readonly toggleCollapse = output<void>();
+  @ViewChild('sidebarRef') private sidebarRef?: ElementRef<HTMLElement>;
 
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private navEventsSub?: Subscription;
   protected readonly currentUser = this.authService.currentUser;
 
   private readonly menuSections: MenuSection[] = [
@@ -51,7 +66,7 @@ export class SidebarComponent {
         { label: 'Sales orders', icon: 'fas fa-shopping-bag', route: '/orders/sales' },
         { label: 'Tailor orders', icon: 'fas fa-ruler-combined', route: '/orders/tailor' },
         { label: 'Rent orders', icon: 'fas fa-calendar', route: '/orders/rent' },
-        { label: 'Returns & refunds', icon: 'fas fa-undo', route: '/orders/returns' },
+        { label: 'Return orders', icon: 'fas fa-undo', route: '/orders/returns' },
       ],
     },
     {
@@ -147,5 +162,97 @@ export class SidebarComponent {
 
   protected isGroupOpen(label: string): boolean {
     return this.openGroups().has(label);
+  }
+
+  protected isRouteActive(route: string): boolean {
+    const current = this.normalizePath(this.router.url);
+    const target = this.normalizePath(route);
+
+    if (current === target) {
+      return true;
+    }
+
+    // Keep list menu item active while viewing its detail page.
+    if (target.startsWith('/orders/') || target === '/contacts') {
+      return current.startsWith(`${target}/`);
+    }
+
+    // Keep user list active on /users/:id but avoid matching other user submodules.
+    if (target === '/users') {
+      return (
+        current.startsWith('/users/') &&
+        !current.startsWith('/users/guests') &&
+        !current.startsWith('/users/roles')
+      );
+    }
+
+    // Keep guest customers item active on /users/guests/:id
+    if (target === '/users/guests') {
+      return current.startsWith('/users/guests/');
+    }
+
+    return false;
+  }
+
+  protected onSidebarScroll(event: Event): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem('admin_sidebar_scroll_top', String(target.scrollTop));
+    } catch {
+      return;
+    }
+  }
+
+  ngAfterViewInit(): void {
+    this.restoreSidebarScroll();
+    this.scrollActiveItemIntoView();
+    this.navEventsSub = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => {
+        setTimeout(() => this.scrollActiveItemIntoView(), 0);
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.navEventsSub?.unsubscribe();
+  }
+
+  private restoreSidebarScroll(): void {
+    const host = this.sidebarRef?.nativeElement;
+    if (!host) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.sessionStorage.getItem('admin_sidebar_scroll_top');
+      const scrollTop = raw ? Number(raw) : 0;
+      if (!Number.isNaN(scrollTop) && scrollTop > 0) {
+        host.scrollTop = scrollTop;
+      }
+    } catch {
+      return;
+    }
+  }
+
+  private scrollActiveItemIntoView(): void {
+    const host = this.sidebarRef?.nativeElement;
+    if (!host) return;
+
+    const active = host.querySelector<HTMLElement>('.nav-item.active, .nav-child.active');
+    if (!active) return;
+
+    const hostRect = host.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+    const isAbove = activeRect.top < hostRect.top + 88;
+    const isBelow = activeRect.bottom > hostRect.bottom - 20;
+    if (!isAbove && !isBelow) return;
+
+    active.scrollIntoView({ block: 'center', inline: 'nearest' });
+  }
+
+  private normalizePath(path: string): string {
+    const [withoutQuery] = String(path || '').split(/[?#]/);
+    const normalized = withoutQuery.replace(/\/+$/, '');
+    return normalized || '/';
   }
 }

@@ -9,6 +9,7 @@ const addressDetailSchema = Joi.string().trim().min(6);
 export const updateProfile = {
   body: Joi.object({
     full_name: Joi.string().trim().max(100),
+    fullName: Joi.string().trim().max(100),
     email: Joi.string().email(),
     phone: vietnamPhoneSchema,
     avatar: Joi.string().uri().allow(""),
@@ -17,6 +18,28 @@ export const updateProfile = {
     height: Joi.number().min(0).allow(null),
     weight: Joi.number().min(0).allow(null),
     size_standard: Joi.string().valid("XS", "S", "M", "L", "XL").allow(null),
+    job_title: Joi.string().trim().max(100).allow(""),
+    department: Joi.string().trim().max(100).allow(""),
+    bio: Joi.string().trim().max(1000).allow(""),
+    timezone: Joi.string().trim().max(80).allow(""),
+  }).min(1),
+};
+
+export const updateSettings = {
+  body: Joi.object({
+    email_notifications: Joi.boolean(),
+    order_notifications: Joi.boolean(),
+    return_notifications: Joi.boolean(),
+    contact_notifications: Joi.boolean(),
+    compact_table: Joi.boolean(),
+    reduce_motion: Joi.boolean(),
+    language: Joi.string().valid("en", "vi"),
+    timezone: Joi.string().trim().max(80),
+    start_page: Joi.string()
+      .valid("dashboard", "orders/list", "orders/rent", "notifications"),
+    auto_refresh_seconds: Joi.number().integer().min(15).max(300),
+    enable_two_factor: Joi.boolean(),
+    session_timeout: Joi.string().valid("15 minutes", "30 minutes", "60 minutes"),
   }).min(1),
 };
 

@@ -8,9 +8,9 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ApiResponse, BackendListResponse } from '../../../../models';
 import { environment } from '../../../../../environments/environment';
 
-type ProductStatus = 'draft' | 'active' | 'archived';
+type ProductStatus = 'draft' | 'active' | 'archive';
 type ProductStatusFilter = ProductStatus | 'all';
-type ProductApiStatus = 'draft' | 'active' | 'inactive' | 'archived';
+type ProductApiStatus = 'draft' | 'active' | 'inactive' | 'archive';
 type ProductBulkAction = '' | 'activate' | 'draft' | 'archive' | 'delete_permanent';
 
 interface ProductRow {
@@ -74,14 +74,14 @@ export class ProductListComponent implements OnInit, OnDestroy {
   protected readonly statusMeta: Record<ProductStatus, { label: string; class: string }> = {
     draft: { label: 'Nháp', class: 'badge badge-warning' },
     active: { label: 'Đang bán', class: 'badge badge-success' },
-    archived: { label: 'Lưu trữ', class: 'badge badge-neutral' },
+    archive: { label: 'Lưu trữ', class: 'badge badge-neutral' },
   };
 
   protected readonly statusOptions: Array<{ value: ProductStatusFilter; label: string }> = [
     { value: 'all', label: 'Tất cả trạng thái' },
     { value: 'active', label: 'Đang bán' },
     { value: 'draft', label: 'Nháp' },
-    { value: 'archived', label: 'Lưu trữ' },
+    { value: 'archive', label: 'Lưu trữ' },
   ];
 
   protected readonly sortOptions: Array<{
@@ -199,7 +199,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   protected onArchive(product: ProductRow): void {
     if (this.isBulkRunning || this.statusUpdatingIds.has(product.id)) return;
     this.actionSuccess = '';
-    this.updateProductStatus(product, 'archived');
+    this.updateProductStatus(product, 'archive');
   }
 
   protected onRestore(product: ProductRow): void {
@@ -229,7 +229,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Failed to delete product:', error);
-        this.loadError = error?.error?.message || 'Không thể xóa sản phẩm';
+        this.loadError = error?.error?.message || 'Không thể xóa sản phẩm.';
       },
       complete: () => {
         this.deletingIds.delete(product.id);
@@ -337,7 +337,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Failed to load product filters:', error);
-          this.filtersError = 'Không thể tải bộ lọc sản phẩm';
+          this.filtersError = 'Không thể tải bộ lọc sản phẩm.';
           this.filtersLoading = false;
         },
       });
@@ -374,7 +374,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Failed to load products:', error);
-      this.loadError = 'Không thể tải danh sách sản phẩm';
+      this.loadError = 'Không thể tải danh sách sản phẩm.';
       this.products = [];
       this.total = 0;
     } finally {
@@ -402,7 +402,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Failed to load more products:', error);
-      this.loadError = 'Không thể tải thêm sản phẩm';
+      this.loadError = 'Không thể tải thêm sản phẩm.';
     } finally {
       this.isLoadingMore = false;
     }
@@ -428,7 +428,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
       return {
         id: String(product.product_id),
         name: product.name,
-        category: product.category_name || '—',
+        category: product.category_name || '-',
         price: this.formatCurrency(mainPrice),
         rentPrice: product.price_rent ? this.formatCurrency(product.price_rent) : undefined,
         deposit: undefined,
@@ -453,7 +453,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   private buildParams(page: number): HttpParams {
     const sort = this.sortOptions.find((option) => option.value === this.sortFilter);
-    const statusParam = this.statusFilter === 'archived' ? 'inactive' : this.statusFilter;
+    const statusParam = this.statusFilter === 'archive' ? 'inactive' : this.statusFilter;
     const base: Record<string, string> = {
       page: String(page),
       limit: String(this.pageSize),
@@ -483,7 +483,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   private updateProductStatus(product: ProductRow, status: ProductStatus): void {
     this.statusUpdatingIds.add(product.id);
-    const apiStatus = status === 'archived' ? 'inactive' : status;
+    const apiStatus = status === 'archive' ? 'inactive' : status;
     this.http.put(`${this.apiUrl}/products/${product.id}`, { status: apiStatus }).subscribe({
       next: () => {
         const updatedAt = this.formatDate(new Date().toISOString());
@@ -494,7 +494,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Failed to update status:', error);
-        this.loadError = error?.error?.message || 'Không thể cập nhật trạng thái';
+        this.loadError = error?.error?.message || 'Không thể cập nhật trạng thái.';
       },
       complete: () => {
         this.statusUpdatingIds.delete(product.id);
@@ -538,7 +538,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   private normalizeStatus(status?: ProductApiStatus): ProductStatus {
     if (!status) return 'draft';
-    if (status === 'inactive' || status === 'archived') return 'archived';
+    if (status === 'inactive' || status === 'archive') return 'archive';
     if (status === 'active') return 'active';
     return 'draft';
   }

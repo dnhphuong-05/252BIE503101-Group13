@@ -1,6 +1,6 @@
 <header class="topbar">
   <div class="topbar-left">
-    <button class="sidebar-toggle" type="button" (click)="toggleSidebar.emit()" title="Ẩn/hiện menu">
+    <button class="sidebar-toggle" type="button" (click)="toggleSidebar.emit()" title="Toggle menu">
       <i class="fas fa-bars"></i>
     </button>
 
@@ -9,7 +9,7 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Tìm kiếm hoặc nhập lệnh (sản phẩm, blog, người dùng)"
+        placeholder="Search or type a command (products, blog, users)"
         [(ngModel)]="searchQuery"
         (keyup.enter)="handleSearch()"
       />
@@ -21,26 +21,26 @@
     <div class="create-dropdown">
       <button class="btn btn-primary" type="button" (click)="toggleCreateMenu()">
         <i class="fas fa-plus"></i>
-        <span>Tạo mới</span>
+        <span>Create</span>
       </button>
 
       @if (createMenuOpen()) {
         <div class="dropdown-menu">
-          <div class="dropdown-title">Tạo nhanh</div>
+          <div class="dropdown-title">Quick create</div>
           <a class="dropdown-item" [routerLink]="['/products/new']" (click)="closeMenus()">
             <i class="fas fa-box"></i>
-            <span>Sản phẩm mới</span>
+            <span>New product</span>
           </a>
           <a class="dropdown-item" [routerLink]="['/blog/posts/new']" (click)="closeMenus()">
             <i class="fas fa-pen-to-square"></i>
-            <span>Bài viết mới</span>
+            <span>New post</span>
           </a>
         </div>
       }
     </div>
 
     <div class="notification-dropdown">
-      <button class="action-icon" title="Thông báo" type="button" (click)="toggleNotificationMenu()">
+      <button class="action-icon" title="Notifications" type="button" (click)="toggleNotificationMenu()">
         <i class="fas fa-bell"></i>
         @if (hasUnread()) {
           <span class="action-dot"></span>
@@ -52,9 +52,9 @@
         <div class="notification-menu">
           <div class="notification-menu-head">
             <div>
-              <div class="notification-menu-title">Thông báo</div>
+              <div class="notification-menu-title">Notifications</div>
               <div class="notification-menu-subtitle">
-                {{ unreadCount() }} chưa đọc
+                {{ unreadCount() }} unread
               </div>
             </div>
             <button
@@ -63,19 +63,19 @@
               [disabled]="!unreadCount()"
               (click)="markAllNotificationsRead($event)"
             >
-              Đã đọc hết
+              Mark all as read
             </button>
           </div>
 
           @if (isPreviewLoading()) {
             <div class="notification-menu-empty">
               <span class="spinner"></span>
-              <span>Đang tải...</span>
+              <span>Loading...</span>
             </div>
           } @else if (!previewNotifications().length) {
             <div class="notification-menu-empty">
               <i class="fas fa-bell-slash"></i>
-              <span>Chưa có thông báo mới.</span>
+              <span>No new notifications.</span>
             </div>
           } @else {
             <div class="notification-menu-list">
@@ -112,20 +112,20 @@
           }
 
           <button class="notification-menu-footer" type="button" (click)="openNotificationsPage()">
-            Xem tất cả thông báo
+            View all notifications
             <i class="fas fa-arrow-right"></i>
           </button>
         </div>
       }
     </div>
 
-    <div class="relative">
+    <div class="user-dropdown">
       <button class="user-chip" type="button" (click)="toggleUserMenu()">
         @if (currentUser()?.avatar) {
           <img
             class="user-avatar-img"
             [src]="currentUser()?.avatar"
-            [alt]="currentUser()?.name || 'Ảnh đại diện quản trị'"
+            [alt]="currentUser()?.name || 'Admin avatar'"
           />
         } @else {
           <div class="user-avatar">{{ userInitials() }}</div>
@@ -141,16 +141,16 @@
         <div class="user-menu">
           <a [routerLink]="['/profile']" class="menu-item">
             <i class="fas fa-user"></i>
-            <span>Hồ sơ</span>
+            <span>Profile</span>
           </a>
           <a [routerLink]="['/settings']" class="menu-item">
             <i class="fas fa-gear"></i>
-            <span>Cài đặt</span>
+            <span>Settings</span>
           </a>
           <div class="menu-divider"></div>
           <button class="menu-item danger" type="button" (click)="handleLogout()">
             <i class="fas fa-right-from-bracket"></i>
-            <span>Đăng xuất</span>
+            <span>Sign out</span>
           </button>
         </div>
       }

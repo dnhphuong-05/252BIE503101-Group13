@@ -94,6 +94,44 @@ const generateLabelCode = () => {
   return `LBL-${randomPart}`;
 };
 
+const generateEstimatedDeliveryDate = (baseDate = new Date()) => {
+  const estimated = new Date(baseDate);
+  // Simulated carrier ETA because there is no real carrier integration yet.
+  estimated.setDate(estimated.getDate() + 3);
+  return estimated;
+};
+
+const isMockCarrierName = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized.includes("phuc express") || normalized.includes("mock");
+};
+
+const sanitizeCarrierName = (value, fallback = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return fallback;
+  if (isMockCarrierName(normalized)) return fallback;
+  return normalized;
+};
+
+const isMockShipmentNote = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return false;
+  return (
+    normalized.includes("carrier contact simulated for the project") ||
+    normalized.includes("mock shipping code") ||
+    normalized.includes("đã tạo vận đơn từ trang quản trị") ||
+    normalized.includes("da tao van don tu trang quan tri")
+  );
+};
+
+const sanitizeShipmentNote = (value, fallback = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return fallback;
+  if (isMockShipmentNote(normalized)) return fallback;
+  return normalized;
+};
+
 const toPlainObject = (value) =>
   value && typeof value.toObject === "function" ? value.toObject() : value;
 
@@ -316,15 +354,28 @@ class TailorOrderService extends BaseService {
       throw ApiError.badRequest("Cannot create a shipment for an order that is already closed.");
     }
 
-    if (!["sample_confirmed", "tailoring", "fitting_adjustment", "completed"].includes(order.status)) {
-      throw ApiError.badRequest("Confirm sample and production progress before generating shipment.");
+    if (order.status !== "completed") {
+      throw ApiError.badRequest("Only completed orders can generate shipment.");
+    }
+
+    const depositAmount = Number(order.pricing?.deposit_amount || 0);
+    const paidAmount = Number(order.finance?.paid_amount || 0);
+    if (depositAmount <= 0 || paidAmount < depositAmount) {
+      throw ApiError.badRequest(
+        "Deposit payment must be confirmed before generating shipment.",
+      );
     }
 
     const now = new Date();
-    const carrierName = String(payload.carrier_name || "").trim() || "GHTK";
-    const shippingNote =
-      String(payload.note || "").trim() ||
-      "Đã tạo vận đơn từ trang quản trị.";
+    const carrierName = sanitizeCarrierName(payload.carrier_name, "GHTK") || "GHTK";
+    const shippingNote = sanitizeShipmentNote(
+      payload.note,
+      sanitizeShipmentNote(order.shipping?.note),
+    );
+    const estimatedDeliveryAt =
+      order.shipping?.estimated_delivery_at ||
+      normalizeDate(payload.estimated_delivery_at) ||
+      generateEstimatedDeliveryDate(now);
 
     order.shipping = {
       ...order.shipping,
@@ -334,7 +385,7 @@ class TailorOrderService extends BaseService {
       label_code: order.shipping?.label_code || generateLabelCode(),
       note: shippingNote,
       created_at: order.shipping?.created_at || now,
-      estimated_delivery_at: order.shipping?.estimated_delivery_at || null,
+      estimated_delivery_at: estimatedDeliveryAt,
       actual_delivery_at: order.shipping?.actual_delivery_at || null,
     };
 
@@ -603,7 +654,7 @@ class TailorOrderService extends BaseService {
         order.shipping.receive_method = String(shipping.receive_method || "").trim();
       }
       if (shipping.carrier_name !== undefined) {
-        order.shipping.carrier_name = String(shipping.carrier_name || "").trim();
+        order.shipping.carrier_name = sanitizeCarrierName(shipping.carrier_name);
       }
       if (shipping.tracking_code !== undefined) {
         order.shipping.tracking_code = String(shipping.tracking_code || "").trim();
@@ -612,7 +663,7 @@ class TailorOrderService extends BaseService {
         order.shipping.label_code = String(shipping.label_code || "").trim();
       }
       if (shipping.note !== undefined) {
-        order.shipping.note = String(shipping.note || "").trim();
+        order.shipping.note = sanitizeShipmentNote(shipping.note);
       }
       if (shipping.estimated_delivery_at !== undefined) {
         order.shipping.estimated_delivery_at = normalizeDate(shipping.estimated_delivery_at);
@@ -636,9 +687,6 @@ class TailorOrderService extends BaseService {
     const rawNextStatus = String(nextStatus || "").trim();
     let normalizedNextStatus = normalizeStatusValue(rawNextStatus);
 
-    // Keep backward compatibility:
-    // - legacy flow used `shipping -> completed` where `completed` means delivered
-    // - new flow uses `fitting_adjustment -> completed` as an explicit step before delivered
     if (rawNextStatus === "completed" && currentStatus !== "completed") {
       normalizedNextStatus = "completed";
     }
@@ -674,6 +722,14 @@ class TailorOrderService extends BaseService {
     }
 
     if (normalizedNextStatus === "delivered") {
+      const depositAmount = Number(order.pricing?.deposit_amount || 0);
+      const paidAmount = Number(order.finance?.paid_amount || 0);
+      if (depositAmount <= 0 || paidAmount < depositAmount) {
+        throw ApiError.badRequest(
+          "Deposit payment must be confirmed before confirming delivered.",
+        );
+      }
+
       const hasShipmentUpdated = Boolean(order.timeline?.shipment_created_at);
       if (!hasShipmentUpdated) {
         throw ApiError.badRequest(
@@ -709,8 +765,8 @@ class TailorOrderService extends BaseService {
     }
     if (normalizedNextStatus === "delivered") {
       order.timeline.delivered_at = now;
-      order.shipping.actual_delivery_at = order.shipping.actual_delivery_at || now;
-      order.shipping.delivered_at = order.shipping.delivered_at || now;
+      order.shipping.actual_delivery_at = now;
+      order.shipping.delivered_at = now;
     }
     if (normalizedNextStatus === "cancelled") {
       order.timeline.cancelled_at = now;
@@ -730,6 +786,9 @@ class TailorOrderService extends BaseService {
   normalizeOrderForMutation(order) {
     order.timeline = order.timeline || {};
     order.shipping = order.shipping || {};
+
+    order.shipping.carrier_name = sanitizeCarrierName(order.shipping.carrier_name);
+    order.shipping.note = sanitizeShipmentNote(order.shipping.note);
 
     const normalizedCurrentStatus = normalizeStatusValue(order.status);
     order.status =
@@ -783,10 +842,10 @@ class TailorOrderService extends BaseService {
       },
       shipping: {
         receive_method: shipping.receive_method || "home_delivery",
-        carrier_name: shipping.carrier_name || "",
+        carrier_name: sanitizeCarrierName(shipping.carrier_name) || "",
         tracking_code: shipping.tracking_code || "",
         label_code: shipping.label_code || "",
-        note: shipping.note || "",
+        note: sanitizeShipmentNote(shipping.note) || "",
         created_at: shipping.created_at || null,
         estimated_delivery_at: shipping.estimated_delivery_at || null,
         actual_delivery_at: shipping.actual_delivery_at || shipping.delivered_at || null,

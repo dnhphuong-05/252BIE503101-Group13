@@ -457,6 +457,9 @@ export class ProductEditorComponent {
   }
 
   private normalizeGender(value: unknown): ProductGender {
-    return value === 'Nam' || value === 'Nữ' ? value : 'Unisex';
+    if (value === 'Nam' || value === 'Nữ') return value;
+    if (value === 'Male') return 'Nam';
+    if (value === 'Female') return 'Nữ';
+    return 'Unisex';
   }
 }

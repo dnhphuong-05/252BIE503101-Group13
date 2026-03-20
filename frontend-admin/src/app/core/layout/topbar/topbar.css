@@ -328,6 +328,10 @@
   position: relative;
 }
 
+.user-dropdown {
+  position: relative;
+}
+
 .dropdown-menu {
   position: absolute;
   right: 0;
