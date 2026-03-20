@@ -106,13 +106,17 @@
               (click)="togglePasswordVisibility('password')"
               style="cursor: pointer"
             ></i>
+            <div class="password-hint">Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt</div>
             <div
               class="error-message"
               *ngIf="(f['password'].touched || f['password'].dirty) && f['password'].errors"
             >
               <span *ngIf="f['password'].errors['required']">Mật khẩu là bắt buộc</span>
               <span *ngIf="f['password'].errors['minlength']"
-                >Mật khẩu phải có ít nhất 6 ký tự</span
+                >Mật khẩu phải có ít nhất 8 ký tự</span
+              >
+              <span *ngIf="f['password'].errors['pattern']"
+                >Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt</span
               >
             </div>
           </div>

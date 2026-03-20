@@ -7,6 +7,19 @@ import { ApiError, logger } from "../utils/index.js";
 export const errorHandler = (err, req, res, next) => {
   let error = err;
 
+  // Convert MongoDB duplicate key errors to friendly API errors
+  if (error?.code === 11000) {
+    const duplicateField = Object.keys(error.keyPattern || {})[0];
+    const duplicateMessageByField = {
+      email: "Email đã được sử dụng",
+      phone: "Số điện thoại đã được sử dụng",
+      google_id: "Tài khoản Google này đã được liên kết",
+    };
+    const duplicateMessage =
+      duplicateMessageByField[duplicateField] || "Dữ liệu đã tồn tại";
+    error = new ApiError(409, duplicateMessage, false, err.stack);
+  }
+
   // Nếu không phải ApiError, convert thành ApiError
   if (!(error instanceof ApiError)) {
     const statusCode = error.statusCode || 500;
