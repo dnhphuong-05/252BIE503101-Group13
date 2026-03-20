@@ -39,16 +39,16 @@
 
       <form (ngSubmit)="onSignIn()" #loginForm="ngForm">
         <div class="input-group">
-          <label class="label"><i class="fas fa-envelope label-icon"></i>Email or username</label>
+          <label class="label"><i class="fas fa-phone label-icon"></i>Phone</label>
           <input
             class="input"
-            type="text"
+            type="tel"
             name="identifier"
             [(ngModel)]="identifier"
             #identifierField="ngModel"
             required
-            autocomplete="username"
-            placeholder="admin@vietphuc.vn"
+            autocomplete="tel"
+            placeholder="09xxxxxxxx"
             [disabled]="isLoading"
           />
           @if (identifierField.touched && identifierField.invalid) {

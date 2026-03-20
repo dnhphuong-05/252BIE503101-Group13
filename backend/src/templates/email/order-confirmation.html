@@ -20,6 +20,21 @@
         padding: 20px;
       }
 
+      a {
+        color: inherit;
+      }
+
+      a[x-apple-data-detectors],
+      #MessageViewBody a,
+      u + #body a {
+        color: inherit !important;
+        text-decoration: none !important;
+        font-size: inherit !important;
+        font-family: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
+      }
+
       .email-container {
         max-width: 600px;
         margin: 0 auto;
@@ -31,27 +46,47 @@
 
       .header {
         background: linear-gradient(135deg, #751629 0%, #451a1f 100%);
-        padding: 40px 30px;
+        padding: 36px 30px 32px;
         text-align: center;
         color: #ffffff;
       }
 
-      .header-icon {
+      .header-icon-wrap {
         width: 64px;
         height: 64px;
-        background: rgba(255, 255, 255, 0.2);
         border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
+        background: rgba(255, 255, 255, 0.16);
+        margin: 0 auto 16px;
+        text-align: center;
+      }
+
+      .header-icon {
+        width: 24px;
+        height: 24px;
+        display: inline-block;
+        margin-top: 20px;
+      }
+
+      .header-icon-fallback {
+        color: #f8d9b8;
+        font-size: 26px;
+        line-height: 64px;
+        font-weight: 700;
+      }
+
+      .header-kicker {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        opacity: 0.9;
         margin-bottom: 16px;
+        font-weight: 600;
       }
 
       .header h1 {
-        font-size: 28px;
+        font-size: 30px;
         font-weight: 700;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         letter-spacing: -0.5px;
       }
 
@@ -67,9 +102,9 @@
 
       .order-badge {
         display: inline-block;
-        background: #fff7ed;
-        border: 2px solid #fb923c;
-        color: #c2410c;
+        background: #fdf5f7;
+        border: 2px solid #d9a4b1;
+        color: #7a1d33;
         padding: 12px 24px;
         border-radius: 12px;
         font-size: 18px;
@@ -88,23 +123,24 @@
       }
 
       .status-box {
-        background: #fef3c7;
-        border-left: 4px solid #f59e0b;
+        background: #f9f3e1;
+        border-left: 4px solid #d69a2d;
         padding: 16px 20px;
         border-radius: 8px;
         margin-bottom: 32px;
       }
 
       .status-box strong {
-        color: #92400e;
+        color: #7e4b15;
         font-size: 14px;
         display: block;
         margin-bottom: 4px;
       }
 
       .status-box p {
-        color: #78350f;
+        color: #6b4a24;
         font-size: 13px;
+        line-height: 1.5;
         margin: 0;
       }
 
@@ -117,20 +153,25 @@
         border-bottom: 2px solid #e5e7eb;
       }
 
-      .info-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 12px 0;
-        border-bottom: 1px solid #f3f4f6;
+      .info-table {
+        width: 100%;
+        border-collapse: collapse;
       }
 
-      .info-row:last-child {
+      .info-table td {
+        padding: 12px 0;
+        border-bottom: 1px solid #f3f4f6;
+        vertical-align: top;
+      }
+
+      .info-table tr:last-child td {
         border-bottom: none;
       }
 
       .info-label {
         color: #6b7280;
         font-size: 14px;
+        width: 38%;
       }
 
       .info-value {
@@ -138,16 +179,35 @@
         font-size: 14px;
         font-weight: 600;
         text-align: right;
-        max-width: 60%;
+        width: 62%;
+        word-break: break-word;
       }
 
       .product-item {
-        display: flex;
-        gap: 16px;
-        padding: 16px;
+        padding: 0;
         background: #f9fafb;
         border-radius: 12px;
         margin-bottom: 12px;
+        overflow: hidden;
+      }
+
+      .product-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .product-table td {
+        padding: 16px;
+        vertical-align: top;
+      }
+
+      .product-image-cell {
+        width: 96px;
+        padding-right: 0;
+      }
+
+      .product-info-cell {
+        padding-left: 12px;
       }
 
       .product-image {
@@ -156,6 +216,19 @@
         border-radius: 8px;
         object-fit: cover;
         background: #e5e7eb;
+        display: block;
+      }
+
+      .product-image-placeholder {
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background: #e5e7eb;
+        color: #6b7280;
+        font-size: 11px;
+        display: table-cell;
+        text-align: center;
+        vertical-align: middle;
       }
 
       .product-info {
@@ -188,22 +261,29 @@
         margin-top: 24px;
       }
 
-      .total-row {
-        display: flex;
-        justify-content: space-between;
+      .total-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      .total-table td {
         padding: 8px 0;
         font-size: 14px;
       }
 
-      .total-row.grand-total {
+      .total-table td:last-child {
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .total-table .grand-total td {
         padding-top: 16px;
-        margin-top: 16px;
         border-top: 2px solid #e5e7eb;
         font-size: 18px;
         font-weight: 700;
       }
 
-      .total-row.grand-total .amount {
+      .total-table .grand-total .amount {
         color: #751629;
         font-size: 22px;
       }
@@ -229,8 +309,8 @@
       }
 
       .tracking-box {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        border: 2px solid #3b82f6;
+        background: linear-gradient(180deg, #fcf7f4 0%, #f7efe9 100%);
+        border: 1px solid #e4cec0;
         padding: 20px;
         border-radius: 12px;
         margin: 24px 0;
@@ -239,7 +319,7 @@
 
       .tracking-box strong {
         display: block;
-        color: #1e40af;
+        color: #6f1228;
         font-size: 14px;
         margin-bottom: 12px;
         text-transform: uppercase;
@@ -248,14 +328,19 @@
 
       .tracking-link {
         display: inline-block;
-        background: #3b82f6;
+        background: linear-gradient(135deg, #7a1d33 0%, #5b1022 100%);
         color: #ffffff;
         text-decoration: none;
         padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
+        border-radius: 10px;
+        font-weight: 700;
         font-size: 14px;
-        word-break: break-all;
+        box-shadow: 0 6px 14px rgba(117, 22, 41, 0.22);
+      }
+
+      .tracking-link:link,
+      .tracking-link:visited {
+        color: #ffffff !important;
       }
 
       .footer {
@@ -276,27 +361,21 @@
         font-size: 13px;
         color: #6b7280;
         margin-bottom: 16px;
+        line-height: 1.65;
       }
 
-      .social-links {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-        margin: 20px 0;
+      .footer-contact {
+        font-size: 14px;
+        color: #4b5563;
+        line-height: 1.7;
       }
 
-      .social-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 50%;
-        color: #6b7280;
+      .footer-contact a,
+      .footer-contact a:link,
+      .footer-contact a:visited {
+        color: #751629;
         text-decoration: none;
-        font-size: 18px;
+        font-weight: 600;
       }
 
       .divider {
@@ -306,8 +385,8 @@
       }
 
       .note-box {
-        background: #fef2f2;
-        border-left: 4px solid #ef4444;
+        background: #fdf2f2;
+        border-left: 4px solid #e14848;
         padding: 16px;
         border-radius: 8px;
         margin: 24px 0;
@@ -315,8 +394,14 @@
 
       .note-box p {
         font-size: 13px;
-        color: #991b1b;
+        color: #9b2c2c;
+        line-height: 1.55;
         margin: 0;
+      }
+
+      .cta-button:link,
+      .cta-button:visited {
+        color: #ffffff !important;
       }
 
       @media only screen and (max-width: 600px) {
@@ -336,26 +421,24 @@
           font-size: 24px;
         }
 
-        .product-item {
-          flex-direction: column;
-        }
-
-        .product-image {
-          width: 100%;
-          height: 200px;
+        .info-label {
+          width: 36%;
         }
 
         .info-value {
-          max-width: 50%;
+          width: 64%;
         }
       }
     </style>
   </head>
-  <body>
+  <body id="body">
     <div class="email-container">
       <!-- Header -->
       <div class="header">
-        <div class="header-icon">🎉</div>
+        <div class="header-icon-wrap" aria-hidden="true">
+          <img src="{{HEADER_ICON_URL}}" alt="" class="header-icon" width="24" height="24" />
+        </div>
+        <p class="header-kicker">Xác nhận đơn hàng</p>
         <h1>PHỤC đã nhận đơn hàng của bạn</h1>
         <p class="header-subtitle">Cảm ơn bạn đã tin tưởng và lựa chọn PHỤC</p>
       </div>
@@ -372,7 +455,7 @@
 
         <!-- Status Box -->
         <div class="status-box">
-          <strong>📋 Trạng thái đơn hàng</strong>
+          <strong>Trạng thái đơn hàng</strong>
           <p>
             {{ORDER_STATUS}} - Chúng tôi sẽ liên hệ với bạn trong vòng 24h để
             xác nhận đơn hàng
@@ -381,57 +464,76 @@
 
         <!-- Tracking Box -->
         <div class="tracking-box">
-          <strong>👉 Theo dõi đơn hàng của bạn</strong>
-          <a href="{{TRACKING_URL}}" class="tracking-link">
+          <strong>Theo dõi đơn hàng của bạn</strong>
+          <a
+            href="{{TRACKING_URL}}"
+            class="tracking-link"
+            style="
+              display: inline-block;
+              background: linear-gradient(135deg, #7a1d33 0%, #5b1022 100%);
+              color: #ffffff !important;
+              text-decoration: none !important;
+              padding: 12px 24px;
+              border-radius: 10px;
+              font-weight: 700;
+              font-size: 14px;
+              line-height: 1.2;
+              box-shadow: 0 6px 14px rgba(117, 22, 41, 0.22);
+            "
+          >
             Xem chi tiết đơn hàng →
           </a>
         </div>
 
         <!-- Customer Info -->
-        <h2 class="section-title">📦 Thông tin người nhận</h2>
-        <div class="info-row">
-          <span class="info-label">Họ và tên</span>
-          <span class="info-value">{{CUSTOMER_NAME}}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Số điện thoại</span>
-          <span class="info-value">{{CUSTOMER_PHONE}}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Email</span>
-          <span class="info-value">{{CUSTOMER_EMAIL}}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Địa chỉ giao hàng</span>
-          <span class="info-value">{{SHIPPING_ADDRESS}}</span>
-        </div>
+        <h2 class="section-title">Thông tin người nhận</h2>
+        <table class="info-table" role="presentation" cellpadding="0" cellspacing="0">
+          <tr>
+            <td class="info-label">Họ và tên</td>
+            <td class="info-value">{{CUSTOMER_NAME}}</td>
+          </tr>
+          <tr>
+            <td class="info-label">Số điện thoại</td>
+            <td class="info-value">{{CUSTOMER_PHONE}}</td>
+          </tr>
+          <tr>
+            <td class="info-label">Email</td>
+            <td class="info-value">{{CUSTOMER_EMAIL}}</td>
+          </tr>
+          <tr>
+            <td class="info-label">Địa chỉ giao hàng</td>
+            <td class="info-value">{{SHIPPING_ADDRESS}}</td>
+          </tr>
+        </table>
 
         <div class="divider"></div>
 
         <!-- Order Items -->
-        <h2 class="section-title">🛍️ Sản phẩm đã đặt</h2>
+        <h2 class="section-title">Sản phẩm đã đặt</h2>
         {{ORDER_ITEMS}}
 
         <!-- Total -->
         <div class="total-section">
-          <div class="total-row">
-            <span>Tạm tính</span>
-            <span>{{SUBTOTAL}}</span>
-          </div>
-          <div class="total-row">
-            <span>Phí vận chuyển</span>
-            <span>{{SHIPPING_FEE}}</span>
-          </div>
-          <div class="total-row grand-total">
-            <span>Tổng cộng</span>
-            <span class="amount">{{TOTAL_AMOUNT}}</span>
-          </div>
+          <table class="total-table" role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>Tạm tính</td>
+              <td>{{SUBTOTAL}}</td>
+            </tr>
+            <tr>
+              <td>Phí vận chuyển</td>
+              <td>{{SHIPPING_FEE}}</td>
+            </tr>
+            <tr class="grand-total">
+              <td>Tổng cộng</td>
+              <td class="amount">{{TOTAL_AMOUNT}}</td>
+            </tr>
+          </table>
         </div>
 
         <!-- Note Box -->
         <div class="note-box">
           <p>
-            <strong>⚠️ Lưu ý quan trọng:</strong> Nếu bạn không đặt hàng này,
+            <strong>Lưu ý quan trọng:</strong> Nếu bạn không đặt hàng này,
             vui lòng liên hệ với chúng tôi ngay qua hotline hoặc email để được
             hỗ trợ.
           </p>
@@ -439,7 +541,24 @@
 
         <!-- Call to Action -->
         <div style="text-align: center">
-          <a href="{{TRACKING_URL}}" class="cta-button"> Theo dõi đơn hàng </a>
+          <a
+            href="{{TRACKING_URL}}"
+            class="cta-button"
+            style="
+              display: inline-block;
+              background: linear-gradient(135deg, #751629 0%, #451a1f 100%);
+              color: #ffffff !important;
+              text-decoration: none !important;
+              padding: 16px 32px;
+              border-radius: 12px;
+              font-weight: 700;
+              font-size: 16px;
+              line-height: 1.2;
+              box-shadow: 0 6px 16px rgba(117, 22, 41, 0.3);
+            "
+          >
+            Theo dõi đơn hàng
+          </a>
         </div>
       </div>
 
@@ -450,19 +569,14 @@
           Chuyên cung cấp trang phục truyền thống Việt Nam cao cấp
         </p>
 
-        <div class="social-links">
-          <a href="#" class="social-link">📘</a>
-          <a href="#" class="social-link">📷</a>
-          <a href="#" class="social-link">🐦</a>
-          <a href="#" class="social-link">📧</a>
-        </div>
-
         <div class="divider"></div>
 
-        <p class="footer-text">
-          📞 Hotline: 1900-xxxx | 📧 Email: support@phuc.vn<br />
-          🏢 Địa chỉ: 123 Phố Hàng Trống, Hoàn Kiếm, Hà Nội<br />
-          <br />
+        <p class="footer-contact">
+          Hotline: 1900-xxxx | Email: <a href="mailto:support@phuc.vn">support@phuc.vn</a><br />
+          Địa chỉ: 123 Phố Hàng Trống, Hoàn Kiếm, Hà Nội
+        </p>
+
+        <p class="footer-text" style="margin-top: 12px; margin-bottom: 0">
           <small style="color: #9ca3af">
             Bạn nhận được email này vì đã đặt hàng tại PHUC.vn<br />
             © 2026 PHỤC. All rights reserved.

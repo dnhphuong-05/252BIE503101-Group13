@@ -169,6 +169,78 @@ class RentOrderService extends BaseService {
     super(RentOrder);
   }
 
+  normalizeCustomerEmail(value) {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+  }
+
+  async resolveCustomerEmailForOrder(orderLike = {}) {
+    const order = typeof orderLike?.toObject === "function" ? orderLike.toObject() : orderLike || {};
+    const directEmail = this.normalizeCustomerEmail(order?.customer_info?.email);
+    if (directEmail) return directEmail;
+    if (!order?.user_id) return "";
+
+    try {
+      const user = await User.findOne({ user_id: order.user_id })
+        .select("email")
+        .lean();
+      return this.normalizeCustomerEmail(user?.email);
+    } catch (error) {
+      console.error("Error loading user email for rent confirmation:", error);
+      return "";
+    }
+  }
+
+  buildRentOrderEmailData(orderLike, customerEmail, status = "Da tiep nhan don thue") {
+    const order = typeof orderLike?.toObject === "function" ? orderLike.toObject() : orderLike || {};
+    const customerInfo = order.customer_info || {};
+    const item = order.item || {};
+    const rentalPeriod = order.rental_period || {};
+    const pricing = order.pricing || {};
+
+    const startDate = rentalPeriod.start_date
+      ? new Date(rentalPeriod.start_date).toLocaleDateString("vi-VN")
+      : "";
+    const endDate = rentalPeriod.end_date
+      ? new Date(rentalPeriod.end_date).toLocaleDateString("vi-VN")
+      : "";
+    const rentDays = Number(rentalPeriod.days) || 0;
+
+    return {
+      orderCode: order.rent_order_code,
+      status,
+      customer: {
+        full_name: customerInfo.full_name || "",
+        phone: customerInfo.phone || "",
+        email: customerEmail,
+        full_address: buildRentAddressText(customerInfo),
+      },
+      items: [
+        {
+          product_id: item.product_id,
+          name: item.name_snapshot || "San pham " + String(item.product_id || ""),
+          price: Number(item.rent_price_per_day) || 0,
+          quantity: Number(item.quantity) || 1,
+          sku: item.sku || "",
+          thumbnail: item.thumbnail_snapshot || item.thumbnail || "",
+          image: item.thumbnail_snapshot || item.thumbnail || "",
+          attributes: {
+            "So ngay thue": rentDays > 0 ? String(rentDays) + " ngay" : "",
+            "Ngay nhan": startDate,
+            "Ngay tra": endDate,
+          },
+        },
+      ],
+      subtotal: Number(pricing.deposit_required) || 0,
+      shippingFee: Number(pricing.shipping_fee) || 0,
+      total: Number(pricing.total_due_today) || 0,
+      trackingUrl: buildRentTrackingUrl(
+        order.rent_order_id,
+        order.rent_order_code,
+        Boolean(order.guest_id),
+      ),
+    };
+  }
+
   /**
    * Generate rent_order_id
    * Format: RNT + YYMMDD + 4 digits
@@ -220,10 +292,14 @@ class RentOrderService extends BaseService {
       throw ApiError.badRequest("Customer info is required");
     }
 
-    const normalizedCustomerEmail =
-      typeof orderData.customer_info.email === "string"
-        ? orderData.customer_info.email.trim().toLowerCase()
-        : "";
+    let normalizedCustomerEmail = this.normalizeCustomerEmail(orderData.customer_info.email);
+
+    if (!normalizedCustomerEmail && orderData?.user_id) {
+      normalizedCustomerEmail = await this.resolveCustomerEmailForOrder({
+        user_id: orderData.user_id,
+      });
+    }
+
     orderData.customer_info.email = normalizedCustomerEmail || null;
 
     if (orderData?.guest_id && !normalizedCustomerEmail) {
@@ -306,54 +382,17 @@ class RentOrderService extends BaseService {
     let emailSent = false;
     if (normalizedCustomerEmail) {
       try {
-        const orderObject = order.toObject();
-        const customerInfo = orderObject.customer_info || {};
-        const item = orderObject.item || {};
-        const rentalPeriod = orderObject.rental_period || {};
-        const pricing = orderObject.pricing || {};
-
-        const startDate = rentalPeriod.start_date
-          ? new Date(rentalPeriod.start_date).toLocaleDateString("vi-VN")
-          : "";
-        const endDate = rentalPeriod.end_date
-          ? new Date(rentalPeriod.end_date).toLocaleDateString("vi-VN")
-          : "";
-        const rentDays = Number(rentalPeriod.days) || 0;
-
-        const emailData = {
-          orderCode: orderObject.rent_order_code,
-          status: "Da tiep nhan don thue",
-          customer: {
-            full_name: customerInfo.full_name || "",
-            phone: customerInfo.phone || "",
-            email: normalizedCustomerEmail,
-            full_address: buildRentAddressText(customerInfo),
-          },
-          items: [
-            {
-              name: item.name_snapshot || "San pham " + String(item.product_id || ""),
-              price: Number(item.rent_price_per_day) || 0,
-              quantity: Number(item.quantity) || 1,
-              sku: item.sku || "",
-              attributes: {
-                "So ngay thue": rentDays > 0 ? String(rentDays) + " ngay" : "",
-                "Ngay nhan": startDate,
-                "Ngay tra": endDate,
-              },
-            },
-          ],
-          subtotal: Number(pricing.deposit_required) || 0,
-          shippingFee: Number(pricing.shipping_fee) || 0,
-          total: Number(pricing.total_due_today) || 0,
-          trackingUrl: buildRentTrackingUrl(
-            orderObject.rent_order_id,
-            orderObject.rent_order_code,
-            Boolean(orderObject.guest_id),
-          ),
-        };
+        const emailData = this.buildRentOrderEmailData(
+          order,
+          normalizedCustomerEmail,
+          "Da tiep nhan don thue",
+        );
 
         const emailResult = await emailService.sendOrderConfirmation(emailData);
         emailSent = Boolean(emailResult?.success);
+        if (!emailSent && emailResult?.error) {
+          console.error("Rent order confirmation email failed:", emailResult.error);
+        }
       } catch (error) {
         console.error("Error sending rent order confirmation email:", error);
       }
@@ -917,6 +956,27 @@ class RentOrderService extends BaseService {
           },
           { silent: true },
         );
+      }
+    }
+
+    if (nextStatus === "ongoing" && nextStatus !== currentStatus) {
+      try {
+        const customerEmail = await this.resolveCustomerEmailForOrder(order);
+        if (customerEmail) {
+          const emailData = this.buildRentOrderEmailData(
+            order,
+            customerEmail,
+            "Don thue da duoc xac nhan",
+          );
+          const emailResult = await emailService.sendOrderConfirmation(emailData);
+          if (!emailResult?.success) {
+            console.error("Error sending rent confirmation email on status update:", emailResult?.error);
+          }
+        } else {
+          console.warn(`Skip rent confirmation email for ${order.rent_order_code}: missing customer email`);
+        }
+      } catch (error) {
+        console.error("Error sending rent confirmation email on status update:", error);
       }
     }
 

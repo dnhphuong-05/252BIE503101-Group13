@@ -67,7 +67,7 @@ app.get("/health", (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Việt Phúc API Server",
+    message: "Phục API Server",
     version: "1.0.0",
     documentation: "/api-docs",
     endpoints: {
