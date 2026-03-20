@@ -233,10 +233,10 @@ const googleAuth = async (token) => {
         email,
         password_hash: await bcrypt.hash(Math.random().toString(36), 10), // Random password
         provider: "google",
-        google_id: sub || null,
         role: "customer",
         status: "active",
         phone: null,
+        ...(sub ? { google_id: sub } : {}),
       });
     } else {
       console.log("👤 User đã tồn tại:", email);

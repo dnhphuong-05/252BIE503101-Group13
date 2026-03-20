@@ -1,12 +1,22 @@
 import Joi from "joi";
 
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 /**
  * Register validation
  */
 export const register = {
   body: Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().min(6).required(),
+    password: Joi.string()
+      .min(8)
+      .pattern(passwordComplexPattern)
+      .required()
+      .messages({
+        "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
+        "string.pattern.base":
+          "Mật khẩu phải gồm chữ hoa, số và ký tự đặc biệt",
+      }),
     confirmPassword: Joi.string()
       .valid(Joi.ref("password"))
       .required()
@@ -72,7 +82,15 @@ export const forgotPassword = {
 export const resetPassword = {
   body: Joi.object({
     token: Joi.string().required(),
-    password: Joi.string().min(6).required(),
+    password: Joi.string()
+      .min(8)
+      .pattern(passwordComplexPattern)
+      .required()
+      .messages({
+        "string.min": "Mật khẩu phải có ít nhất 8 ký tự",
+        "string.pattern.base":
+          "Mật khẩu phải gồm chữ hoa, số và ký tự đặc biệt",
+      }),
     confirmPassword: Joi.string().valid(Joi.ref("password")).required(),
   }),
 };

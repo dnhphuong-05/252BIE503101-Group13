@@ -27,10 +27,10 @@ const userSchema = new mongoose.Schema(
     },
     google_id: {
       type: String,
-      default: null,
       unique: true,
       sparse: true,
       index: true,
+      set: (value) => (value ? value : undefined),
     },
     phone: {
       type: String,
