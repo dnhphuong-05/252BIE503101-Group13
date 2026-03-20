@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PasswordChangeData } from '../../../../../services/user.service';
 
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 @Component({
   selector: 'app-security-form',
   standalone: true,
@@ -28,8 +30,11 @@ export class SecurityFormComponent implements OnInit {
   initializeForm() {
     this.passwordForm = this.formBuilder.group(
       {
-        oldPassword: ['', [Validators.required, Validators.minLength(8)]],
-        newPassword: ['', [Validators.required, Validators.minLength(8)]],
+        oldPassword: ['', [Validators.required, Validators.minLength(6)]],
+        newPassword: [
+          '',
+          [Validators.required, Validators.minLength(6), Validators.pattern(passwordComplexPattern)],
+        ],
         confirmPassword: ['', [Validators.required]],
       },
       {
@@ -83,7 +88,7 @@ export class SecurityFormComponent implements OnInit {
   getPasswordStrength(): string {
     const password = this.passwordForm.get('newPassword')?.value || '';
     if (password.length === 0) return '';
-    if (password.length < 8) return 'weak';
+    if (password.length < 6) return 'weak';
 
     let strength = 0;
     if (password.length >= 12) strength++;

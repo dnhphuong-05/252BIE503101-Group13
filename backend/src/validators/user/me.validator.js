@@ -5,6 +5,7 @@ const genderSchema = Joi.string()
   .allow(null, "");
 const vietnamPhoneSchema = Joi.string().pattern(/^(?:\+84|0)(?:3|5|7|8|9)\d{8}$/);
 const addressDetailSchema = Joi.string().trim().min(6);
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 export const updateProfile = {
   body: Joi.object({
@@ -47,7 +48,10 @@ export const changePassword = {
   body: Joi.object({
     oldPassword: Joi.string(),
     currentPassword: Joi.string(),
-    newPassword: Joi.string().min(6).max(100).required(),
+    newPassword: Joi.string().min(6).max(100).pattern(passwordComplexPattern).required().messages({
+      "string.min": "Mật khẩu phải có ít nhất 6 ký tự",
+      "string.pattern.base": "Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt",
+    }),
   })
     .or("oldPassword", "currentPassword")
     .required(),

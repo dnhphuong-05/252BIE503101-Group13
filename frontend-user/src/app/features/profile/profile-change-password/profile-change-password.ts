@@ -4,6 +4,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ToastService } from '../../../services/toast.service';
 import { ProfileService } from '../../../services/profile.service';
 
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 @Component({
   selector: 'app-profile-change-password',
   standalone: true,
@@ -235,13 +237,26 @@ export class ProfileChangePasswordComponent {
   ) {
     this.passwordForm = this.fb.group({
       currentPassword: ['', [Validators.required, Validators.minLength(6)]],
-      newPassword: ['', [Validators.required, Validators.minLength(6)]],
+      newPassword: [
+        '',
+        [Validators.required, Validators.minLength(6), Validators.pattern(passwordComplexPattern)],
+      ],
       confirmPassword: ['', [Validators.required]],
     });
   }
 
   changePassword() {
-    if (this.passwordForm.invalid) return;
+    if (this.passwordForm.invalid) {
+      const newPasswordErrors = this.passwordForm.get('newPassword')?.errors;
+      if (newPasswordErrors?.['required']) {
+        this.toastService.error('Mật khẩu mới là bắt buộc');
+      } else if (newPasswordErrors?.['minlength']) {
+        this.toastService.error('Mật khẩu phải có ít nhất 6 ký tự');
+      } else if (newPasswordErrors?.['pattern']) {
+        this.toastService.error('Mật khẩu phải gồm chữ hoa, số, ký tự đặc biệt');
+      }
+      return;
+    }
 
     this.isLoading = true;
     const { currentPassword, newPassword, confirmPassword } = this.passwordForm.value;

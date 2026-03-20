@@ -13,6 +13,8 @@ import { FooterComponent } from '../../shared/components/footer/footer';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 
+const passwordComplexPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
+
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -45,8 +47,8 @@ export class RegisterComponent implements OnInit {
           '',
           [
             Validators.required,
-            Validators.minLength(8),
-            Validators.pattern(/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/),
+            Validators.minLength(6),
+            Validators.pattern(passwordComplexPattern),
           ],
         ],
         confirmPassword: ['', Validators.required],
