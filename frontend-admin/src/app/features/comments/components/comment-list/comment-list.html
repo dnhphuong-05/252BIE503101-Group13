@@ -69,6 +69,16 @@
         }
 
         <div class="comment-actions">
+          @if (comment.status === 'pending') {
+            <button
+              class="action-btn btn-success"
+              (click)="onApprove(comment.id)"
+            >
+              <i class="fas fa-check"></i>
+              Duyệt
+            </button>
+          }
+
           @if (comment.status !== 'spam') {
             <button
               class="action-btn btn-warning"

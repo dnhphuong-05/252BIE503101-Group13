@@ -10,6 +10,15 @@ const PUBLIC_COMMENT_FILTER = {
   $or: [{ status: "approved" }, { status: { $exists: false } }],
 };
 
+const getCommentKey = (comment) => {
+  if (!comment) return null;
+  if (comment.comments_id) return comment.comments_id;
+  if (comment.blog_id !== undefined && comment.id !== undefined) {
+    return buildCommentsId(comment.blog_id, comment.id);
+  }
+  return comment._id ? String(comment._id) : null;
+};
+
 const normalizeParentId = (parentId, blogId) => {
   if (parentId === null || parentId === undefined || parentId === "") {
     return null;
@@ -50,10 +59,56 @@ class BlogCommentService extends BaseService {
 
     // If includeReplies is true, get all comments (root + replies)
     if (includeReplies) {
-      return await this.getAll(
+      const result = await this.getAll(
         { blog_id: blogId, ...visibilityFilter },
         queryOptions,
       );
+
+      // Public payload may include approved replies whose parent is still pending.
+      // Include those non-spam parent comments to avoid orphaned replies on UI.
+      if (publicOnly && Array.isArray(result.items) && result.items.length > 0) {
+        const knownKeys = new Set(result.items.map(getCommentKey).filter(Boolean));
+        const missingParentIds = Array.from(
+          new Set(
+            result.items
+              .map((item) => normalizeParentId(item.parent_id, blogId))
+              .filter(
+                (parentId) =>
+                  typeof parentId === "string" &&
+                  parentId.startsWith("bc_") &&
+                  !knownKeys.has(parentId),
+              ),
+          ),
+        );
+
+        if (missingParentIds.length > 0) {
+          const missingParents = await this.model
+            .find({
+              blog_id: blogId,
+              comments_id: { $in: missingParentIds },
+              status: { $ne: "spam" },
+            })
+            .lean();
+
+          if (missingParents.length > 0) {
+            const merged = new Map();
+            [...result.items, ...missingParents].forEach((item) => {
+              const key = getCommentKey(item);
+              if (key && !merged.has(key)) {
+                merged.set(key, item);
+              }
+            });
+
+            result.items = Array.from(merged.values()).sort(
+              (a, b) =>
+                new Date(b.created_at || 0).getTime() -
+                new Date(a.created_at || 0).getTime(),
+            );
+          }
+        }
+      }
+
+      return result;
     }
 
     // Otherwise, only get root comments (parent_id = null)
