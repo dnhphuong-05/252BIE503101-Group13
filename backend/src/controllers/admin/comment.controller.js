@@ -344,6 +344,17 @@ export const replyComment = catchAsync(async (req, res) => {
       throw ApiError.notFound("Comment not found");
     }
 
+    if (parent.status === "spam") {
+      throw ApiError.badRequest("Cannot reply to a spam comment");
+    }
+
+    if (parent.status !== "approved") {
+      await BlogComment.updateOne(
+        { comments_id: parent.comments_id },
+        { $set: { status: "approved", updated_at: new Date() } },
+      );
+    }
+
     const reply = await blogCommentService.createComment(
       {
         blog_id: parent.blog_id,

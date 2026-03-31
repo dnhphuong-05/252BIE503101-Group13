@@ -15,9 +15,14 @@ export class CommentListComponent {
   comments = input.required<Comment[]>();
   loading = input<boolean>(false);
 
+  approve = output<string>();
   markAsSpam = output<string>();
   delete = output<string>();
   reply = output<{ id: string; content: string }>();
+
+  onApprove(id: string): void {
+    this.approve.emit(id);
+  }
 
   onMarkAsSpam(id: string): void {
     this.markAsSpam.emit(id);

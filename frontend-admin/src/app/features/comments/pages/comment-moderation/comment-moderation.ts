@@ -39,6 +39,10 @@ export class CommentModerationComponent implements OnInit {
     this.commentStore.loadComments();
   }
 
+  onApprove(id: string): void {
+    this.commentStore.approveComment(id);
+  }
+
   onMarkAsSpam(id: string): void {
     if (confirm('Bạn có chắc muốn đánh dấu bình luận này là spam?')) {
       this.commentStore.markAsSpam(id);

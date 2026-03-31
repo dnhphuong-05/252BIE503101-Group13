@@ -43,6 +43,7 @@
         <app-comment-list
           [comments]="commentStore.filteredComments()"
           [loading]="commentStore.loading()"
+          (approve)="onApprove($event)"
           (markAsSpam)="onMarkAsSpam($event)"
           (delete)="onDelete($event)"
           (reply)="onReply($event.id, $event.content)"
